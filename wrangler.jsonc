@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "delivery-dash",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "not_found_handling": "single-page-application",
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "RACE_ROOM", "class_name": "RaceRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RaceRoom"] }],
+  "observability": { "enabled": true },
+}
