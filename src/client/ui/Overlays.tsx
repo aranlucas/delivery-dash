@@ -1,258 +1,278 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { DELIVERIES_TO_WIN } from "../../shared/protocol";
 import { generateCity, generateOrders } from "../../shared/city";
+import { drivingTelemetry, ownPose } from "../game/drivingState";
 import { close, connect, rejoin, send } from "../net";
-import { ownPose } from "../game/Car";
 import { ownPlayer, useGameStore } from "../store";
 
-const panel: React.CSSProperties = {
-  background: "rgba(9,12,18,.87)",
-  border: "1px solid #38404d",
-  borderRadius: 12,
-  padding: 18,
-  boxShadow: "0 12px 40px #0008",
-};
-const button: React.CSSProperties = {
-  background: "#eb1700",
-  color: "white",
-  border: 0,
-  borderRadius: 7,
-  padding: "10px 15px",
-  fontWeight: 700,
-  cursor: "pointer",
-};
 const randomCode = () =>
   Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join(
     "",
   );
+
 export function Menu() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const error = useGameStore((s) => s.lastError);
+  const error = useGameStore((state) => state.lastError);
   const go = (room: string) => {
     if (!name.trim()) return;
-    connect(room.toUpperCase(), name);
+    connect(room.toUpperCase(), name.trim());
   };
+
   return (
-    <main
-      style={{
-        height: "100%",
-        display: "grid",
-        placeItems: "center",
-        color: "white",
-        fontFamily: "system-ui",
-      }}
-    >
-      <section style={{ ...panel, width: 330 }}>
-        <h1 style={{ margin: 0, color: "#eb1700" }}>Dash Rush</h1>
-        <p style={{ color: "#b4bdcb" }}>Race deliveries. First to 3 wins.</p>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your driver name"
-          maxLength={20}
-          style={input}
-        />
-        <button
-          style={{ ...button, width: "100%", marginTop: 12 }}
-          onClick={() => go(randomCode())}
+    <main className="arcade-menu">
+      <div className="menu-speed-lines" aria-hidden="true" />
+      <div className="menu-road" aria-hidden="true" />
+      <section className="menu-shell">
+        <header className="arcade-logo" aria-label="Dash Rush">
+          <span>DASH</span>
+          <strong>RUSH</strong>
+          <small>ARCADE DELIVERY RACING</small>
+        </header>
+
+        <form
+          className="start-panel arcade-panel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            go(randomCode());
+          }}
         >
-          Create room
-        </button>
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <label htmlFor="driver-name">DRIVER NAME</label>
           <input
-            value={code}
-            onChange={(e) =>
-              setCode(
-                e.target.value
-                  .toUpperCase()
-                  .replace(/[^A-Z]/g, "")
-                  .slice(0, 4),
-              )
-            }
-            placeholder="ROOM"
-            style={{ ...input, flex: 1, textTransform: "uppercase" }}
+            id="driver-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Enter your name"
+            maxLength={20}
+            autoComplete="nickname"
           />
-          <button style={button} onClick={() => code.length === 4 && go(code)}>
-            Join
+          <button className="arcade-button arcade-button-primary" type="submit" disabled={!name.trim()}>
+            START A NEW RACE
           </button>
+          <div className="join-divider"><span>OR JOIN A CREW</span></div>
+          <div className="join-row">
+            <input
+              aria-label="Room code"
+              value={code}
+              onChange={(event) =>
+                setCode(
+                  event.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z]/g, "")
+                    .slice(0, 4),
+                )
+              }
+              placeholder="ROOM"
+              inputMode="text"
+            />
+            <button
+              className="arcade-button arcade-button-secondary"
+              type="button"
+              disabled={!name.trim() || code.length !== 4}
+              onClick={() => go(code)}
+            >
+              JOIN
+            </button>
+          </div>
+          {error ? <p className="arcade-error" role="alert">{error}</p> : null}
+        </form>
+
+        <div className="control-strip" aria-label="Driving controls">
+          <span><kbd>WASD</kbd> DRIVE</span>
+          <span><kbd>SPACE</kbd> DRIFT</span>
+          <span><kbd>SHIFT</kbd> BOOST</span>
         </div>
-        {error && <p style={{ color: "#ff8f86" }}>{error}</p>}
       </section>
     </main>
   );
 }
-const input: React.CSSProperties = {
-  boxSizing: "border-box",
-  width: "100%",
-  padding: 11,
-  borderRadius: 7,
-  border: "1px solid #46505f",
-  background: "#151b24",
-  color: "white",
-};
+
 export function Lobby() {
-  const phase = useGameStore((s) => s.phase),
-    players = useGameStore((s) => s.players),
-    room = useGameStore((s) => s.roomCode),
-    self = useGameStore(ownPlayer),
-    connected = useGameStore((s) => s.connected),
-    error = useGameStore((s) => s.lastError);
+  const phase = useGameStore((state) => state.phase);
+  const players = useGameStore((state) => state.players);
+  const room = useGameStore((state) => state.roomCode);
+  const self = useGameStore(ownPlayer);
+  const connected = useGameStore((state) => state.connected);
+  const error = useGameStore((state) => state.lastError);
   if (phase !== "lobby") return null;
+
   return (
-    <div style={{ position: "absolute", top: 18, left: 18, ...panel, minWidth: 230 }}>
-      <small style={{ color: "#9aa6b7" }}>ROOM</small>
-      <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 5 }}>{room}</div>
-      <hr style={{ borderColor: "#303845" }} />
-      {players.map((p) => (
-        <div key={p.id} style={{ margin: "8px 0", color: p.color }}>
-          {p.name}{" "}
-          <span style={{ color: p.ready ? "#66e38b" : "#9aa6b7", float: "right" }}>
-            {p.ready ? "READY" : "waiting"}
-          </span>
-        </div>
-      ))}
+    <aside className="lobby-panel arcade-panel">
+      <div className="panel-kicker">STARTING GRID</div>
+      <div className="room-code"><small>ROOM</small><strong>{room}</strong></div>
+      <div className="lobby-roster">
+        {players.map((player, index) => (
+          <div className="lobby-driver" key={player.id}>
+            <span className="grid-position">{String(index + 1).padStart(2, "0")}</span>
+            <i style={{ background: player.color }} />
+            <b>{player.name}</b>
+            <em className={player.ready ? "is-ready" : ""}>{player.ready ? "READY" : "WAITING"}</em>
+          </div>
+        ))}
+      </div>
       {connected ? (
         <button
-          style={{ ...button, width: "100%", marginTop: 10 }}
+          className="arcade-button arcade-button-primary lobby-ready"
           onClick={() => self && send({ t: "ready", ready: !self.ready })}
         >
-          {self?.ready ? "Not ready" : "Ready"}
+          {self?.ready ? "CANCEL READY" : "READY TO RACE"}
         </button>
       ) : (
-        <button style={{ ...button, width: "100%", marginTop: 10 }} onClick={rejoin}>
-          Rejoin room
+        <button className="arcade-button arcade-button-primary lobby-ready" onClick={rejoin}>
+          REJOIN RACE
         </button>
       )}
-      <p style={{ color: "#9aa6b7", fontSize: 12, marginBottom: 0 }}>
-        Free roam while you wait — WASD / arrows to drive.
-      </p>
-      {error && <p style={{ color: "#ff8f86", marginBottom: 0 }}>{error}</p>}
-    </div>
-  );
-}
-export function Countdown() {
-  const ends = useGameStore((s) => s.countdownEndsAt);
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const i = setInterval(() => setNow(Date.now()), 100);
-    return () => clearInterval(i);
-  }, []);
-  const value = Math.max(1, Math.ceil(((ends ?? now) - now) / 1000));
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "grid",
-        placeItems: "center",
-        fontSize: 100,
-        fontWeight: 900,
-        textShadow: "0 4px 20px #000",
-      }}
-    >
-      {value > 0 ? value : "GO!"}
-    </div>
-  );
-}
-export function HUD() {
-  const seed = useGameStore((s) => s.seed),
-    phase = useGameStore((s) => s.phase),
-    players = useGameStore((s) => s.players),
-    self = useGameStore(ownPlayer),
-    connected = useGameStore((s) => s.connected);
-  // ownPose mutates outside React — re-render every frame so the target arrow and speed track live
-  const [, tick] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => {
-    let id = 0;
-    const loop = () => {
-      tick();
-      id = requestAnimationFrame(loop);
-    };
-    id = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(id);
-  }, []);
-  if (phase !== "racing" || !seed || !self) return connected ? null : <Reconnect />;
-  const city = generateCity(seed),
-    order = generateOrders(seed)[self.orderIndex],
-    target =
-      order &&
-      (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
-  /* negated: screen x is mirrored vs world x when looking along +z */ const angle = target
-    ? ownPose.yaw - Math.atan2(target.pos[0] - ownPose.x, target.pos[1] - ownPose.z)
-    : 0;
-  return (
-    <>
-      <div style={{ position: "absolute", top: 18, left: 18, ...panel }}>
-        <b>
-          {self.leg === "pickup" ? "🛍 Pick up from " : "🏠 Deliver to "}
-          {target?.name}
-        </b>
-        <div style={{ marginTop: 7, color: "#f6b73c" }}>
-          Deliveries {self.deliveries}/{DELIVERIES_TO_WIN}
-        </div>
-      </div>
-      <div style={{ position: "absolute", right: 18, top: 18, ...panel, minWidth: 170 }}>
-        <b>Leaderboard</b>
-        {[...players]
-          .sort((a, b) => b.deliveries - a.deliveries)
-          .map((p) => (
-            <div key={p.id} style={{ color: p.color, marginTop: 5 }}>
-              {p.name} · {p.deliveries}
-            </div>
-          ))}
-      </div>
-      <div style={{ position: "absolute", bottom: 24, left: 24, ...panel }}>
-        ⚡ {Math.round(ownPose.speed * 3.6)} km/h
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: 24,
-          left: "50%",
-          fontSize: 46,
-          transform: `translateX(-50%) rotate(${angle}rad)`,
-          color: self.leg === "pickup" ? "#ff9d33" : "#38d986",
-          textShadow: "0 2px 9px #000",
+      <p className="lobby-hint">FREE ROAM IS OPEN · WASD TO DRIVE</p>
+      {error ? <p className="arcade-error" role="alert">{error}</p> : null}
+      <button
+        className="leave-room"
+        onClick={() => {
+          close();
+          useGameStore.getState().reset();
         }}
       >
-        ▲
-      </div>
-    </>
+        LEAVE ROOM
+      </button>
+    </aside>
   );
 }
-function Reconnect() {
+
+function formatTime(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+}
+
+export function Countdown() {
+  const phase = useGameStore((state) => state.phase);
+  const ends = useGameStore((state) => state.countdownEndsAt);
+  const started = useGameStore((state) => state.raceStartedAt);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 50);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const count = Math.ceil(((ends ?? now) - now) / 1000);
+  const showGo = phase === "racing" && started !== undefined && now - started < 900;
+  if (phase !== "countdown" && !showGo) return null;
   return (
-    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-      <div style={panel}>
-        Disconnected.{" "}
-        <button style={button} onClick={rejoin}>
-          Rejoin room
-        </button>
+    <div className={`countdown ${showGo ? "is-go" : ""}`} aria-live="assertive">
+      <span>{showGo ? "GO!" : Math.max(1, count)}</span>
+    </div>
+  );
+}
+
+export function HUD() {
+  const seed = useGameStore((state) => state.seed);
+  const phase = useGameStore((state) => state.phase);
+  const players = useGameStore((state) => state.players);
+  const self = useGameStore(ownPlayer);
+  const connected = useGameStore((state) => state.connected);
+  const raceStartedAt = useGameStore((state) => state.raceStartedAt);
+  const city = useMemo(() => (seed === undefined ? undefined : generateCity(seed)), [seed]);
+  const orders = useMemo(() => (seed === undefined ? [] : generateOrders(seed)), [seed]);
+  const [, tick] = useReducer((value: number) => value + 1, 0);
+
+  useEffect(() => {
+    if (phase !== "racing") return;
+    const timer = window.setInterval(tick, 50);
+    return () => window.clearInterval(timer);
+  }, [phase]);
+
+  if (phase !== "racing" || !city || !self) return connected ? null : <Reconnect />;
+  const order = orders[self.orderIndex];
+  const target =
+    order &&
+    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
+  const distance = target ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z) : 0;
+  const arrowAngle = target
+    ? ownPose.yaw - Math.atan2(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z)
+    : 0;
+  const speed = Math.round(ownPose.speed * 3.6);
+  const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);
+  const elapsed = raceStartedAt ? (Date.now() - raceStartedAt) / 1000 : 0;
+  const sortedPlayers = [...players].sort(
+    (a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex,
+  );
+  const fast = ownPose.speed > 26 || drivingTelemetry.boosting;
+
+  return (
+    <div className={`arcade-hud ${fast ? "is-fast" : ""}`}>
+      <div className="hud-speed-lines" aria-hidden="true" />
+
+      <section className="order-progress hud-panel">
+        <span>ORDER</span>
+        <strong>{Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} / {DELIVERIES_TO_WIN}</strong>
+        <div className="delivery-boxes" aria-label={`${self.deliveries} of ${DELIVERIES_TO_WIN} deliveries`}>
+          {Array.from({ length: DELIVERIES_TO_WIN }, (_, index) => (
+            <i key={index} className={index < self.deliveries ? "is-complete" : index === self.deliveries ? "is-current" : ""} />
+          ))}
+        </div>
+      </section>
+
+      <section className={`destination-banner ${self.leg === "dropoff" ? "is-dropoff" : ""}`}>
+        <div>{self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i /> <strong>{target?.name}</strong></div>
+        <b>{Math.round(distance)}<small>m</small></b>
+        <span className="destination-arrow" style={{ transform: `rotate(${arrowAngle}rad)` }} aria-hidden="true" />
+      </section>
+
+      <section className="race-panel hud-panel">
+        <header><strong>RACE</strong><span>{formatTime(elapsed)}</span></header>
+        {sortedPlayers.slice(0, 5).map((player, index) => (
+          <div className={player.id === self.id ? "is-self" : ""} key={player.id}>
+            <b>{index + 1}</b>
+            <i style={{ background: player.color }} />
+            <span>{player.name}</span>
+            <em>{player.deliveries}/{DELIVERIES_TO_WIN}</em>
+          </div>
+        ))}
+      </section>
+
+      <section
+        className="speed-cluster"
+        style={{ "--speed": `${Math.max(8, speedRatio)}%`, "--boost": `${drivingTelemetry.boost}%` } as React.CSSProperties}
+        aria-label={`${speed} kilometers per hour, ${Math.round(drivingTelemetry.boost)} percent boost`}
+      >
+        <div className="speed-dial"><strong>{speed}</strong><span>KM/H</span></div>
+        <div className="boost-meter"><i /><b>BOOST</b></div>
+      </section>
+
+      <div className={`stunt-callout ${drivingTelemetry.callout ? "is-visible" : ""}`} aria-live="polite">
+        <strong>{drivingTelemetry.callout}</strong>
+        <span>+{Math.round(drivingTelemetry.driftScore)}</span>
+      </div>
+      <div className={`combo-strip ${drivingTelemetry.combo > 1 ? "is-visible" : ""}`}>
+        <b>x{Math.max(1, drivingTelemetry.combo)}</b> COMBO
       </div>
     </div>
   );
 }
-export function WinnerScreen() {
-  const standings = useGameStore((s) => s.standings) ?? [];
+
+function Reconnect() {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "grid",
-        placeItems: "center",
-        background: "#070a10b8",
-      }}
-    >
-      <section style={{ ...panel, minWidth: 280, textAlign: "center" }}>
-        <h1 style={{ color: "#f6b73c" }}>Race complete!</h1>
-        {standings.map((p, i) => (
-          <p key={p.id}>
-            {i + 1}. {p.name} — {p.deliveries} deliveries
-          </p>
+    <div className="modal-backdrop">
+      <section className="arcade-panel reconnect-panel">
+        <h2>CONNECTION LOST</h2>
+        <p>Your taxi is waiting at the curb.</p>
+        <button className="arcade-button arcade-button-primary" onClick={rejoin}>REJOIN RACE</button>
+      </section>
+    </div>
+  );
+}
+
+export function WinnerScreen() {
+  const standings = useGameStore((state) => state.standings) ?? [];
+  return (
+    <div className="modal-backdrop winner-backdrop">
+      <section className="arcade-panel winner-panel">
+        <div className="panel-kicker">CHECKERED FLAG</div>
+        <h1>RACE COMPLETE!</h1>
+        {standings.map((player, index) => (
+          <div className={index === 0 ? "winner-row is-first" : "winner-row"} key={player.id}>
+            <b>{index + 1}</b><span>{player.name}</span><em>{player.deliveries} DELIVERIES</em>
+          </div>
         ))}
-        <small style={{ color: "#aeb8c6" }}>Back to lobby soon…</small>
+        <small>RETURNING TO THE GRID…</small>
       </section>
     </div>
   );

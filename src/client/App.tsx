@@ -1,4 +1,5 @@
 import { Game } from "./game/Game";
+import { ArcadeAudio } from "./game/ArcadeAudio";
 import { Countdown, HUD, Lobby, Menu, WinnerScreen } from "./ui/Overlays";
 import { useGameStore } from "./store";
 
@@ -15,10 +16,11 @@ export function App() {
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
+      <ArcadeAudio />
       <Game />
       <Lobby />
       <HUD />
-      {phase === "countdown" && <Countdown />}
+      {(phase === "countdown" || phase === "racing") && <Countdown />}
       {phase === "finished" && <WinnerScreen />}
     </div>
   );

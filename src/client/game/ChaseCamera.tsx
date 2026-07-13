@@ -1,24 +1,86 @@
 import { useFrame, useThree } from "@react-three/fiber";
+import { useRef } from "react";
 import * as THREE from "three";
-import { ownPose } from "./Car";
-export function ChaseCamera() {
+import type { AABB } from "../../shared/city";
+import { drivingTelemetry, ownPose } from "./drivingState";
+
+const desired = new THREE.Vector3();
+const look = new THREE.Vector3();
+const sample = new THREE.Vector3();
+
+function shortestAngle(from: number, to: number) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+function obstructed(x: number, z: number, boxes: AABB[]) {
+  return boxes.some(
+    (box) => x > box.minX - 1.2 && x < box.maxX + 1.2 && z > box.minZ - 1.2 && z < box.maxZ + 1.2,
+  );
+}
+
+export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
   const { camera } = useThree();
-  const look = new THREE.Vector3();
-  useFrame((_, dt) => {
-    const behind = new THREE.Vector3(
-      -Math.sin(ownPose.yaw) * 13,
-      8,
-      -Math.cos(ownPose.yaw) * 13,
-    ).add(new THREE.Vector3(ownPose.x, 0, ownPose.z));
-    camera.position.lerp(behind, Math.min(1, dt * 4));
-    look.set(ownPose.x + Math.sin(ownPose.yaw) * 4, 1.5, ownPose.z + Math.cos(ownPose.yaw) * 4);
-    camera.lookAt(look);
-    (camera as THREE.PerspectiveCamera).fov = THREE.MathUtils.lerp(
-      (camera as THREE.PerspectiveCamera).fov,
-      58 + Math.min(8, ownPose.speed * 0.2),
-      dt * 3,
+  const cameraYaw = useRef(ownPose.yaw);
+  const roll = useRef(0);
+
+  useFrame(({ clock }, dt) => {
+    const d = Math.min(dt, 0.05);
+    const speedRatio = Math.min(1, ownPose.speed / 52);
+    const yawLag = 1 - Math.exp(-d * (4.2 + speedRatio * 1.8));
+    cameraYaw.current += shortestAngle(cameraYaw.current, ownPose.yaw) * yawLag;
+
+    const distance = 9.4 + speedRatio * 1.4;
+    const height = 4.65 + speedRatio * 0.75;
+    desired.set(
+      ownPose.x - Math.sin(cameraYaw.current) * distance,
+      height,
+      ownPose.z - Math.cos(cameraYaw.current) * distance,
     );
-    (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+
+    // Pull the camera toward the car before it enters a building footprint.
+    let safeT = 1;
+    for (let i = 2; i <= 10; i++) {
+      const t = i / 10;
+      sample.set(
+        THREE.MathUtils.lerp(ownPose.x, desired.x, t),
+        THREE.MathUtils.lerp(2.1, desired.y, t),
+        THREE.MathUtils.lerp(ownPose.z, desired.z, t),
+      );
+      if (obstructed(sample.x, sample.z, boxes)) {
+        safeT = Math.max(0.24, t - 0.16);
+        break;
+      }
+    }
+    if (safeT < 1) {
+      desired.set(
+        THREE.MathUtils.lerp(ownPose.x, desired.x, safeT),
+        THREE.MathUtils.lerp(2.5, desired.y, safeT),
+        THREE.MathUtils.lerp(ownPose.z, desired.z, safeT),
+      );
+    }
+
+    const shake = drivingTelemetry.impactPulse * 0.2;
+    if (shake > 0.001) {
+      desired.x += Math.sin(clock.elapsedTime * 67) * shake;
+      desired.y += Math.cos(clock.elapsedTime * 59) * shake * 0.6;
+    }
+    camera.position.lerp(desired, 1 - Math.exp(-d * (6.5 + speedRatio * 2.5)));
+
+    const lookAhead = 7 + speedRatio * 5.5;
+    look.set(
+      ownPose.x + Math.sin(ownPose.yaw) * lookAhead,
+      1.35 + speedRatio * 0.42,
+      ownPose.z + Math.cos(ownPose.yaw) * lookAhead,
+    );
+    camera.lookAt(look);
+    const targetRoll = -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
+    roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 1 - Math.exp(-d * 6));
+    camera.rotation.z += roll.current;
+
+    const perspective = camera as THREE.PerspectiveCamera;
+    const targetFov = 62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);
+    perspective.fov = THREE.MathUtils.lerp(perspective.fov, targetFov, 1 - Math.exp(-d * 4.5));
+    perspective.updateProjectionMatrix();
   });
   return null;
 }

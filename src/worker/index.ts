@@ -215,7 +215,7 @@ export class RaceRoom extends DurableObject<Env> {
     const city = generateCity(state.seed);
     const target =
       player.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId];
-    if (Math.hypot(update.x - target.pos[0], update.z - target.pos[1]) > TARGET_RADIUS) return;
+    if (Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) > TARGET_RADIUS) return;
     if (player.leg === "pickup") player.leg = "dropoff";
     else {
       player.deliveries++;

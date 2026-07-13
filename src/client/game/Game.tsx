@@ -6,7 +6,7 @@ import { useGameStore, ownPlayer } from "../store";
 import { City } from "./City";
 import { OwnCar } from "./Car";
 import { RemoteCar } from "./RemoteCar";
-import { TargetBeacon, TargetPointer } from "./TargetBeacon";
+import { TargetBeacon } from "./TargetBeacon";
 import { ChaseCamera } from "./ChaseCamera";
 
 export function Game() {
@@ -14,9 +14,9 @@ export function Game() {
   if (seed === undefined) return null;
   return (
     <Canvas
-      shadows
-      camera={{ position: [0, 9, -14], fov: 60, near: 0.5, far: 6000 }}
-      dpr={[1, 1.75]}
+      shadows="basic"
+      camera={{ position: [0, 5.4, -10], fov: 62, near: 0.35, far: 6000 }}
+      dpr={[1, 1.5]}
     >
       <Scene seed={seed} />
     </Canvas>
@@ -45,30 +45,31 @@ function Scene({ seed }: { seed: number }) {
     >
       <Sky
         distance={3000}
-        sunPosition={[120, 45, -80]}
-        turbidity={5.5}
-        rayleigh={2}
-        mieCoefficient={0.02}
+        sunPosition={[100, 38, -70]}
+        turbidity={3.2}
+        rayleigh={1.25}
+        mieCoefficient={0.012}
         mieDirectionalG={0.85}
       />
-      <fog attach="fog" args={["#93a0b4", 210, 560]} />
-      <hemisphereLight intensity={0.65} color="#dbe4ff" groundColor="#4a4038" />
+      <fog attach="fog" args={["#72c9ee", 245, 650]} />
+      <hemisphereLight intensity={1.15} color="#c9efff" groundColor="#d8974c" />
       <directionalLight
-        position={[120, 150, -70]}
-        intensity={2}
-        color="#ffd9ae"
+        position={[100, 125, -75]}
+        intensity={2.65}
+        color="#fff0c2"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
-        shadow-camera-left={-240}
-        shadow-camera-right={240}
-        shadow-camera-top={240}
-        shadow-camera-bottom={-240}
-        shadow-camera-far={500}
+        shadow-camera-left={-180}
+        shadow-camera-right={180}
+        shadow-camera-top={180}
+        shadow-camera-bottom={-180}
+        shadow-camera-far={420}
       />
       <City city={city} seed={seed} />
       <OwnCar
         spawn={city.spawns[self.spawnIndex]!.pos}
+        spawnYaw={city.spawns[self.spawnIndex]!.yaw}
         boxes={city.buildingAABBs}
         phase={phase}
         color={self.color}
@@ -87,12 +88,9 @@ function Scene({ seed }: { seed: number }) {
           />
         ))}
       {target && phase === "racing" && (
-        <>
-          <TargetBeacon pos={target.pos} dropoff={self.leg === "dropoff"} />
-          <TargetPointer target={target.pos} dropoff={self.leg === "dropoff"} />
-        </>
+        <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
       )}
-      <ChaseCamera />
+      <ChaseCamera boxes={city.buildingAABBs} />
     </Suspense>
   );
 }

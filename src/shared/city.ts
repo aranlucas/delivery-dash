@@ -8,7 +8,7 @@ export const WORLD_HALF = (GRID_SIZE * PITCH) / 2;
 export type Pos2 = [number, number];
 export type Building = { x: number; z: number; w: number; d: number; h: number; color: string };
 export type AABB = { minX: number; maxX: number; minZ: number; maxZ: number };
-export type Place = { id: number; name: string; pos: Pos2 };
+export type Place = { id: number; name: string; pos: Pos2; stop: Pos2 };
 export type Order = { restaurantId: number; houseId: number };
 export type City = {
   buildings: Building[];
@@ -51,7 +51,11 @@ const houseNames = [
   "Cameron V.",
   "Blake F.",
 ];
-const colors = ["#65717e", "#8d7f70", "#697a70", "#766b80", "#767e89"];
+const districtColors = [
+  ["#f0a35e", "#e6c66d", "#57a7b8", "#e77b67", "#86b76d"],
+  ["#6e89c7", "#d77d9c", "#7b71b6", "#e2944f", "#55a99d"],
+  ["#edba78", "#c78f72", "#77a6c5", "#9abf77", "#d98982"],
+] as const;
 // Each 50-unit cell is road [0,14] then block [14,50]; block center sits at +32.
 const blockCenter = (index: number) => -WORLD_HALF + ROAD_WIDTH + BLOCK_SIZE / 2 + index * PITCH;
 
@@ -59,23 +63,44 @@ export function generateCity(seed: number): City {
   const random = mulberry32(seed);
   // Places first (own random stream) so buildings can avoid their footprints.
   // Positions sit just inside block corners, adjacent to the surrounding roads.
-  const corners: Pos2[] = [];
+  const corners: { pos: Pos2; stopX: Pos2; stopZ: Pos2 }[] = [];
   for (let x = 0; x < GRID_SIZE; x++)
     for (let z = 0; z < GRID_SIZE; z++) {
       const cx = blockCenter(x),
         cz = blockCenter(z),
         edge = BLOCK_SIZE / 2 - 5;
+      const lane = BLOCK_SIZE / 2 + ROAD_WIDTH / 2;
       corners.push(
-        [cx - edge, cz - edge],
-        [cx + edge, cz - edge],
-        [cx - edge, cz + edge],
-        [cx + edge, cz + edge],
+        {
+          pos: [cx - edge, cz - edge],
+          stopX: [cx - lane, cz - edge],
+          stopZ: [cx - edge, cz - lane],
+        },
+        {
+          pos: [cx + edge, cz - edge],
+          stopX: [cx + lane, cz - edge],
+          stopZ: [cx + edge, cz - lane],
+        },
+        {
+          pos: [cx - edge, cz + edge],
+          stopX: [cx - lane, cz + edge],
+          stopZ: [cx - edge, cz + lane],
+        },
+        {
+          pos: [cx + edge, cz + edge],
+          stopX: [cx + lane, cz + edge],
+          stopZ: [cx + edge, cz + lane],
+        },
       );
     }
   const placeRandom = mulberry32(seed ^ 0x9e3779b9);
   const takePlace = () => corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
-  const restaurants = restaurantNames.map((name, id) => ({ id, name, pos: takePlace() }));
-  const houses = houseNames.map((name, id) => ({ id, name, pos: takePlace() }));
+  const makePlace = (name: string, id: number): Place => {
+    const corner = takePlace();
+    return { id, name, pos: corner.pos, stop: id % 2 === 0 ? corner.stopX : corner.stopZ };
+  };
+  const restaurants = restaurantNames.map(makePlace);
+  const houses = houseNames.map(makePlace);
   const placePoints: Pos2[] = [...restaurants, ...houses].map((p) => p.pos);
 
   const buildings: Building[] = [];
@@ -102,13 +127,14 @@ export function generateCity(seed: number): City {
             )
           )
             continue;
+          const palette = districtColors[Math.min(2, Math.floor((gx * 3) / GRID_SIZE))]!;
           buildings.push({
             x,
             z,
             w,
             d,
             h: 8 + random() * 32,
-            color: colors[randomInt(random, colors.length)],
+            color: palette[randomInt(random, palette.length)],
           });
           placed = true;
         }
@@ -132,11 +158,8 @@ export function generateCity(seed: number): City {
     houses,
     buildingAABBs,
     spawns: Array.from({ length: 8 }, (_, i) => ({
-      pos: [
-        -WORLD_HALF + ROAD_WIDTH / 2 + ((i + 0.5) * (WORLD_HALF * 2 - ROAD_WIDTH)) / 8,
-        -WORLD_HALF + ROAD_WIDTH / 2,
-      ],
-      yaw: 0,
+      pos: [-WORLD_HALF + 36 + i * 9, -WORLD_HALF + 3 * PITCH + ROAD_WIDTH / 2],
+      yaw: Math.PI / 2,
     })),
   };
 }
