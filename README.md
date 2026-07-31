@@ -20,7 +20,7 @@ Delivery Dash is a multiplayer 3D arcade racing game where drivers tear through 
 
 ## Run locally
 
-Prerequisites: Node.js 24+ and pnpm 11.17+.
+Prerequisites: Node.js 26.x and pnpm 11.18+.
 
 ```bash
 pnpm install --frozen-lockfile
