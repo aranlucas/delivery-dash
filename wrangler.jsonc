@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "delivery-dash",
   "main": "./src/worker/index.ts",
-  "compatibility_date": "2026-07-01",
+  "compatibility_date": "2026-07-31",
   "assets": {
     "not_found_handling": "single-page-application",
   },

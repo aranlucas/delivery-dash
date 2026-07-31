@@ -2,3 +2,11 @@ allowBuilds:
   esbuild: true
   sharp: true
   workerd: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@cloudflare/vite-plugin@1.50.0"
+  - "@napi-rs/wasm-runtime@1.2.2"
+  - "@react-three/fiber@9.7.0"
+  - "@types/three@0.185.3"
+  - "miniflare@5.20260730.0-alpha"
+  - "wrangler@4.118.0"
