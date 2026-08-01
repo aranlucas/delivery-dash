@@ -12,6 +12,9 @@ export type DrivingTelemetry = {
   steer: number;
   throttle: number;
   boosting: boolean;
+  airborne: boolean;
+  /** Seconds since the wheels left the ground; 0 while grounded. */
+  airTime: number;
 };
 
 // Stable and mutable by design: frame-loop consumers can read telemetry
@@ -26,4 +29,6 @@ export const drivingTelemetry: DrivingTelemetry = {
   steer: 0,
   throttle: 0,
   boosting: false,
+  airborne: false,
+  airTime: 0,
 };

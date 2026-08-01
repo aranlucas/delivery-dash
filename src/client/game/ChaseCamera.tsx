@@ -12,9 +12,15 @@ function shortestAngle(from: number, to: number) {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-function obstructed(x: number, z: number, boxes: AABB[]) {
+function obstructed(x: number, y: number, z: number, boxes: AABB[]) {
   return boxes.some(
-    (box) => x > box.minX - 1.2 && x < box.maxX + 1.2 && z > box.minZ - 1.2 && z < box.maxZ + 1.2,
+    (box) =>
+      y < box.top &&
+      y > box.base - 1 &&
+      x > box.minX - 1.2 &&
+      x < box.maxX + 1.2 &&
+      z > box.minZ - 1.2 &&
+      z < box.maxZ + 1.2,
   );
 }
 
@@ -30,7 +36,8 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
     cameraYaw.current += shortestAngle(cameraYaw.current, ownPose.yaw) * yawLag;
 
     const distance = 9.4 + speedRatio * 1.4;
-    const height = 4.65 + speedRatio * 0.75;
+    // Airborne the camera hangs back and higher so the landing stays in frame.
+    const height = ownPose.y + 3.85 + speedRatio * 0.75 + (drivingTelemetry.airborne ? 1.4 : 0);
     desired.set(
       ownPose.x - Math.sin(cameraYaw.current) * distance,
       height,
@@ -43,10 +50,10 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
       const t = i / 10;
       sample.set(
         THREE.MathUtils.lerp(ownPose.x, desired.x, t),
-        THREE.MathUtils.lerp(2.1, desired.y, t),
+        THREE.MathUtils.lerp(ownPose.y + 1.3, desired.y, t),
         THREE.MathUtils.lerp(ownPose.z, desired.z, t),
       );
-      if (obstructed(sample.x, sample.z, boxes)) {
+      if (obstructed(sample.x, sample.y, sample.z, boxes)) {
         safeT = Math.max(0.24, t - 0.16);
         break;
       }
@@ -54,7 +61,7 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
     if (safeT < 1) {
       desired.set(
         THREE.MathUtils.lerp(ownPose.x, desired.x, safeT),
-        THREE.MathUtils.lerp(2.5, desired.y, safeT),
+        THREE.MathUtils.lerp(ownPose.y + 1.7, desired.y, safeT),
         THREE.MathUtils.lerp(ownPose.z, desired.z, safeT),
       );
     }
@@ -69,7 +76,7 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
     const lookAhead = 7 + speedRatio * 5.5;
     look.set(
       ownPose.x + Math.sin(ownPose.yaw) * lookAhead,
-      1.35 + speedRatio * 0.42,
+      ownPose.y + 0.55 + speedRatio * 0.42,
       ownPose.z + Math.cos(ownPose.yaw) * lookAhead,
     );
     camera.lookAt(look);

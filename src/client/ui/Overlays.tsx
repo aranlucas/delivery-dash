@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DELIVERIES_TO_WIN } from "../../shared/protocol";
-import { generateCity, generateOrders } from "../../shared/city";
+import {
+  BLOCK_SIZE,
+  GRID_SIZE,
+  ROAD_WIDTH,
+  WORLD_HALF,
+  generateCity,
+  generateOrders,
+  roadCenter,
+  type City,
+} from "../../shared/city";
 import { drivingTelemetry, ownPose } from "../game/drivingState";
 import { close, connect, rejoin, send } from "../net";
-import { ownPlayer, useGameStore } from "../store";
+import { ownPlayer, remotePositions, useGameStore } from "../store";
 
 const randomCode = () =>
   Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join(
@@ -137,6 +146,118 @@ export function Lobby() {
   );
 }
 
+const MINIMAP_SIZE = 190;
+/** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
+function Minimap({ city, target, dropoff }: { city: City; target?: [number, number]; dropoff: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const players = useGameStore((state) => state.players);
+  const selfId = useGameStore((state) => state.selfId);
+
+  useEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    const context = element.getContext("2d");
+    if (!context) return;
+    const ratio = Math.min(2, window.devicePixelRatio || 1);
+    element.width = element.height = MINIMAP_SIZE * ratio;
+    const world = WORLD_HALF * 2;
+    const scale = MINIMAP_SIZE / world;
+    const toMap = (x: number, z: number): [number, number] => [
+      (x + WORLD_HALF) * scale,
+      (z + WORLD_HALF) * scale,
+    ];
+    const colors = new Map(players.map((p) => [p.id, p.color]));
+
+    let frame = 0;
+    let previous = 0;
+    const draw = (time: number) => {
+      frame = requestAnimationFrame(draw);
+      if (time - previous < 55) return;
+      previous = time;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      context.fillStyle = "#0d1218";
+      context.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+
+      const block = BLOCK_SIZE * scale;
+      context.fillStyle = "#1f4c2c";
+      for (const [x, z] of city.parks) {
+        const [px, pz] = toMap(x, z);
+        context.fillRect(px - block / 2, pz - block / 2, block, block);
+      }
+
+      context.strokeStyle = "#39434f";
+      context.lineWidth = Math.max(1.4, ROAD_WIDTH * scale);
+      context.beginPath();
+      for (let i = 0; i < GRID_SIZE; i++) {
+        const [c] = toMap(roadCenter(i), 0);
+        context.moveTo(c, 0);
+        context.lineTo(c, MINIMAP_SIZE);
+        context.moveTo(0, c);
+        context.lineTo(MINIMAP_SIZE, c);
+      }
+      context.stroke();
+
+      context.strokeStyle = "#ff9d33";
+      context.lineWidth = 3;
+      context.beginPath();
+      for (const deck of city.decks) {
+        const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
+        const midX = (deck.minX + deck.maxX) / 2,
+          midZ = (deck.minZ + deck.maxZ) / 2;
+        const [ax, az] = toMap(alongX ? deck.minX : midX, alongX ? midZ : deck.minZ);
+        const [bx, bz] = toMap(alongX ? deck.maxX : midX, alongX ? midZ : deck.maxZ);
+        context.moveTo(ax, az);
+        context.lineTo(bx, bz);
+      }
+      context.stroke();
+
+      context.fillStyle = "#ffd400";
+      for (const ramp of city.ramps) {
+        if (ramp.kind !== "kicker") continue;
+        const [px, pz] = toMap(ramp.x, ramp.z);
+        context.fillRect(px - 1.6, pz - 1.6, 3.2, 3.2);
+      }
+
+      if (target) {
+        const [tx, tz] = toMap(target[0], target[1]);
+        const pulse = 5 + Math.sin(time / 220) * 2;
+        context.strokeStyle = dropoff ? "#65f578" : "#ff7a00";
+        context.lineWidth = 2.5;
+        context.beginPath();
+        context.arc(tx, tz, pulse, 0, Math.PI * 2);
+        context.stroke();
+      }
+
+      for (const [id, pose] of remotePositions) {
+        if (id === selfId) continue;
+        const [px, pz] = toMap(pose.x, pose.z);
+        context.fillStyle = colors.get(id) ?? "#ffffff";
+        context.beginPath();
+        context.arc(px, pz, 2.8, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      // Own car as an arrow: world +z is map +y, so the heading maps straight across.
+      const [sx, sz] = toMap(ownPose.x, ownPose.z);
+      const dx = Math.sin(ownPose.yaw),
+        dz = Math.cos(ownPose.yaw);
+      context.fillStyle = "#ffe100";
+      context.beginPath();
+      context.moveTo(sx + dx * 6.5, sz + dz * 6.5);
+      context.lineTo(sx - dx * 3.5 + dz * 4, sz - dz * 3.5 - dx * 4);
+      context.lineTo(sx - dx * 3.5 - dz * 4, sz - dz * 3.5 + dx * 4);
+      context.closePath();
+      context.fill();
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [city, target, dropoff, players, selfId]);
+
+  return (
+    <canvas className="minimap" ref={canvas} aria-hidden="true" />
+  );
+}
+
 function formatTime(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
@@ -236,6 +357,13 @@ export function HUD() {
         <div className="speed-dial"><strong>{speed}</strong><span>KM/H</span></div>
         <div className="boost-meter"><i /><b>BOOST</b></div>
       </section>
+
+      <Minimap city={city} target={target?.stop} dropoff={self.leg === "dropoff"} />
+
+      <div className={`air-gauge ${drivingTelemetry.airborne ? "is-visible" : ""}`}>
+        <b>AIR</b>
+        <span>{drivingTelemetry.airTime.toFixed(1)}s</span>
+      </div>
 
       <div className={`stunt-callout ${drivingTelemetry.callout ? "is-visible" : ""}`} aria-live="polite">
         <strong>{drivingTelemetry.callout}</strong>
