@@ -298,6 +298,13 @@ kbd { min-width: 54px; padding: 7px 9px; border: 2px solid #fff5; color: var(--y
 .combo-strip.is-visible { transform: translateX(-50%) scale(1); opacity: 1; }
 .combo-strip b { margin-right: 8px; color: var(--red); font-family: Impact, sans-serif; font-size: 34px; }
 
+.minimap { position: absolute; right: 22px; bottom: 24px; width: 190px; height: 190px; border: 3px solid var(--ink); background: rgba(10,14,18,.9); box-shadow: 7px 9px 0 #0008; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%, 0 10px); }
+
+.air-gauge { position: absolute; bottom: 152px; left: 50%; display: flex; gap: 10px; align-items: baseline; padding: 5px 22px; transform: translateX(-50%) scale(.75); opacity: 0; border: 3px solid var(--cyan); background: var(--ink); transition: opacity 110ms ease, transform 140ms ease; }
+.air-gauge.is-visible { transform: translateX(-50%) scale(1); opacity: 1; }
+.air-gauge b { color: var(--cyan); font-size: 15px; font-style: italic; letter-spacing: .12em; }
+.air-gauge span { color: white; font-family: Impact, sans-serif; font-size: 26px; font-style: italic; }
+
 .countdown { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle, transparent 0 18%, rgba(0,0,0,.48) 55%, rgba(0,0,0,.72)); }
 .countdown span { color: var(--yellow); font-family: Impact, sans-serif; font-size: min(42vw, 300px); font-style: italic; line-height: 1; -webkit-text-stroke: 10px var(--ink); paint-order: stroke fill; filter: drop-shadow(15px 18px 0 #0009); animation: count-pop .56s cubic-bezier(.15,1.5,.4,1) both; }
 .countdown.is-go span { color: var(--green); font-size: min(34vw, 260px); animation: go-burst .8s ease-out both; }
@@ -329,6 +336,7 @@ kbd { min-width: 54px; padding: 7px 9px; border: 2px solid #fff5; color: var(--y
   .delivery-boxes i { width: 35px; }
   .speed-cluster { width: 158px; height: 158px; }
   .speed-dial strong { font-size: 48px; }
+  .minimap { width: 138px; height: 138px; }
 }
 
 @media (max-width: 620px) {
@@ -361,6 +369,11 @@ kbd { min-width: 54px; padding: 7px 9px; border: 2px solid #fff5; color: var(--y
   .stunt-callout strong,.stunt-callout span { font-size: 26px; }
   .combo-strip { bottom: 70px; padding: 3px 16px; font-size: 12px; }
   .combo-strip b { font-size: 24px; }
+  /* the speed cluster claims the bottom-right corner on phones */
+  .minimap { display: none; }
+  .air-gauge { bottom: 138px; padding: 3px 12px; }
+  .air-gauge b { font-size: 11px; }
+  .air-gauge span { font-size: 18px; }
   .countdown span { -webkit-text-stroke-width: 6px; }
 }
 

@@ -12,7 +12,7 @@ import {
   type ServerMessage,
   type Standing,
 } from "../shared/protocol";
-import { generateCity, generateOrders } from "../shared/city";
+import { generateCity, generateOrders, type City, type Order } from "../shared/city";
 
 type Player = Omit<PlayerPub, "id">;
 type RoomState = {
@@ -38,6 +38,14 @@ const PALETTE = [
 export class RaceRoom extends DurableObject<Env> {
   private state?: RoomState;
   private positions = new Map<string, { x: number; z: number }>();
+  private world?: { seed: number; city: City; orders: Order[] };
+
+  /** The city is large enough that regenerating it per position update would dominate the tick. */
+  private route(seed: number) {
+    if (this.world?.seed !== seed)
+      this.world = { seed, city: generateCity(seed), orders: generateOrders(seed) };
+    return this.world;
+  }
 
   private async load(): Promise<RoomState | undefined> {
     if (this.state) return this.state;
@@ -210,9 +218,9 @@ export class RaceRoom extends DurableObject<Env> {
     );
     if (state.phase !== "racing") return; // lobby/countdown: free-roam relay only, no delivery progress
     const player = state.players[id]!;
-    const order = generateOrders(state.seed)[player.orderIndex];
+    const { city, orders } = this.route(state.seed);
+    const order = orders[player.orderIndex];
     if (!order) return;
-    const city = generateCity(state.seed);
     const target =
       player.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId];
     if (Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) > TARGET_RADIUS) return;

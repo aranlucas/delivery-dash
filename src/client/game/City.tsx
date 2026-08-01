@@ -1,5 +1,6 @@
 import { Billboard, RoundedBox, Text } from "@react-three/drei";
-import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Suspense, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
@@ -8,13 +9,37 @@ import {
   PITCH,
   ROAD_WIDTH,
   WORLD_HALF,
+  blockCenter,
+  nearExpressway,
+  roadCenter,
+  type AABB,
   type City as CityData,
   type Pos2,
+  type Ramp,
 } from "../../shared/city";
 import { mulberry32 } from "../../shared/rng";
+import { makeFleetGeometry } from "./carGeometry";
+import { trafficCars, updateTraffic } from "./traffic";
+import {
+  FACADE_STYLES,
+  FACADE_TILE_X,
+  FACADE_TILE_Y,
+  makeAsphaltTexture,
+  makeBoostPadTexture,
+  makeConcreteTexture,
+  makeFacade,
+  makeGrassTexture,
+  makePavingTexture,
+  makeRampHazardTexture,
+} from "./textures";
 
-const blockCenter = (i: number) => -WORLD_HALF + ROAD_WIDTH + BLOCK_SIZE / 2 + i * PITCH;
-const roadCenter = (i: number) => -WORLD_HALF + i * PITCH + ROAD_WIDTH / 2;
+const matrix = new THREE.Matrix4();
+const position = new THREE.Vector3();
+const quaternion = new THREE.Quaternion();
+const scale = new THREE.Vector3();
+const tint = new THREE.Color();
+const UP = new THREE.Vector3(0, 1, 0);
+
 /** Yaw that turns a place's +z front toward the street corner it sits in. */
 function outwardYaw([x, z]: Pos2) {
   const grid = (v: number) =>
@@ -27,117 +52,114 @@ function outwardYaw([x, z]: Pos2) {
   return Math.atan2(Math.sign(x - grid(x)) || 1, Math.sign(z - grid(z)) || 1);
 }
 
-/** Facade texture: concrete panels + window grid; separate emissive canvas lights a random subset warm. */
-function makeFacadeTextures() {
-  const size = 256,
-    map = document.createElement("canvas"),
-    glow = document.createElement("canvas");
-  map.width = map.height = glow.width = glow.height = size;
-  const m = map.getContext("2d")!,
-    g = glow.getContext("2d")!;
-  m.fillStyle = "#f4d6a2";
-  m.fillRect(0, 0, size, size);
-  g.fillStyle = "#000";
-  g.fillRect(0, 0, size, size);
-  const rng = mulberry32(7);
-  const cols = 6,
-    rows = 8,
-    cw = size / cols,
-    rh = size / rows;
-  for (let c = 0; c < cols; c++)
-    for (let r = 0; r < rows; r++) {
-      const x = c * cw + cw * 0.22,
-        y = r * rh + rh * 0.2,
-        w = cw * 0.56,
-        h = rh * 0.55;
-      const lit = rng() < 0.38;
-      m.fillStyle = lit ? "#fff0a8" : "#14344c";
-      m.beginPath();
-      m.roundRect(x, y, w, h, 4);
-      m.fill();
-      if (lit) {
-        g.fillStyle = `rgba(255, ${200 + Math.floor(rng() * 40)}, 140, 1)`;
-        g.beginPath();
-        g.roundRect(x, y, w, h, 4);
-        g.fill();
-      }
-    }
-  const mapTexture = new THREE.CanvasTexture(map),
-    glowTexture = new THREE.CanvasTexture(glow);
-  mapTexture.colorSpace = THREE.SRGBColorSpace;
-  return { mapTexture, glowTexture };
+/**
+ * Facades tile per storey instead of stretching over the whole box: a per-instance size attribute
+ * scales the UVs in the shader, picking the right pair of dimensions for whichever face is drawn.
+ * Without this a forty-metre tower and a nine-metre shop wear windows of wildly different sizes.
+ */
+function facadeMaterial(map: THREE.Texture, emissiveMap: THREE.Texture) {
+  const material = new THREE.MeshStandardMaterial({
+    map,
+    emissiveMap,
+    emissive: new THREE.Color("#ffb65e"),
+    emissiveIntensity: 0.3,
+    roughness: 0.82,
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec3 facadeSize;")
+      .replace(
+        "#include <uv_vertex>",
+        `#include <uv_vertex>
+        vec2 facadeScale = abs(normal.x) > 0.5
+          ? vec2(facadeSize.z, facadeSize.y)
+          : abs(normal.y) > 0.5
+            ? vec2(facadeSize.x, facadeSize.z)
+            : vec2(facadeSize.x, facadeSize.y);
+        #ifdef USE_MAP
+          vMapUv *= facadeScale;
+        #endif
+        #ifdef USE_EMISSIVEMAP
+          vEmissiveMapUv *= facadeScale;
+        #endif`,
+      );
+  };
+  return material;
 }
 
-function makeAsphaltTexture() {
-  const size = 256,
-    canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#242b31";
-  ctx.fillRect(0, 0, size, size);
-  const rng = mulberry32(11);
-  for (let i = 0; i < 1400; i++) {
-    const v = 28 + Math.floor(rng() * 28);
-    ctx.fillStyle = `rgb(${v},${v + 4},${v + 8})`;
-    ctx.fillRect(rng() * size, rng() * size, 1.6, 1.6);
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(48, 48);
-  return texture;
-}
-
-function Buildings({ city }: { city: CityData }) {
+function BuildingDistrict({
+  buildings,
+  style,
+}: {
+  buildings: CityData["buildings"];
+  style: (typeof FACADE_STYLES)[number];
+}) {
   const mesh = useRef<THREE.InstancedMesh>(null);
-  const { mapTexture, glowTexture } = useMemo(makeFacadeTextures, []);
-  const colors = useMemo(
-    () => city.buildings.map((b) => new THREE.Color(b.color).multiplyScalar(1.28)),
-    [city],
-  );
-  const geometry = useMemo(() => new RoundedBoxGeometry(1, 1, 1, 2, 0.035), []);
+  const material = useMemo(() => {
+    const { mapTexture, glowTexture } = makeFacade(style);
+    return facadeMaterial(mapTexture, glowTexture);
+  }, [style]);
+  const geometry = useMemo(() => {
+    const shape = new RoundedBoxGeometry(1, 1, 1, 2, 0.035);
+    shape.setAttribute(
+      "facadeSize",
+      new THREE.InstancedBufferAttribute(
+        new Float32Array(
+          buildings.flatMap((b) => [b.w / FACADE_TILE_X, b.h / FACADE_TILE_Y, b.d / FACADE_TILE_X]),
+        ),
+        3,
+      ),
+    );
+    return shape;
+  }, [buildings]);
   useLayoutEffect(() => {
     const instanced = mesh.current;
     if (!instanced) return;
-    const matrix = new THREE.Matrix4();
-    city.buildings.forEach((b, i) => {
-      matrix.compose(
-        new THREE.Vector3(b.x, b.h / 2, b.z),
-        new THREE.Quaternion(),
-        new THREE.Vector3(b.w, b.h, b.d),
+    buildings.forEach((b, i) => {
+      instanced.setMatrixAt(
+        i,
+        matrix.compose(
+          position.set(b.x, b.h / 2, b.z),
+          quaternion.identity(),
+          scale.set(b.w, b.h, b.d),
+        ),
       );
-      instanced.setMatrixAt(i, matrix);
-      instanced.setColorAt(i, colors[i]!);
+      instanced.setColorAt(i, tint.set(b.color).multiplyScalar(1.22));
     });
     instanced.instanceMatrix.needsUpdate = true;
     if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
-  }, [city, colors]);
+  }, [buildings]);
   return (
     <instancedMesh
       ref={mesh}
-      args={[geometry, undefined, city.buildings.length]}
+      args={[geometry, material, Math.max(1, buildings.length)]}
       castShadow
       receiveShadow
-    >
-      <meshStandardMaterial
-        map={mapTexture}
-        emissiveMap={glowTexture}
-        emissive="#ffb65e"
-        emissiveIntensity={0.26}
-        roughness={0.78}
-      />
-    </instancedMesh>
+    />
   );
 }
 
-function useInstances(
-  ref: React.RefObject<THREE.InstancedMesh | null>,
-  items: {
-    pos: [number, number, number];
-    scale?: number | [number, number, number];
-    rotY?: number;
-  }[],
-) {
+function Buildings({ city }: { city: CityData }) {
+  const districts = useMemo(
+    () => FACADE_STYLES.map((_, index) => city.buildings.filter((b) => b.district === index)),
+    [city],
+  );
+  return (
+    <>
+      {FACADE_STYLES.map((style, index) => (
+        <BuildingDistrict key={index} buildings={districts[index]!} style={style} />
+      ))}
+    </>
+  );
+}
+
+type Instance = {
+  pos: [number, number, number];
+  scale?: number | [number, number, number];
+  rotY?: number;
+};
+
+function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
@@ -155,13 +177,70 @@ function useInstances(
   }, [ref, items]);
 }
 
-function RoadMarkings() {
+/** Box instance that exactly fills a solid AABB, so visuals and collision never disagree. */
+const boxInstance = (box: AABB): Instance => ({
+  pos: [(box.minX + box.maxX) / 2, (box.base + box.top) / 2, (box.minZ + box.maxZ) / 2],
+  scale: [box.maxX - box.minX, box.top - box.base, box.maxZ - box.minZ],
+});
+
+/** City blocks are all the same size, so the sidewalk slab and its surface instance cleanly. */
+function Blocks({ city }: { city: CityData }) {
+  const { slabs, parkTops, cityTops } = useMemo(() => {
+    const slabs: Instance[] = [],
+      parkTops: Instance[] = [],
+      cityTops: Instance[] = [];
+    for (let gx = 0; gx < GRID_SIZE; gx++)
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
+        const x = blockCenter(gx),
+          z = blockCenter(gz);
+        slabs.push({ pos: [x, 0.06, z] });
+        const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
+        (park ? parkTops : cityTops).push({ pos: [x, 0.2, z] });
+      }
+    return { slabs, parkTops, cityTops };
+  }, [city]);
+  const slabGeometry = useMemo(
+    () => new RoundedBoxGeometry(BLOCK_SIZE + 3, 0.24, BLOCK_SIZE + 3, 2, 0.1),
+    [],
+  );
+  const topGeometry = useMemo(
+    () => new RoundedBoxGeometry(BLOCK_SIZE - 1, 0.16, BLOCK_SIZE - 1, 2, 0.07),
+    [],
+  );
+  const paving = useMemo(makePavingTexture, []);
+  const grass = useMemo(makeGrassTexture, []);
+  const slabMesh = useRef<THREE.InstancedMesh>(null),
+    parkMesh = useRef<THREE.InstancedMesh>(null),
+    cityMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(slabMesh, slabs);
+  useInstances(parkMesh, parkTops);
+  useInstances(cityMesh, cityTops);
+  return (
+    <>
+      <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabs.length]} receiveShadow>
+        <meshStandardMaterial color="#ffd36e" roughness={0.86} />
+      </instancedMesh>
+      <instancedMesh
+        ref={parkMesh}
+        args={[topGeometry, undefined, Math.max(1, parkTops.length)]}
+        receiveShadow
+      >
+        <meshStandardMaterial map={grass} roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh
+        ref={cityMesh}
+        args={[topGeometry, undefined, Math.max(1, cityTops.length)]}
+        receiveShadow
+      >
+        <meshStandardMaterial map={paving} roughness={0.92} />
+      </instancedMesh>
+    </>
+  );
+}
+
+function RoadMarkings({ city }: { city: CityData }) {
   const dashes = useMemo(() => {
-    const items: {
-      pos: [number, number, number];
-      scale: [number, number, number];
-      rotY?: number;
-    }[] = [];
+    const items: Instance[] = [];
     for (let i = 0; i < GRID_SIZE; i++) {
       const c = roadCenter(i);
       for (let d = -WORLD_HALF + 4; d < WORLD_HALF - 4; d += 7) {
@@ -169,8 +248,21 @@ function RoadMarkings() {
         items.push({ pos: [d + 1.5, 0.03, c], scale: [3, 1, 0.35] });
       }
     }
+    // Lane dashes carry on across the elevated decks.
+    for (const deck of city.decks) {
+      const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
+      const from = alongX ? deck.minX : deck.minZ,
+        to = alongX ? deck.maxX : deck.maxZ;
+      const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
+      for (let d = from + 3; d < to - 3; d += 7)
+        items.push(
+          alongX
+            ? { pos: [d + 1.5, deck.height + 0.03, cross], scale: [3, 1, 0.35] }
+            : { pos: [cross, deck.height + 0.03, d + 1.5], scale: [0.35, 1, 3] },
+        );
+    }
     return items;
-  }, []);
+  }, [city]);
   const mesh = useRef<THREE.InstancedMesh>(null);
   useInstances(mesh, dashes);
   return (
@@ -183,8 +275,8 @@ function RoadMarkings() {
 
 function ArcadeCurbs() {
   const { yellow, black } = useMemo(() => {
-    const yellow: { pos: [number, number, number]; scale: [number, number, number] }[] = [];
-    const black: { pos: [number, number, number]; scale: [number, number, number] }[] = [];
+    const yellow: Instance[] = [];
+    const black: Instance[] = [];
     const edge = BLOCK_SIZE / 2 + 1.62;
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++) {
@@ -220,14 +312,20 @@ function ArcadeCurbs() {
 
 function Crosswalks() {
   const stripes = useMemo(() => {
-    const items: { pos: [number, number, number]; scale: [number, number, number] }[] = [];
+    const items: Instance[] = [];
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = roadCenter(gx),
           z = roadCenter(gz);
         for (let s = -2; s <= 2; s++) {
-          items.push({ pos: [x + s * 1.65, 0.05, z + ROAD_WIDTH / 2 - 1.2], scale: [0.92, 0.025, 3.8] });
-          items.push({ pos: [x + ROAD_WIDTH / 2 - 1.2, 0.05, z + s * 1.65], scale: [3.8, 0.025, 0.92] });
+          items.push({
+            pos: [x + s * 1.65, 0.05, z + ROAD_WIDTH / 2 - 1.2],
+            scale: [0.92, 0.025, 3.8],
+          });
+          items.push({
+            pos: [x + ROAD_WIDTH / 2 - 1.2, 0.05, z + s * 1.65],
+            scale: [3.8, 0.025, 0.92],
+          });
         }
       }
     return items;
@@ -242,11 +340,222 @@ function Crosswalks() {
   );
 }
 
+/**
+ * Wedge whose top face follows the same profile the physics samples, so what you see is what you
+ * drive. Local +z climbs; the mesh is rotated into place by the ramp's yaw.
+ */
+function makeRampGeometry(ramp: Pick<Ramp, "kind" | "length" | "width" | "height">) {
+  const segments = ramp.kind === "kicker" ? 10 : 16;
+  const halfW = ramp.width / 2,
+    halfL = ramp.length / 2;
+  const TILE = 4;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  type Vertex = [number, number, number];
+  type UV = [number, number];
+  const quad = (corners: [Vertex, Vertex, Vertex, Vertex], texels: [UV, UV, UV, UV]) => {
+    const [a, b, c, d] = corners;
+    const [ta, tb, tc, td] = texels;
+    positions.push(...a, ...b, ...c, ...a, ...c, ...d);
+    uvs.push(...ta, ...tb, ...tc, ...ta, ...tc, ...td);
+  };
+  const profile = (t: number) =>
+    ramp.height * (ramp.kind === "kicker" ? t ** 1.7 : t * t * (3 - 2 * t));
+  const across = ramp.width / TILE;
+  for (let i = 0; i < segments; i++) {
+    const t0 = i / segments,
+      t1 = (i + 1) / segments;
+    const z0 = -halfL + t0 * ramp.length,
+      z1 = -halfL + t1 * ramp.length;
+    const y0 = profile(t0),
+      y1 = profile(t1);
+    const v0 = (z0 + halfL) / TILE,
+      v1 = (z1 + halfL) / TILE;
+    quad(
+      [
+        [-halfW, y0, z0],
+        [-halfW, y1, z1],
+        [halfW, y1, z1],
+        [halfW, y0, z0],
+      ],
+      [
+        [0, v0],
+        [0, v1],
+        [across, v1],
+        [across, v0],
+      ],
+    );
+    quad(
+      [
+        [-halfW, 0, z0],
+        [-halfW, 0, z1],
+        [-halfW, y1, z1],
+        [-halfW, y0, z0],
+      ],
+      [
+        [v0, 0],
+        [v1, 0],
+        [v1, y1 / TILE],
+        [v0, y0 / TILE],
+      ],
+    );
+    quad(
+      [
+        [halfW, 0, z0],
+        [halfW, y0, z0],
+        [halfW, y1, z1],
+        [halfW, 0, z1],
+      ],
+      [
+        [v0, 0],
+        [v0, y0 / TILE],
+        [v1, y1 / TILE],
+        [v1, 0],
+      ],
+    );
+  }
+  quad(
+    [
+      [-halfW, 0, halfL],
+      [halfW, 0, halfL],
+      [halfW, ramp.height, halfL],
+      [-halfW, ramp.height, halfL],
+    ],
+    [
+      [0, 0],
+      [across, 0],
+      [across, ramp.height / TILE],
+      [0, ramp.height / TILE],
+    ],
+  );
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function Ramps({ city }: { city: CityData }) {
+  const grades = useMemo(() => city.ramps.filter((r) => r.kind === "grade"), [city]);
+  const kickers = useMemo(() => city.ramps.filter((r) => r.kind === "kicker"), [city]);
+  const gradeGeometries = useMemo(() => grades.map(makeRampGeometry), [grades]);
+  const kickerGeometry = useMemo(
+    () => makeRampGeometry(kickers[0] ?? { kind: "kicker", length: 10, width: 9.5, height: 2.8 }),
+    [kickers],
+  );
+  const kickerItems = useMemo<Instance[]>(
+    () => kickers.map((r) => ({ pos: [r.x, 0, r.z], rotY: r.yaw })),
+    [kickers],
+  );
+  // Glowing lip along the launch edge of every kicker.
+  const lips = useMemo<Instance[]>(
+    () =>
+      kickers.map((r) => ({
+        pos: [
+          r.x + Math.sin(r.yaw) * (r.length / 2 - 0.2),
+          r.height + 0.12,
+          r.z + Math.cos(r.yaw) * (r.length / 2 - 0.2),
+        ],
+        scale: [r.width, 0.24, 0.5],
+        rotY: r.yaw,
+      })),
+    [kickers],
+  );
+  const concrete = useMemo(makeConcreteTexture, []);
+  const hazard = useMemo(makeRampHazardTexture, []);
+  const kickerMesh = useRef<THREE.InstancedMesh>(null),
+    lipMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(kickerMesh, kickerItems);
+  useInstances(lipMesh, lips);
+  return (
+    <>
+      {grades.map((ramp, i) => (
+        <mesh
+          key={`${ramp.x}:${ramp.z}:${ramp.yaw}`}
+          geometry={gradeGeometries[i]}
+          position={[ramp.x, 0, ramp.z]}
+          rotation-y={ramp.yaw}
+          castShadow
+          receiveShadow
+        >
+          <meshStandardMaterial map={concrete} roughness={0.94} />
+        </mesh>
+      ))}
+      <instancedMesh
+        ref={kickerMesh}
+        args={[kickerGeometry, undefined, Math.max(1, kickers.length)]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial map={hazard} roughness={0.72} />
+      </instancedMesh>
+      <instancedMesh ref={lipMesh} args={[undefined, undefined, Math.max(1, lips.length)]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ffe89a" emissive="#ffd400" emissiveIntensity={1.6} />
+      </instancedMesh>
+    </>
+  );
+}
+
+function Expressway({ city }: { city: CityData }) {
+  const concrete = useMemo(makeConcreteTexture, []);
+  const pillars = useMemo(() => city.pillars.map(boxInstance), [city]);
+  const rails = useMemo(() => city.rails.map(boxInstance), [city]);
+  const pillarMesh = useRef<THREE.InstancedMesh>(null),
+    railMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(pillarMesh, pillars);
+  useInstances(railMesh, rails);
+  return (
+    <>
+      {city.decks.map((deck) => (
+        <mesh
+          key={`${deck.minX}:${deck.minZ}`}
+          position={[(deck.minX + deck.maxX) / 2, deck.height - 0.45, (deck.minZ + deck.maxZ) / 2]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[deck.maxX - deck.minX, 0.9, deck.maxZ - deck.minZ]} />
+          <meshStandardMaterial color="#4a525b" roughness={0.95} />
+        </mesh>
+      ))}
+      <instancedMesh
+        ref={pillarMesh}
+        args={[undefined, undefined, Math.max(1, pillars.length)]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry />
+        <meshStandardMaterial map={concrete} roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={railMesh} args={[undefined, undefined, Math.max(1, rails.length)]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ffd400" emissive="#a35c00" emissiveIntensity={0.35} roughness={0.6} />
+      </instancedMesh>
+    </>
+  );
+}
+
+function BoostPads({ city }: { city: CityData }) {
+  const texture = useMemo(makeBoostPadTexture, []);
+  const pads = useMemo<Instance[]>(
+    () => city.boostPads.map((p) => ({ pos: [p.x, p.y + 0.09, p.z], scale: [3.4, 0.1, 8], rotY: p.yaw })),
+    [city],
+  );
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(mesh, pads);
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(1, pads.length)]}>
+      <boxGeometry />
+      <meshStandardMaterial map={texture} emissiveMap={texture} emissive="#3ad9ff" emissiveIntensity={1.5} />
+    </instancedMesh>
+  );
+}
+
 function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   const { trunks, fronds } = useMemo(() => {
     const rng = mulberry32(seed ^ 0xc0a57),
-      trunks: { pos: [number, number, number]; scale: [number, number, number]; rotY?: number }[] = [],
-      fronds: { pos: [number, number, number]; scale: [number, number, number]; rotY?: number }[] = [];
+      trunks: Instance[] = [],
+      fronds: Instance[] = [];
     const spots: Pos2[] = [];
     for (const [x, z] of city.parks)
       for (let i = 0; i < 3; i++) spots.push([x + (rng() - 0.5) * 23, z + (rng() - 0.5) * 23]);
@@ -255,6 +564,7 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
       if (i % 2 === 0) spots.push([WORLD_HALF - ROAD_WIDTH - 2.2, blockCenter(i)]);
     }
     for (const [x, z] of spots) {
+      if (nearExpressway(city, x, z, 3)) continue;
       const h = 6.6 + rng() * 2.3;
       trunks.push({ pos: [x, h / 2, z], scale: [0.42, h, 0.42], rotY: rng() });
       for (let f = 0; f < 6; f++) {
@@ -287,10 +597,11 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
 }
 
 const arcadeSigns = [
-  { label: "RUSH RADIO", color: "#00d9ff", pos: [blockCenter(1), 22, blockCenter(1)] as const },
-  { label: "COAST FUEL", color: "#ffd400", pos: [blockCenter(6), 26, blockCenter(2)] as const },
-  { label: "SUNSET MALL", color: "#ff5b35", pos: [blockCenter(3), 20, blockCenter(5)] as const },
-  { label: "DASH FM", color: "#7cff66", pos: [blockCenter(6), 18, blockCenter(6)] as const },
+  { label: "RUSH RADIO", color: "#00d9ff", pos: [blockCenter(2), 30, blockCenter(9)] as const },
+  { label: "COAST FUEL", color: "#ffd400", pos: [blockCenter(9), 26, blockCenter(2)] as const },
+  { label: "SUNSET MALL", color: "#ff5b35", pos: [blockCenter(5), 44, blockCenter(6)] as const },
+  { label: "DASH FM", color: "#7cff66", pos: [blockCenter(10), 22, blockCenter(8)] as const },
+  { label: "SKY EXPRESSWAY", color: "#ff9d33", pos: [blockCenter(4), 34, blockCenter(1)] as const },
 ];
 
 function ArcadeSigns() {
@@ -320,9 +631,10 @@ function ArcadeSigns() {
 function Greenery({ city, seed }: { city: CityData; seed: number }) {
   const { trunks, canopies } = useMemo(() => {
     const rng = mulberry32(seed ^ 0x7ee5);
-    const trunks: { pos: [number, number, number]; scale: [number, number, number] }[] = [];
-    const canopies: { pos: [number, number, number]; scale: number }[] = [];
+    const trunks: Instance[] = [];
+    const canopies: Instance[] = [];
     const put = (x: number, z: number) => {
+      if (nearExpressway(city, x, z, 2.5)) return;
       const h = 2.6 + rng() * 2.2;
       trunks.push({ pos: [x, h / 2, z], scale: [0.35, h, 0.35] });
       canopies.push({ pos: [x, h + 1.1, z], scale: 1.7 + rng() * 1.3 });
@@ -357,23 +669,26 @@ function Greenery({ city, seed }: { city: CityData; seed: number }) {
   );
 }
 
-function StreetLights() {
+function StreetLights({ city }: { city: CityData }) {
   const { poles, heads } = useMemo(() => {
-    const poles: { pos: [number, number, number]; scale: [number, number, number] }[] = [];
-    const heads: { pos: [number, number, number]; scale: number }[] = [];
+    const poles: Instance[] = [];
+    const heads: Instance[] = [];
+    const put = (x: number, z: number) => {
+      if (nearExpressway(city, x, z, 1)) return;
+      poles.push({ pos: [x, 3.1, z], scale: [0.16, 6.2, 0.16] });
+      heads.push({ pos: [x, 6.4, z], scale: 0.42 });
+    };
     for (let i = 0; i < GRID_SIZE; i++) {
       const c = roadCenter(i);
       for (let d = -WORLD_HALF + 20; d < WORLD_HALF - 10; d += 55) {
         // on the sidewalk slab (which extends 1.5 into the road), not on the asphalt
         const side = (Math.round(d / 55) % 2 === 0 ? 1 : -1) * (ROAD_WIDTH / 2 + 1.2);
-        poles.push({ pos: [c + side, 3.1, d], scale: [0.16, 6.2, 0.16] });
-        heads.push({ pos: [c + side, 6.4, d], scale: 0.42 });
-        poles.push({ pos: [d, 3.1, c + side], scale: [0.16, 6.2, 0.16] });
-        heads.push({ pos: [d, 6.4, c + side], scale: 0.42 });
+        put(c + side, d);
+        put(d, c + side);
       }
     }
     return { poles, heads };
-  }, []);
+  }, [city]);
   const poleMesh = useRef<THREE.InstancedMesh>(null),
     headMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(poleMesh, poles);
@@ -387,6 +702,250 @@ function StreetLights() {
       <instancedMesh ref={headMesh} args={[undefined, undefined, heads.length]}>
         <sphereGeometry args={[1, 10, 8]} />
         <meshStandardMaterial color="#ffe9bd" emissive="#ffdf9e" emissiveIntensity={2.4} />
+      </instancedMesh>
+    </>
+  );
+}
+
+const ONE = new THREE.Vector3(1, 1, 1);
+
+/** One fleet of background cars: painted bodywork plus shared trim, headlamp and tail-lamp passes. */
+function useCarFleet(colors: string[]) {
+  const parts = useMemo(makeFleetGeometry, []);
+  const painted = useRef<THREE.InstancedMesh>(null),
+    trim = useRef<THREE.InstancedMesh>(null),
+    heads = useRef<THREE.InstancedMesh>(null),
+    tails = useRef<THREE.InstancedMesh>(null);
+  const all = useCallback(
+    () => [painted.current, trim.current, heads.current, tails.current] as const,
+    [],
+  );
+  useLayoutEffect(() => {
+    if (!painted.current) return;
+    colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
+    if (painted.current.instanceColor) painted.current.instanceColor.needsUpdate = true;
+  }, [colors]);
+  const write = useCallback(
+    (index: number, x: number, z: number, yaw: number) => {
+      matrix.compose(position.set(x, 0, z), quaternion.setFromAxisAngle(UP, yaw), ONE);
+      for (const mesh of all()) mesh?.setMatrixAt(index, matrix);
+    },
+    [all],
+  );
+  const flush = useCallback(() => {
+    for (const mesh of all()) if (mesh) mesh.instanceMatrix.needsUpdate = true;
+  }, [all]);
+  const count = Math.max(1, colors.length);
+  const meshes = (
+    <>
+      <instancedMesh ref={painted} args={[parts.painted, undefined, count]} castShadow>
+        <meshStandardMaterial roughness={0.34} metalness={0.32} />
+      </instancedMesh>
+      <instancedMesh ref={trim} args={[parts.trim, undefined, count]} castShadow>
+        <meshStandardMaterial color="#191d23" roughness={0.4} metalness={0.25} />
+      </instancedMesh>
+      <instancedMesh ref={heads} args={[parts.headlights, undefined, count]}>
+        <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={1.5} />
+      </instancedMesh>
+      <instancedMesh ref={tails} args={[parts.taillights, undefined, count]}>
+        <meshStandardMaterial color="#8a1a12" emissive="#ff2b1e" emissiveIntensity={1.3} />
+      </instancedMesh>
+    </>
+  );
+  return { write, flush, meshes };
+}
+
+function Traffic({ city }: { city: CityData }) {
+  const colors = useMemo(() => city.trafficRoutes.map((route) => route.color), [city]);
+  const { write, flush, meshes } = useCarFleet(colors);
+  useFrame(({ clock }) => {
+    updateTraffic(city, clock.elapsedTime);
+    for (let i = 0; i < trafficCars.length; i++) {
+      const car = trafficCars[i]!;
+      write(i, car.x, car.z, car.yaw);
+    }
+    flush();
+  });
+  return meshes;
+}
+
+function ParkedCars({ city }: { city: CityData }) {
+  const colors = useMemo(() => city.parkedCars.map((car) => car.color), [city]);
+  const { write, flush, meshes } = useCarFleet(colors);
+  useLayoutEffect(() => {
+    city.parkedCars.forEach((car, i) => write(i, car.x, car.z, car.yaw));
+    flush();
+  }, [city, write, flush]);
+  return meshes;
+}
+
+/** Signals face the traffic they hold: one head per axis, lit green for through traffic. */
+function TrafficSignals() {
+  const { poles, heads, green, red, dark } = useMemo(() => {
+    const poles: Instance[] = [],
+      heads: Instance[] = [],
+      green: Instance[] = [],
+      red: Instance[] = [],
+      dark: Instance[] = [];
+    const edge = ROAD_WIDTH / 2 + 1.1;
+    const LAMP_Y = { red: 6.15, amber: 5.6, green: 5.05 };
+    for (let gx = 0; gx < GRID_SIZE; gx++)
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
+        const x = roadCenter(gx),
+          z = roadCenter(gz);
+        for (const [sx, sz, goes] of [
+          [1, -1, true],
+          [-1, 1, false],
+        ] as const) {
+          const px = x + sx * edge,
+            pz = z + sz * edge;
+          poles.push({ pos: [px, 2.7, pz], scale: [0.18, 5.4, 0.18] });
+          heads.push({ pos: [px, LAMP_Y.amber, pz], scale: [0.62, 1.7, 0.62] });
+          // Lenses sit proud of the housing, on the face turned toward the junction.
+          const lx = px - sx * 0.36,
+            lz = pz - sz * 0.36;
+          (goes ? green : red).push({
+            pos: [lx, goes ? LAMP_Y.green : LAMP_Y.red, lz],
+            scale: 0.23,
+          });
+          dark.push({ pos: [lx, LAMP_Y.amber, lz], scale: 0.23 });
+          dark.push({ pos: [lx, goes ? LAMP_Y.red : LAMP_Y.green, lz], scale: 0.23 });
+        }
+      }
+    return { poles, heads, green, red, dark };
+  }, []);
+  const poleMesh = useRef<THREE.InstancedMesh>(null),
+    headMesh = useRef<THREE.InstancedMesh>(null),
+    greenMesh = useRef<THREE.InstancedMesh>(null),
+    redMesh = useRef<THREE.InstancedMesh>(null),
+    darkMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(poleMesh, poles);
+  useInstances(headMesh, heads);
+  useInstances(greenMesh, green);
+  useInstances(redMesh, red);
+  useInstances(darkMesh, dark);
+  return (
+    <>
+      <instancedMesh ref={poleMesh} args={[undefined, undefined, poles.length]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#2c3138" metalness={0.5} roughness={0.6} />
+      </instancedMesh>
+      <instancedMesh ref={headMesh} args={[undefined, undefined, heads.length]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#15191d" roughness={0.8} />
+      </instancedMesh>
+      <instancedMesh ref={greenMesh} args={[undefined, undefined, green.length]}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshStandardMaterial color="#8bffb0" emissive="#25e06a" emissiveIntensity={2.6} />
+      </instancedMesh>
+      <instancedMesh ref={redMesh} args={[undefined, undefined, red.length]}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshStandardMaterial color="#ffb0a6" emissive="#ff2d1a" emissiveIntensity={2.6} />
+      </instancedMesh>
+      <instancedMesh ref={darkMesh} args={[undefined, undefined, dark.length]}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshStandardMaterial color="#242a30" roughness={0.4} />
+      </instancedMesh>
+    </>
+  );
+}
+
+/** Kerbside clutter: hydrants, bins and benches spread along the sidewalks. */
+function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
+  const { hydrants, bins, benches } = useMemo(() => {
+    const rng = mulberry32(seed ^ 0x51de);
+    const hydrants: Instance[] = [],
+      bins: Instance[] = [],
+      benches: Instance[] = [];
+    const walk = BLOCK_SIZE / 2 + 0.9;
+    for (let gx = 0; gx < GRID_SIZE; gx++)
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
+        const cx = blockCenter(gx),
+          cz = blockCenter(gz);
+        for (let n = 0; n < 4; n++) {
+          const side = n % 2 ? 1 : -1;
+          const alongEdge = (rng() - 0.5) * (BLOCK_SIZE - 8);
+          const [x, z] =
+            n < 2 ? [cx + alongEdge, cz + side * walk] : [cx + side * walk, cz + alongEdge];
+          if (nearExpressway(city, x, z, 2)) continue;
+          const roll = rng();
+          if (roll < 0.34) hydrants.push({ pos: [x, 0.68, z], scale: [0.34, 0.9, 0.34] });
+          else if (roll < 0.68) bins.push({ pos: [x, 0.75, z], scale: [0.7, 1.05, 0.7] });
+          else
+            benches.push({
+              pos: [x, 0.62, z],
+              scale: n < 2 ? [2.8, 0.36, 0.7] : [0.7, 0.36, 2.8],
+            });
+        }
+      }
+    return { hydrants, bins, benches };
+  }, [city, seed]);
+  const hydrantMesh = useRef<THREE.InstancedMesh>(null),
+    binMesh = useRef<THREE.InstancedMesh>(null),
+    benchMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(hydrantMesh, hydrants);
+  useInstances(binMesh, bins);
+  useInstances(benchMesh, benches);
+  return (
+    <>
+      <instancedMesh ref={hydrantMesh} args={[undefined, undefined, hydrants.length]} castShadow>
+        <cylinderGeometry args={[0.5, 0.6, 1, 8]} />
+        <meshStandardMaterial color="#d43a2a" roughness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={binMesh} args={[undefined, undefined, bins.length]} castShadow>
+        <cylinderGeometry args={[0.5, 0.42, 1, 10]} />
+        <meshStandardMaterial color="#2f3a34" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={benchMesh} args={[undefined, undefined, benches.length]} castShadow>
+        <boxGeometry />
+        <meshStandardMaterial color="#8a5a33" roughness={0.95} />
+      </instancedMesh>
+    </>
+  );
+}
+
+/** Plant rooms, water tanks and masts break up the flat tops of the taller blocks. */
+function Rooftops({ city, seed }: { city: CityData; seed: number }) {
+  const { huts, tanks, masts } = useMemo(() => {
+    const rng = mulberry32(seed ^ 0x2f00f);
+    const huts: Instance[] = [],
+      tanks: Instance[] = [],
+      masts: Instance[] = [];
+    for (const b of city.buildings) {
+      if (b.h < 14) continue;
+      const hutW = Math.min(b.w, b.d) * 0.34;
+      huts.push({
+        pos: [b.x + (rng() - 0.5) * b.w * 0.3, b.h + 1.1, b.z + (rng() - 0.5) * b.d * 0.3],
+        scale: [hutW, 2.2, hutW],
+      });
+      if (rng() < 0.45)
+        tanks.push({
+          pos: [b.x - (rng() - 0.5) * b.w * 0.4, b.h + 1.7, b.z - (rng() - 0.5) * b.d * 0.4],
+          scale: [1.5, 3.4, 1.5],
+        });
+      if (b.h > 30 && rng() < 0.7) masts.push({ pos: [b.x, b.h + 4.5, b.z], scale: [0.22, 9, 0.22] });
+    }
+    return { huts, tanks, masts };
+  }, [city, seed]);
+  const hutMesh = useRef<THREE.InstancedMesh>(null),
+    tankMesh = useRef<THREE.InstancedMesh>(null),
+    mastMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(hutMesh, huts);
+  useInstances(tankMesh, tanks);
+  useInstances(mastMesh, masts);
+  return (
+    <>
+      <instancedMesh ref={hutMesh} args={[undefined, undefined, Math.max(1, huts.length)]} castShadow>
+        <boxGeometry />
+        <meshStandardMaterial color="#9aa1a8" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={tankMesh} args={[undefined, undefined, Math.max(1, tanks.length)]} castShadow>
+        <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
+        <meshStandardMaterial color="#7d5a3c" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={mastMesh} args={[undefined, undefined, Math.max(1, masts.length)]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#c8ccd2" metalness={0.6} roughness={0.4} />
       </instancedMesh>
     </>
   );
@@ -479,46 +1038,25 @@ export function City({ city, seed }: { city: CityData; seed: number }) {
     <group>
       {/* asphalt ground */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, 0, 0]}>
-        <planeGeometry args={[WORLD_HALF * 2 + 120, WORLD_HALF * 2 + 120]} />
+        <planeGeometry args={[WORLD_HALF * 2 + 160, WORLD_HALF * 2 + 160]} />
         <meshStandardMaterial map={asphalt} roughness={0.96} />
       </mesh>
-      {/* blocks: sidewalk slab + surface (grass for parks, concrete otherwise) */}
-      {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
-        const gx = i % GRID_SIZE,
-          gz = Math.floor(i / GRID_SIZE),
-          px = blockCenter(gx),
-          pz = blockCenter(gz);
-        const park = city.parks.some((p) => Math.abs(p[0] - px) < 1 && Math.abs(p[1] - pz) < 1);
-        return (
-          <group key={i} position={[px, 0, pz]}>
-            <RoundedBox
-              position={[0, 0.06, 0]}
-              args={[BLOCK_SIZE + 3, 0.24, BLOCK_SIZE + 3]}
-              radius={0.1}
-              smoothness={2}
-              receiveShadow
-            >
-              <meshStandardMaterial color="#ffd36e" roughness={0.86} />
-            </RoundedBox>
-            <RoundedBox
-              position={[0, 0.2, 0]}
-              args={[BLOCK_SIZE - 1, 0.16, BLOCK_SIZE - 1]}
-              radius={0.07}
-              smoothness={2}
-              receiveShadow
-            >
-              <meshStandardMaterial color={park ? "#4fb85d" : "#d9c7aa"} roughness={0.92} />
-            </RoundedBox>
-          </group>
-        );
-      })}
-      <RoadMarkings />
+      <Blocks city={city} />
+      <RoadMarkings city={city} />
       <Crosswalks />
       <ArcadeCurbs />
       <Buildings city={city} />
+      <Rooftops city={city} seed={seed} />
+      <Ramps city={city} />
+      <Expressway city={city} />
+      <BoostPads city={city} />
+      <ParkedCars city={city} />
+      <Traffic city={city} />
+      <TrafficSignals />
+      <StreetFurniture city={city} seed={seed} />
       <Greenery city={city} seed={seed} />
       <PalmTrees city={city} seed={seed} />
-      <StreetLights />
+      <StreetLights city={city} />
       <ArcadeSigns />
       {city.restaurants.map((p, i) => (
         <Restaurant key={`r${p.id}`} place={p} index={i} />

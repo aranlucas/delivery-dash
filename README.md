@@ -7,9 +7,12 @@ Delivery Dash is a multiplayer 3D arcade racing game where drivers tear through 
 ## Features
 
 - Same-origin multiplayer over Cloudflare Durable Object WebSockets
-- Procedural cities and deterministic delivery routes shared by client and server
+- Procedural 12×12 city with downtown, midtown, and outskirt districts, shared by client and server
+- Two stacked elevated expressways with approach ramps, on-ramps, guardrail gaps, and underpasses
+- Jump ramps, boost strips, air time, and vertical car physics with roof and deck landings
+- Moving traffic, kerb parking, signals, and street furniture on every block
 - Server-authoritative pickup, drop-off, and race progression
-- Arcade driving with drifting, boost, collision, and chase-camera effects
+- Arcade driving with drifting, boost, collision, minimap, and chase-camera effects
 - Original code-native visuals, vehicles, storefronts, audio, and HUD
 
 ## Stack
@@ -39,6 +42,11 @@ Open the local URL printed by Vite. Create a four-letter room code or join an ex
 | `A` / `D` or arrow keys | Steer |
 | `Space` | Drift |
 | `Shift` | Boost |
+
+Ramps launch the car; steering still works in the air, and long air time pays out score and boost.
+Cyan strips top the boost meter up and shove you forward — line one up with a ramp for the big jumps.
+The two elevated expressways are the fast lines across town: take an approach ramp at either end or
+the mid-route on-ramp, and mind the gaps in the guardrails.
 
 ## Validate
 

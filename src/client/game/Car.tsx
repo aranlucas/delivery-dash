@@ -3,9 +3,10 @@ import { useFrame } from "@react-three/fiber";
 import { Suspense, useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { TICK_HZ, type Phase } from "../../shared/protocol";
-import { WORLD_HALF, type AABB } from "../../shared/city";
+import { blocked, groundHeightAt, type City } from "../../shared/city";
 import { send } from "../net";
 import { drivingTelemetry, ownPose, type CarPose } from "./drivingState";
+import { trafficCars } from "./traffic";
 
 const FORWARD_ACCELERATION = 31;
 const REVERSE_ACCELERATION = 18;
@@ -18,6 +19,20 @@ const REVERSE_MAX_SPEED = 16;
 const COLLISION_BOUNCE = 0.16;
 const BOOST_DRAIN_PER_SECOND = 27;
 const BOOST_RECHARGE_PER_SECOND = 12;
+/** Distance from the wheels' contact patch to the pose origin the car model is drawn around. */
+const RIDE_HEIGHT = 0.8;
+const GRAVITY = 46;
+/** Cap on the climb rate a slope can convert into a launch, so ledges never fire the car skyward. */
+const MAX_LAUNCH_SPEED = 20;
+/** A rise bigger than this in one frame is a ledge to step onto, not a slope to ride off. */
+const LEDGE_SNAP = 1.4;
+const AIR_STEER_RATE = 1.05;
+const BOOST_PAD_IMPULSE = 13;
+const BOOST_PAD_RADIUS = 4.2;
+/** Ceiling a pad can shove the car to. Without it, chained pads out-run the speed limiter's decay. */
+const BOOST_PAD_MAX_SPEED = 64;
+/** Player half-width plus a traffic car's half-width: contact, not a force field. */
+const TRAFFIC_RADIUS = 2.9;
 
 const pressed = new Set<string>();
 const CONTROL_KEYS = new Set([
@@ -32,11 +47,6 @@ const CONTROL_KEYS = new Set([
   " ",
   "shift",
 ]);
-const collides = (x: number, z: number, boxes: AABB[]) =>
-  Math.abs(x) > WORLD_HALF - 5 ||
-  Math.abs(z) > WORLD_HALF - 5 ||
-  boxes.some((b) => x > b.minX - 2 && x < b.maxX + 2 && z > b.minZ - 2 && z < b.maxZ + 2);
-
 const approachZero = (value: number, amount: number) =>
   value > 0 ? Math.max(0, value - amount) : Math.min(0, value + amount);
 
@@ -50,6 +60,8 @@ const resetTelemetry = () => {
   drivingTelemetry.steer = 0;
   drivingTelemetry.throttle = 0;
   drivingTelemetry.boosting = false;
+  drivingTelemetry.airborne = false;
+  drivingTelemetry.airTime = 0;
 };
 
 const driftCallout = (score: number) => {
@@ -57,6 +69,31 @@ const driftCallout = (score: number) => {
   if (score >= 300) return "WILD DRIFT!";
   if (score >= 120) return "NICE DRIFT!";
   return "DRIFT!";
+};
+
+/**
+ * Nudge a car out of geometry it can only have reached by landing on it — a jump that ends inside
+ * a guardrail or a bridge column would otherwise wedge it there forever.
+ */
+function unstick(city: City, pose: { x: number; z: number }, height: number, step: number) {
+  for (const radius of [2.5, 5, 9])
+    for (let a = 0; a < 8; a++) {
+      const angle = (a / 8) * Math.PI * 2;
+      const dx = Math.cos(angle),
+        dz = Math.sin(angle);
+      if (blocked(city, pose.x + dx * radius, pose.z + dz * radius, height)) continue;
+      const distance = Math.min(radius, step);
+      pose.x += dx * distance;
+      pose.z += dz * distance;
+      return true;
+    }
+  return false;
+}
+
+const airCallout = (seconds: number) => {
+  if (seconds >= 1.7) return "INSANE AIR!";
+  if (seconds >= 1.1) return "HUGE AIR!";
+  return "BIG AIR!";
 };
 
 let signedWheelSpeed = 0;
@@ -71,14 +108,14 @@ const EXHAUST_POSITIONS = [-0.7, 0.7] as const;
 export function OwnCar({
   spawn,
   spawnYaw = 0,
-  boxes,
+  city,
   phase,
   color,
   carrying,
 }: {
   spawn: [number, number];
   spawnYaw?: number;
-  boxes: AABB[];
+  city: City;
   phase: Phase;
   color: string;
   carrying: boolean;
@@ -91,12 +128,19 @@ export function OwnCar({
   const driftGrace = useRef(0);
   const driftHold = useRef(0);
   const sent = useRef(0);
+  /** Height of the ground the wheels are on (or falling toward); ownPose.y adds the ride height. */
+  const surface = useRef(0);
+  const vertical = useRef(0);
+  const airborne = useRef(false);
+  const padCooldown = useRef(0);
+  const pitch = useRef(0);
   const driving = phase === "racing" || phase === "lobby"; // free roam in the lobby, frozen during countdown/finish
   const spawnX = spawn[0];
   const spawnZ = spawn[1];
   const reset = useCallback(() => {
     ownPose.x = spawnX;
     ownPose.z = spawnZ;
+    ownPose.y = RIDE_HEIGHT;
     ownPose.yaw = spawnYaw;
     ownPose.speed = 0;
     signedWheelSpeed = 0;
@@ -104,6 +148,10 @@ export function OwnCar({
     velocity.current.set(0, 0);
     driftGrace.current = 0;
     driftHold.current = 0;
+    surface.current = 0;
+    vertical.current = 0;
+    airborne.current = false;
+    padCooldown.current = 0;
     resetTelemetry();
   }, [spawnX, spawnZ, spawnYaw]);
   useEffect(() => {
@@ -160,39 +208,51 @@ export function OwnCar({
             : 0;
       const handbrake = pressed.has(" ") || pressed.has("space");
       const boostHeld = pressed.has("shift");
+      const flying = airborne.current;
       const forward = forwardVector.current.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
       let longitudinal = velocity.current.dot(forward);
       const speedBeforeSteer = velocity.current.length();
-      const steeringAuthority = THREE.MathUtils.clamp(speedBeforeSteer / 3, 0, 1);
-      const steeringRate = THREE.MathUtils.lerp(
-        0.85,
-        handbrake ? 2.8 : 2.15,
-        THREE.MathUtils.clamp(speedBeforeSteer / 28, 0, 1),
-      );
-      const motionDirection = Math.sign(longitudinal || throttle);
-      ownPose.yaw += steer * steeringRate * steeringAuthority * motionDirection * d;
+      if (flying) {
+        // Mid-air the wheels have nothing to bite: steering only aims the landing.
+        ownPose.yaw += steer * AIR_STEER_RATE * d;
+      } else {
+        const steeringAuthority = THREE.MathUtils.clamp(speedBeforeSteer / 3, 0, 1);
+        const steeringRate = THREE.MathUtils.lerp(
+          0.85,
+          handbrake ? 2.8 : 2.15,
+          THREE.MathUtils.clamp(speedBeforeSteer / 28, 0, 1),
+        );
+        const motionDirection = Math.sign(longitudinal || throttle);
+        ownPose.yaw += steer * steeringRate * steeringAuthority * motionDirection * d;
+      }
 
       forward.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
       const right = rightVector.current.set(Math.cos(ownPose.yaw), -Math.sin(ownPose.yaw));
       longitudinal = velocity.current.dot(forward);
       let lateral = velocity.current.dot(right);
-      const boosting = boostHeld && throttle > 0 && longitudinal > -1 && drivingTelemetry.boost > 0;
+      const boosting =
+        !flying && boostHeld && throttle > 0 && longitudinal > -1 && drivingTelemetry.boost > 0;
+      const maxForward = boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
 
-      if (throttle > 0) {
+      if (flying) {
+        longitudinal *= Math.exp(-0.15 * d);
+      } else if (throttle > 0) {
+        // Above the cap the throttle stops pushing, or it would out-accelerate the limiter's bleed.
         longitudinal +=
           (longitudinal < 0
             ? BRAKE_DECELERATION
-            : FORWARD_ACCELERATION + (boosting ? 24 : 0)) * d;
+            : longitudinal > maxForward
+              ? 0
+              : FORWARD_ACCELERATION + (boosting ? 24 : 0)) * d;
       } else if (throttle < 0) {
         longitudinal -=
           (longitudinal > 0 ? BRAKE_DECELERATION : REVERSE_ACCELERATION) * d;
       } else {
         longitudinal = approachZero(longitudinal, COAST_DECELERATION * d);
       }
-      if (handbrake) longitudinal = approachZero(longitudinal, HANDBRAKE_DECELERATION * d);
+      if (handbrake && !flying) longitudinal = approachZero(longitudinal, HANDBRAKE_DECELERATION * d);
 
       if (longitudinal >= 0) {
-        const maxForward = boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
         longitudinal =
           longitudinal > maxForward
             ? Math.max(maxForward, longitudinal - 9 * d)
@@ -203,7 +263,7 @@ export function OwnCar({
 
       // Keep a world-space lateral component. Low grip on the handbrake lets
       // the car rotate underneath its momentum instead of snapping to forward.
-      lateral *= Math.exp(-(handbrake ? 0.65 : 3.8) * d);
+      lateral *= Math.exp(-(flying ? 0.12 : handbrake ? 0.65 : 3.8) * d);
       velocity.current.copy(forward).multiplyScalar(longitudinal).addScaledVector(right, lateral);
 
       const speedLimit =
@@ -227,7 +287,7 @@ export function OwnCar({
 
       const nx = ownPose.x + velocity.current.x * d,
         nz = ownPose.z + velocity.current.y * d;
-      if (!collides(nx, ownPose.z, boxes)) ownPose.x = nx;
+      if (!blocked(city, nx, ownPose.z, surface.current)) ownPose.x = nx;
       else {
         const impact = Math.abs(velocity.current.x);
         velocity.current.x *= -COLLISION_BOUNCE;
@@ -236,7 +296,7 @@ export function OwnCar({
           THREE.MathUtils.clamp(impact / 18, 0.18, 1),
         );
       }
-      if (!collides(ownPose.x, nz, boxes)) ownPose.z = nz;
+      if (!blocked(city, ownPose.x, nz, surface.current)) ownPose.z = nz;
       else {
         const impact = Math.abs(velocity.current.y);
         velocity.current.y *= -COLLISION_BOUNCE;
@@ -246,22 +306,124 @@ export function OwnCar({
         );
       }
 
+      if (
+        blocked(city, ownPose.x, ownPose.z, surface.current) &&
+        unstick(city, ownPose, surface.current, 14 * d)
+      )
+        velocity.current.multiplyScalar(0.4);
+
+      // Traffic shoves rather than walls: clipping a city car costs speed, not the run.
+      if (surface.current < 2)
+        for (const car of trafficCars) {
+          const dx = ownPose.x - car.x,
+            dz = ownPose.z - car.z;
+          const distance = Math.hypot(dx, dz);
+          if (distance > TRAFFIC_RADIUS || distance < 0.001) continue;
+          const push = TRAFFIC_RADIUS - distance;
+          ownPose.x += (dx / distance) * push;
+          ownPose.z += (dz / distance) * push;
+          velocity.current.multiplyScalar(0.82);
+          drivingTelemetry.impactPulse = Math.max(drivingTelemetry.impactPulse, 0.45);
+          break;
+        }
+
+      // Boost strips: full tank plus a shove, so a pad into a ramp is the big jump.
+      padCooldown.current = Math.max(0, padCooldown.current - d);
+      if (!airborne.current && padCooldown.current === 0)
+        for (const pad of city.boostPads) {
+          if (Math.abs(surface.current - pad.y) > 2.5) continue;
+          if (Math.hypot(ownPose.x - pad.x, ownPose.z - pad.z) > BOOST_PAD_RADIUS) continue;
+          padCooldown.current = 0.6;
+          drivingTelemetry.boost = 100;
+          drivingTelemetry.callout = "TURBO!";
+          drivingTelemetry.driftScore += 90;
+          driftGrace.current = 0.5;
+          const along = velocity.current.dot(forward);
+          velocity.current.addScaledVector(
+            forward,
+            Math.max(0, Math.min(BOOST_PAD_IMPULSE, BOOST_PAD_MAX_SPEED - along)),
+          );
+          break;
+        }
+
+      // Vertical pass: ride the surface, launch off a lip, fall off an edge, land.
+      const ground = groundHeightAt(city, ownPose.x, ownPose.z, surface.current);
+      if (airborne.current) {
+        vertical.current -= GRAVITY * d;
+        surface.current += vertical.current * d;
+        drivingTelemetry.airTime += d;
+        if (surface.current <= ground) {
+          const drop = -vertical.current;
+          surface.current = ground;
+          airborne.current = false;
+          vertical.current = 0;
+          drivingTelemetry.impactPulse = Math.max(
+            drivingTelemetry.impactPulse,
+            THREE.MathUtils.clamp(drop / 30, 0.12, 1),
+          );
+          if (drivingTelemetry.airTime > 0.4) {
+            drivingTelemetry.driftScore += drivingTelemetry.airTime * 260;
+            drivingTelemetry.callout = airCallout(drivingTelemetry.airTime);
+            drivingTelemetry.boost = Math.min(
+              100,
+              drivingTelemetry.boost + drivingTelemetry.airTime * 26,
+            );
+            driftGrace.current = 0.85;
+          }
+          drivingTelemetry.airTime = 0;
+        }
+      } else {
+        const rise = ground - surface.current;
+        if (rise > LEDGE_SNAP) {
+          surface.current = ground;
+          vertical.current = 0;
+        } else if (rise > -0.02) {
+          // Climbing a slope stores the climb rate; that is what throws the car at the lip.
+          vertical.current = Math.min(MAX_LAUNCH_SPEED, rise / d);
+          surface.current = ground;
+        } else if (vertical.current > 1.2 || rise < -0.6) {
+          airborne.current = true;
+          drivingTelemetry.airTime = 0;
+          surface.current += vertical.current * d;
+        } else {
+          surface.current = ground;
+          vertical.current = 0;
+        }
+      }
+      ownPose.y = surface.current + RIDE_HEIGHT;
+      drivingTelemetry.airborne = airborne.current;
+
+      // Nose follows the slope on the ground and the arc in the air.
+      const aheadX = ownPose.x + Math.sin(ownPose.yaw) * 2.6,
+        aheadZ = ownPose.z + Math.cos(ownPose.yaw) * 2.6;
+      pitch.current = airborne.current
+        ? -THREE.MathUtils.clamp(vertical.current / 30, -0.4, 0.4)
+        : -Math.atan2(
+            groundHeightAt(city, aheadX, aheadZ, surface.current) -
+              groundHeightAt(city, 2 * ownPose.x - aheadX, 2 * ownPose.z - aheadZ, surface.current),
+            5.2,
+          );
+
       forward.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
       right.set(Math.cos(ownPose.yaw), -Math.sin(ownPose.yaw));
       const finalLongitudinal = velocity.current.dot(forward);
       const finalLateral = velocity.current.dot(right);
       const finalSpeed = velocity.current.length();
       const drifting =
+        !airborne.current &&
         finalSpeed > 10 &&
         Math.abs(finalLongitudinal) > 5 &&
         Math.abs(finalLateral) > Math.max(2.6, finalSpeed * 0.12);
+      const soaring = airborne.current && drivingTelemetry.airTime > 0.3;
 
-      if (drifting) {
-        driftGrace.current = 0.55;
+      if (drifting || soaring) {
+        driftGrace.current = Math.max(driftGrace.current, 0.55);
         driftHold.current = 1;
-        drivingTelemetry.driftScore += Math.abs(finalLateral) * finalSpeed * d * 0.85;
+        drivingTelemetry.driftScore += drifting
+          ? Math.abs(finalLateral) * finalSpeed * d * 0.85
+          : 150 * d;
         drivingTelemetry.combo = Math.min(8, 1 + Math.floor(drivingTelemetry.driftScore / 220));
-        drivingTelemetry.callout = driftCallout(drivingTelemetry.driftScore);
+        drivingTelemetry.callout = soaring ? "AIRBORNE!" : driftCallout(drivingTelemetry.driftScore);
       } else if (driftGrace.current > 0) {
         driftGrace.current = Math.max(0, driftGrace.current - d);
       } else if (driftHold.current > 0) {
@@ -282,6 +444,9 @@ export function OwnCar({
       drivingTelemetry.steer = 0;
       drivingTelemetry.throttle = 0;
       drivingTelemetry.boosting = false;
+      drivingTelemetry.airborne = false;
+      drivingTelemetry.airTime = 0;
+      pitch.current = 0;
     }
     ownPose.speed = velocity.current.length();
     if (group.current) {
@@ -299,8 +464,8 @@ export function OwnCar({
       );
       visual.current.rotation.x = THREE.MathUtils.lerp(
         visual.current.rotation.x,
-        drivingTelemetry.throttle * 0.035,
-        Math.min(1, d * 7),
+        pitch.current + drivingTelemetry.throttle * 0.035,
+        Math.min(1, d * 9),
       );
       visual.current.position.y = Math.sin(state.clock.elapsedTime * 17) * speedRatio * 0.018;
     }
