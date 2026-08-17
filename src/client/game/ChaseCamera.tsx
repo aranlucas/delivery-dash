@@ -60,7 +60,9 @@ export function ChaseCamera({ grid }: { grid: SpatialGrid }) {
         THREE.MathUtils.lerp(ownPose.z, desired.z, t),
       );
       if (obstructed(sample.x, sample.y, sample.z, grid)) {
-        safeT = Math.max(0.24, t - 0.16);
+        // A wall immediately behind the car needs a genuinely close camera. The previous 24%
+        // floor could still leave the lens inside the facade after a sharp turn into a building.
+        safeT = Math.max(0.08, t - 0.18);
         break;
       }
     }
@@ -89,7 +91,9 @@ export function ChaseCamera({ grid }: { grid: SpatialGrid }) {
     cameraPose.yaw = Math.atan2(look.x - camera.position.x, look.z - camera.position.z);
     const targetRoll = -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
     roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 1 - Math.exp(-d * 6));
-    camera.rotation.z = roll.current;
+    // lookAt writes the complete camera quaternion. Overwriting its Euler Z component can turn
+    // the horizon by 90 degrees at some headings, so apply drift lean around the local view axis.
+    camera.rotateZ(roll.current);
 
     const perspective = camera as THREE.PerspectiveCamera;
     const targetFov = 62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);

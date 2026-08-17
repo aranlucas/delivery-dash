@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   BLOCK_SIZE,
   GRID_SIZE,
@@ -169,6 +170,28 @@ type Instance = {
   rotX?: number;
   color?: string;
 };
+
+function mergeShape(parts: THREE.BufferGeometry[], label: string) {
+  const normalized = parts.map((part) => {
+    const flat = part.index ? part.toNonIndexed() : part.clone();
+
+    // These props use solid colors. Keeping only the shared attributes makes
+    // primitives from different geometry classes safe to merge.
+    for (const attribute of Object.keys(flat.attributes)) {
+      if (attribute !== "position" && attribute !== "normal") {
+        flat.deleteAttribute(attribute);
+      }
+    }
+    if (!flat.getAttribute("normal")) flat.computeVertexNormals();
+    return flat;
+  });
+
+  const geometry = mergeGeometries(normalized, false);
+  for (const part of normalized) part.dispose();
+  for (const part of parts) part.dispose();
+  if (!geometry) throw new Error(`City: failed to merge ${label}`);
+  return geometry;
+}
 
 function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
   useLayoutEffect(() => {
@@ -752,34 +775,47 @@ function StreetLights({ city }: { city: CityData }) {
   const { poles, heads } = useMemo(() => {
     const poles: Instance[] = [];
     const heads: Instance[] = [];
-    const put = (x: number, z: number) => {
+    const put = (x: number, z: number, yaw: number) => {
       if (nearExpressway(city, x, z, 1)) return;
-      poles.push({ pos: [x, 3.1, z], scale: [0.16, 6.2, 0.16] });
-      heads.push({ pos: [x, 6.4, z], scale: 0.42 });
+      poles.push({ pos: [x, 0, z], rotY: yaw });
+      heads.push({ pos: [x, 0, z], rotY: yaw });
     };
     for (let i = 0; i < GRID_SIZE; i++) {
       const c = roadCenter(i);
       for (let d = -WORLD_HALF + 20; d < WORLD_HALF - 10; d += 55) {
         // on the sidewalk slab (which extends 1.5 into the road), not on the asphalt
         const side = (Math.round(d / 55) % 2 === 0 ? 1 : -1) * (ROAD_WIDTH / 2 + 1.2);
-        put(c + side, d);
-        put(d, c + side);
+        put(c + side, d, side > 0 ? -Math.PI / 2 : Math.PI / 2);
+        put(d, c + side, side > 0 ? Math.PI : 0);
       }
     }
     return { poles, heads };
   }, [city]);
+  const poleGeometry = useMemo(() => {
+    const pole = new THREE.CylinderGeometry(0.08, 0.1, 6, 8);
+    pole.translate(0, 3, 0);
+    const arm = new THREE.CylinderGeometry(0.07, 0.07, 1.05, 8);
+    arm.rotateX(Math.PI / 2);
+    arm.translate(0, 6, 0.48);
+    const housing = new RoundedBoxGeometry(0.7, 0.24, 0.46, 1, 0.06);
+    housing.translate(0, 5.92, 0.96);
+    return mergeShape([pole, arm, housing], "streetlight");
+  }, []);
+  const lensGeometry = useMemo(() => {
+    const lens = new RoundedBoxGeometry(0.5, 0.08, 0.32, 1, 0.025);
+    lens.translate(0, 5.78, 0.96);
+    return lens;
+  }, []);
   const poleMesh = useRef<THREE.InstancedMesh>(null),
     headMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(poleMesh, poles);
   useInstances(headMesh, heads);
   return (
     <>
-      <instancedMesh ref={poleMesh} args={[undefined, undefined, poles.length]}>
-        <cylinderGeometry args={[0.5, 0.5, 1, 6]} />
+      <instancedMesh ref={poleMesh} args={[poleGeometry, undefined, poles.length]} castShadow>
         <meshStandardMaterial color="#3a3f46" metalness={0.6} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={headMesh} args={[undefined, undefined, heads.length]}>
-        <sphereGeometry args={[1, 10, 8]} />
+      <instancedMesh ref={headMesh} args={[lensGeometry, undefined, heads.length]}>
         <meshStandardMaterial color="#ffe9bd" emissive="#ffdf9e" emissiveIntensity={2.4} />
       </instancedMesh>
     </>
@@ -954,17 +990,50 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
             n < 2 ? [cx + alongEdge, cz + side * walk] : [cx + side * walk, cz + alongEdge];
           if (nearExpressway(city, x, z, 2)) continue;
           const roll = rng();
-          if (roll < 0.34) hydrants.push({ pos: [x, 0.68, z], scale: [0.34, 0.9, 0.34] });
+          if (roll < 0.34) hydrants.push({ pos: [x, 0, z] });
           else if (roll < 0.68) bins.push({ pos: [x, 0.75, z], scale: [0.7, 1.05, 0.7] });
           else
             benches.push({
-              pos: [x, 0.62, z],
-              scale: n < 2 ? [2.8, 0.36, 0.7] : [0.7, 0.36, 2.8],
+              pos: [x, 0, z],
+              rotY: n < 2 ? 0 : Math.PI / 2,
             });
         }
       }
     return { hydrants, bins, benches };
   }, [city, seed]);
+  const hydrantGeometry = useMemo(() => {
+    const foot = new THREE.CylinderGeometry(0.34, 0.34, 0.2, 10);
+    foot.translate(0, 0.12, 0);
+    const body = new THREE.CylinderGeometry(0.25, 0.25, 0.82, 10);
+    body.translate(0, 0.61, 0);
+    const dome = new THREE.SphereGeometry(0.25, 10, 5);
+    dome.scale(1, 0.72, 1);
+    dome.translate(0, 1.02, 0);
+    const stem = new THREE.CylinderGeometry(0.11, 0.11, 0.25, 8);
+    stem.translate(0, 1.2, 0);
+    const parts = [foot, body, dome, stem];
+    for (const side of [-1, 1]) {
+      const port = new THREE.CylinderGeometry(0.12, 0.12, 0.22, 8);
+      port.rotateZ(Math.PI / 2);
+      port.translate(side * 0.3, 0.76, 0);
+      parts.push(port);
+    }
+    return mergeShape(parts, "hydrant");
+  }, []);
+  const benchGeometry = useMemo(() => {
+    const seat = new RoundedBoxGeometry(2.8, 0.16, 0.68, 1, 0.04);
+    seat.translate(0, 0.72, 0);
+    const back = new RoundedBoxGeometry(2.8, 0.72, 0.15, 1, 0.04);
+    back.rotateX(-0.16);
+    back.translate(0, 1.12, 0.28);
+    const parts = [seat, back];
+    for (const side of [-1, 1]) {
+      const leg = new RoundedBoxGeometry(0.18, 0.68, 0.48, 1, 0.035);
+      leg.translate(side * 0.92, 0.34, 0);
+      parts.push(leg);
+    }
+    return mergeShape(parts, "bench");
+  }, []);
   const hydrantMesh = useRef<THREE.InstancedMesh>(null),
     binMesh = useRef<THREE.InstancedMesh>(null),
     benchMesh = useRef<THREE.InstancedMesh>(null);
@@ -973,16 +1042,22 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
   useInstances(benchMesh, benches);
   return (
     <>
-      <instancedMesh ref={hydrantMesh} args={[undefined, undefined, hydrants.length]} castShadow>
-        <cylinderGeometry args={[0.5, 0.6, 1, 8]} />
+      <instancedMesh
+        ref={hydrantMesh}
+        args={[hydrantGeometry, undefined, hydrants.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#d43a2a" roughness={0.7} />
       </instancedMesh>
       <instancedMesh ref={binMesh} args={[undefined, undefined, bins.length]} castShadow>
         <cylinderGeometry args={[0.5, 0.42, 1, 10]} />
         <meshStandardMaterial color="#2f3a34" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={benchMesh} args={[undefined, undefined, benches.length]} castShadow>
-        <boxGeometry />
+      <instancedMesh
+        ref={benchMesh}
+        args={[benchGeometry, undefined, benches.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#8a5a33" roughness={0.95} />
       </instancedMesh>
     </>
