@@ -603,6 +603,29 @@ function BoostPads({ city }: { city: CityData }) {
   );
 }
 
+/** A tapered, downward-curving palm blade: ten triangles instead of a stretched icosahedron. */
+function makePalmFrondGeometry() {
+  const segments = 5;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let step = 0; step <= segments; step++) {
+    const progress = step / segments;
+    const width = Math.sin(progress * Math.PI) * 0.48 + (1 - progress) * 0.05;
+    const drop = progress * progress * 1.15;
+    const distance = progress * 3.5;
+    positions.push(-width, -drop, distance, width, -drop, distance);
+  }
+  for (let step = 0; step < segments; step++) {
+    const left = step * 2;
+    indices.push(left, left + 2, left + 1, left + 1, left + 2, left + 3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   const { trunks, fronds } = useMemo(() => {
     const rng = mulberry32(seed ^ 0xc0a57),
@@ -619,17 +642,18 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
       if (nearExpressway(city, x, z, 3)) continue;
       const h = 6.6 + rng() * 2.3;
       trunks.push({ pos: [x, h / 2, z], scale: [0.42, h, 0.42], rotY: rng() });
-      for (let f = 0; f < 6; f++) {
-        const yaw = (f / 6) * Math.PI * 2 + rng() * 0.24;
+      for (let f = 0; f < 7; f++) {
+        const yaw = (f / 7) * Math.PI * 2 + rng() * 0.2;
         fronds.push({
-          pos: [x + Math.sin(yaw) * 1.8, h + 0.45, z + Math.cos(yaw) * 1.8],
-          scale: [0.58, 0.2, 3.5],
+          pos: [x, h + 0.5, z],
+          scale: [0.88 + rng() * 0.2, 0.85 + rng() * 0.15, 0.9 + rng() * 0.16],
           rotY: yaw,
         });
       }
     }
     return { trunks, fronds };
   }, [city, seed]);
+  const frondGeometry = useMemo(makePalmFrondGeometry, []);
   const trunkMesh = useRef<THREE.InstancedMesh>(null),
     frondMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(trunkMesh, trunks);
@@ -640,9 +664,12 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
         <cylinderGeometry args={[0.7, 1, 1, 7]} />
         <meshStandardMaterial color="#8e542d" roughness={0.96} />
       </instancedMesh>
-      <instancedMesh ref={frondMesh} args={[undefined, undefined, fronds.length]} castShadow>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial color="#27a653" roughness={0.88} flatShading />
+      <instancedMesh
+        ref={frondMesh}
+        args={[frondGeometry, undefined, fronds.length]}
+        castShadow
+      >
+        <meshStandardMaterial color="#27a653" roughness={0.88} flatShading side={THREE.DoubleSide} />
       </instancedMesh>
     </>
   );

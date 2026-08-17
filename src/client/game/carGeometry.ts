@@ -171,6 +171,8 @@ export const SPORTS_SPEC: CarSpec = {
   ],
 };
 
+export const CAR_ORIGIN_HEIGHT = 0.8;
+
 function normalize(geometry: THREE.BufferGeometry) {
   const flat = geometry.index ? geometry.toNonIndexed() : geometry.clone();
   for (const name of Object.keys(flat.attributes))
@@ -369,7 +371,50 @@ function buildTrim(spec: CarSpec) {
     const mirror = new THREE.BoxGeometry(0.3, 0.12, 0.26);
     mirror.translate(side * (spec.width / 2 + 0.12), spec.sill + top * 0.95, spec.length * 0.14);
     parts.push(mirror);
+
+    // A shallow liner sits behind each tyre. It reads as a real wheel well without the heavy,
+    // bolt-on fender arches rejected in the Blender silhouette study.
+    for (const position of [spec.axleInset, 1 - spec.axleInset]) {
+      const well = new THREE.CylinderGeometry(
+        spec.wheelRadius * 1.11,
+        spec.wheelRadius * 1.11,
+        spec.wheelWidth * 0.16,
+        16,
+        1,
+      );
+      well.rotateZ(Math.PI / 2);
+      well.translate(
+        side * (bodyHalfWidth(spec, position) - spec.wheelWidth * 0.1),
+        spec.wheelRadius - CAR_ORIGIN_HEIGHT,
+        -spec.length / 2 + position * spec.length,
+      );
+      parts.push(well);
+    }
+
+    const rocker = new THREE.BoxGeometry(0.12, 0.18, spec.length * 0.54);
+    rocker.translate(side * (spec.width / 2 + 0.01), spec.sill + 0.16, 0);
+    parts.push(rocker);
+
+    // One flush B-pillar per side breaks the glasshouse into readable front and rear windows.
+    const cabinMiddle = spec.cabin[Math.floor(spec.cabin.length / 2)]!;
+    const [, cabinWidth, cabinBottom, cabinTop] = cabinMiddle;
+    const pillarHeight = Math.max(0.3, cabinTop - cabinBottom - 0.08);
+    const pillar = new THREE.BoxGeometry(0.07, pillarHeight, 0.13);
+    pillar.translate(
+      side * ((spec.width / 2) * cabinWidth + 0.01),
+      spec.sill + cabinBottom + pillarHeight / 2,
+      -spec.length / 2 + cabinMiddle[0] * spec.length,
+    );
+    parts.push(pillar);
   }
+
+  const grille = new THREE.BoxGeometry(spec.width * 0.46, 0.24, 0.08);
+  grille.translate(0, spec.sill + 0.35, spec.length / 2 + 0.01);
+  parts.push(grille);
+
+  const diffuser = new THREE.BoxGeometry(spec.width * 0.5, 0.18, 0.11);
+  diffuser.translate(0, spec.sill + 0.19, -spec.length / 2 - 0.015);
+  parts.push(diffuser);
   if (spec.hasLightBar) {
     const peak = Math.max(...spec.cabin.map((station) => station[3]));
     const bar = new THREE.BoxGeometry(1, 0.34, 0.66);
@@ -448,8 +493,6 @@ export const CAR_GEOMETRY = {
   sports: buildCarGeometry(SPORTS_SPEC),
 };
 export type CarKind = keyof typeof CAR_GEOMETRY;
-
-export const CAR_ORIGIN_HEIGHT = 0.8;
 
 export function wheelPositions(spec: CarSpec): [number, number, number][] {
   const y = spec.wheelRadius - CAR_ORIGIN_HEIGHT;
