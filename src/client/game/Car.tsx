@@ -1,6 +1,6 @@
 import { Billboard, RoundedBox, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useRef } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { TICK_HZ, type Phase } from "../../shared/protocol";
 import { blocked, groundHeightAt, type City } from "../../shared/city";
@@ -105,26 +105,26 @@ const WHEEL_POSITIONS = [
 ] as const;
 const EXHAUST_POSITIONS = [-0.7, 0.7] as const;
 
-export function OwnCar({
-  spawn,
-  spawnYaw = 0,
-  city,
-  phase,
-  color,
-  carrying,
-}: {
+type OwnCarProps = {
   spawn: [number, number];
   spawnYaw?: number;
   city: City;
   phase: Phase;
   color: string;
   carrying: boolean;
-}) {
+};
+
+function useOwnCarController({
+  spawn,
+  spawnYaw = 0,
+  city,
+  phase,
+}: OwnCarProps) {
   const group = useRef<THREE.Group>(null);
   const visual = useRef<THREE.Group>(null);
-  const velocity = useRef(new THREE.Vector2());
-  const forwardVector = useRef(new THREE.Vector2());
-  const rightVector = useRef(new THREE.Vector2());
+  const [velocity] = useState(() => new THREE.Vector2());
+  const [forwardVector] = useState(() => new THREE.Vector2());
+  const [rightVector] = useState(() => new THREE.Vector2());
   const driftGrace = useRef(0);
   const driftHold = useRef(0);
   const sent = useRef(0);
@@ -145,7 +145,7 @@ export function OwnCar({
     ownPose.speed = 0;
     signedWheelSpeed = 0;
     sent.current = 0;
-    velocity.current.set(0, 0);
+    velocity.set(0, 0);
     driftGrace.current = 0;
     driftHold.current = 0;
     surface.current = 0;
@@ -153,7 +153,7 @@ export function OwnCar({
     airborne.current = false;
     padCooldown.current = 0;
     resetTelemetry();
-  }, [spawnX, spawnZ, spawnYaw]);
+  }, [spawnX, spawnZ, spawnYaw, velocity]);
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
       const target = event.target;
@@ -209,9 +209,9 @@ export function OwnCar({
       const handbrake = pressed.has(" ") || pressed.has("space");
       const boostHeld = pressed.has("shift");
       const flying = airborne.current;
-      const forward = forwardVector.current.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
-      let longitudinal = velocity.current.dot(forward);
-      const speedBeforeSteer = velocity.current.length();
+      const forward = forwardVector.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
+      let longitudinal = velocity.dot(forward);
+      const speedBeforeSteer = velocity.length();
       if (flying) {
         // Mid-air the wheels have nothing to bite: steering only aims the landing.
         ownPose.yaw += steer * AIR_STEER_RATE * d;
@@ -227,9 +227,9 @@ export function OwnCar({
       }
 
       forward.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
-      const right = rightVector.current.set(Math.cos(ownPose.yaw), -Math.sin(ownPose.yaw));
-      longitudinal = velocity.current.dot(forward);
-      let lateral = velocity.current.dot(right);
+      const right = rightVector.set(Math.cos(ownPose.yaw), -Math.sin(ownPose.yaw));
+      longitudinal = velocity.dot(forward);
+      let lateral = velocity.dot(right);
       const boosting =
         !flying && boostHeld && throttle > 0 && longitudinal > -1 && drivingTelemetry.boost > 0;
       const maxForward = boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
@@ -264,14 +264,14 @@ export function OwnCar({
       // Keep a world-space lateral component. Low grip on the handbrake lets
       // the car rotate underneath its momentum instead of snapping to forward.
       lateral *= Math.exp(-(flying ? 0.12 : handbrake ? 0.65 : 3.8) * d);
-      velocity.current.copy(forward).multiplyScalar(longitudinal).addScaledVector(right, lateral);
+      velocity.copy(forward).multiplyScalar(longitudinal).addScaledVector(right, lateral);
 
       const speedLimit =
         longitudinal < 0 ? REVERSE_MAX_SPEED : boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
-      const totalSpeed = velocity.current.length();
+      const totalSpeed = velocity.length();
       if (totalSpeed > speedLimit) {
         const easedLimit = boosting ? speedLimit : Math.max(speedLimit, totalSpeed - 9 * d);
-        velocity.current.setLength(easedLimit);
+        velocity.setLength(easedLimit);
       }
 
       if (boosting)
@@ -285,12 +285,12 @@ export function OwnCar({
           drivingTelemetry.boost + BOOST_RECHARGE_PER_SECOND * d,
         );
 
-      const nx = ownPose.x + velocity.current.x * d,
-        nz = ownPose.z + velocity.current.y * d;
+      const nx = ownPose.x + velocity.x * d,
+        nz = ownPose.z + velocity.y * d;
       if (!blocked(city, nx, ownPose.z, surface.current)) ownPose.x = nx;
       else {
-        const impact = Math.abs(velocity.current.x);
-        velocity.current.x *= -COLLISION_BOUNCE;
+        const impact = Math.abs(velocity.x);
+        velocity.x *= -COLLISION_BOUNCE;
         drivingTelemetry.impactPulse = Math.max(
           drivingTelemetry.impactPulse,
           THREE.MathUtils.clamp(impact / 18, 0.18, 1),
@@ -298,8 +298,8 @@ export function OwnCar({
       }
       if (!blocked(city, ownPose.x, nz, surface.current)) ownPose.z = nz;
       else {
-        const impact = Math.abs(velocity.current.y);
-        velocity.current.y *= -COLLISION_BOUNCE;
+        const impact = Math.abs(velocity.y);
+        velocity.y *= -COLLISION_BOUNCE;
         drivingTelemetry.impactPulse = Math.max(
           drivingTelemetry.impactPulse,
           THREE.MathUtils.clamp(impact / 18, 0.18, 1),
@@ -310,7 +310,7 @@ export function OwnCar({
         blocked(city, ownPose.x, ownPose.z, surface.current) &&
         unstick(city, ownPose, surface.current, 14 * d)
       )
-        velocity.current.multiplyScalar(0.4);
+        velocity.multiplyScalar(0.4);
 
       // Traffic shoves rather than walls: clipping a city car costs speed, not the run.
       if (surface.current < 2)
@@ -322,7 +322,7 @@ export function OwnCar({
           const push = TRAFFIC_RADIUS - distance;
           ownPose.x += (dx / distance) * push;
           ownPose.z += (dz / distance) * push;
-          velocity.current.multiplyScalar(0.82);
+          velocity.multiplyScalar(0.82);
           drivingTelemetry.impactPulse = Math.max(drivingTelemetry.impactPulse, 0.45);
           break;
         }
@@ -338,8 +338,8 @@ export function OwnCar({
           drivingTelemetry.callout = "TURBO!";
           drivingTelemetry.driftScore += 90;
           driftGrace.current = 0.5;
-          const along = velocity.current.dot(forward);
-          velocity.current.addScaledVector(
+          const along = velocity.dot(forward);
+          velocity.addScaledVector(
             forward,
             Math.max(0, Math.min(BOOST_PAD_IMPULSE, BOOST_PAD_MAX_SPEED - along)),
           );
@@ -406,9 +406,9 @@ export function OwnCar({
 
       forward.set(Math.sin(ownPose.yaw), Math.cos(ownPose.yaw));
       right.set(Math.cos(ownPose.yaw), -Math.sin(ownPose.yaw));
-      const finalLongitudinal = velocity.current.dot(forward);
-      const finalLateral = velocity.current.dot(right);
-      const finalSpeed = velocity.current.length();
+      const finalLongitudinal = velocity.dot(forward);
+      const finalLateral = velocity.dot(right);
+      const finalSpeed = velocity.length();
       const drifting =
         !airborne.current &&
         finalSpeed > 10 &&
@@ -448,7 +448,7 @@ export function OwnCar({
       drivingTelemetry.airTime = 0;
       pitch.current = 0;
     }
-    ownPose.speed = velocity.current.length();
+    ownPose.speed = velocity.length();
     if (group.current) {
       group.current.position.set(ownPose.x, ownPose.y, ownPose.z);
       group.current.rotation.y = ownPose.yaw;
@@ -475,6 +475,12 @@ export function OwnCar({
       send({ t: "pos", ...ownPose });
     }
   });
+  return { group, visual };
+}
+
+export function OwnCar(props: OwnCarProps) {
+  const { color, carrying } = props;
+  const { group, visual } = useOwnCarController(props);
   return (
     <group ref={group}>
       <group ref={visual}>

@@ -13,15 +13,18 @@ function shortestAngle(from: number, to: number) {
 }
 
 function obstructed(x: number, y: number, z: number, boxes: AABB[]) {
-  return boxes.some(
-    (box) =>
+  for (const box of boxes) {
+    if (
       y < box.top &&
       y > box.base - 1 &&
       x > box.minX - 1.2 &&
       x < box.maxX + 1.2 &&
       z > box.minZ - 1.2 &&
-      z < box.maxZ + 1.2,
-  );
+      z < box.maxZ + 1.2
+    )
+      return true;
+  }
+  return false;
 }
 
 export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
@@ -82,7 +85,7 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
     camera.lookAt(look);
     const targetRoll = -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
     roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 1 - Math.exp(-d * 6));
-    camera.rotation.z += roll.current;
+    camera.rotation.z = roll.current;
 
     const perspective = camera as THREE.PerspectiveCamera;
     const targetFov = 62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);
