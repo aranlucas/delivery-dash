@@ -557,7 +557,12 @@ function Expressway({ city }: { city: CityData }) {
       </instancedMesh>
       <instancedMesh ref={railMesh} args={[undefined, undefined, Math.max(1, rails.length)]}>
         <boxGeometry />
-        <meshStandardMaterial color="#ffd400" emissive="#a35c00" emissiveIntensity={0.35} roughness={0.6} />
+        <meshStandardMaterial
+          color="#ffd400"
+          emissive="#a35c00"
+          emissiveIntensity={0.35}
+          roughness={0.6}
+        />
       </instancedMesh>
     </>
   );
@@ -567,7 +572,12 @@ function BoostPads({ city }: { city: CityData }) {
   const texture = useMemo(makeBoostPadTexture, []);
   useEffect(() => () => texture.dispose(), [texture]);
   const pads = useMemo<Instance[]>(
-    () => city.boostPads.map((p) => ({ pos: [p.x, p.y + 0.09, p.z], scale: [3.4, 0.1, 8], rotY: p.yaw })),
+    () =>
+      city.boostPads.map((p) => ({
+        pos: [p.x, p.y + 0.09, p.z],
+        scale: [3.4, 0.1, 8],
+        rotY: p.yaw,
+      })),
     [city],
   );
   const mesh = useRef<THREE.InstancedMesh>(null);
@@ -575,7 +585,12 @@ function BoostPads({ city }: { city: CityData }) {
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(1, pads.length)]}>
       <boxGeometry />
-      <meshStandardMaterial map={texture} emissiveMap={texture} emissive="#3ad9ff" emissiveIntensity={1.5} />
+      <meshStandardMaterial
+        map={texture}
+        emissiveMap={texture}
+        emissive="#3ad9ff"
+        emissiveIntensity={1.5}
+      />
     </instancedMesh>
   );
 }
@@ -958,7 +973,8 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
           pos: [b.x - (rng() - 0.5) * b.w * 0.4, b.h + 1.7, b.z - (rng() - 0.5) * b.d * 0.4],
           scale: [1.5, 3.4, 1.5],
         });
-      if (b.h > 30 && rng() < 0.7) masts.push({ pos: [b.x, b.h + 4.5, b.z], scale: [0.22, 9, 0.22] });
+      if (b.h > 30 && rng() < 0.7)
+        masts.push({ pos: [b.x, b.h + 4.5, b.z], scale: [0.22, 9, 0.22] });
     }
     return { huts, tanks, masts };
   }, [city, seed]);
@@ -970,11 +986,19 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
   useInstances(mastMesh, masts);
   return (
     <>
-      <instancedMesh ref={hutMesh} args={[undefined, undefined, Math.max(1, huts.length)]} castShadow>
+      <instancedMesh
+        ref={hutMesh}
+        args={[undefined, undefined, Math.max(1, huts.length)]}
+        castShadow
+      >
         <boxGeometry />
         <meshStandardMaterial color="#9aa1a8" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={tankMesh} args={[undefined, undefined, Math.max(1, tanks.length)]} castShadow>
+      <instancedMesh
+        ref={tankMesh}
+        args={[undefined, undefined, Math.max(1, tanks.length)]}
+        castShadow
+      >
         <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
         <meshStandardMaterial color="#7d5a3c" roughness={0.95} />
       </instancedMesh>

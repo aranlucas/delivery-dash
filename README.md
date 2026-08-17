@@ -35,13 +35,13 @@ Open the local URL printed by Vite. Create a four-letter room code or join an ex
 
 ## Controls
 
-| Input | Action |
-| --- | --- |
-| `W` / `Up` | Accelerate |
-| `S` / `Down` | Brake and reverse |
-| `A` / `D` or arrow keys | Steer |
-| `Space` | Drift |
-| `Shift` | Boost |
+| Input                   | Action            |
+| ----------------------- | ----------------- |
+| `W` / `Up`              | Accelerate        |
+| `S` / `Down`            | Brake and reverse |
+| `A` / `D` or arrow keys | Steer             |
+| `Space`                 | Drift             |
+| `Shift`                 | Boost             |
 
 Ramps launch the car; steering still works in the air, and long air time pays out score and boost.
 Cyan strips top the boost meter up and shove you forward — line one up with a ramp for the big jumps.

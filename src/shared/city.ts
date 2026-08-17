@@ -322,7 +322,14 @@ function buildExpressways() {
 
     for (let u = deckStart + PITCH; u < deckEnd - 10; u += PITCH * 2) {
       const [px, pz] = at(u);
-      pillars.push({ minX: px - 1.2, maxX: px + 1.2, minZ: pz - 1.2, maxZ: pz + 1.2, base: 0, top: spec.height });
+      pillars.push({
+        minX: px - 1.2,
+        maxX: px + 1.2,
+        minZ: pz - 1.2,
+        maxZ: pz + 1.2,
+        base: 0,
+        top: spec.height,
+      });
     }
 
     // Guardrails in segments, with gaps at the junction and every 160 units for jump-offs.
@@ -374,7 +381,11 @@ function buildExpressways() {
       ) &&
       !ramps.some((ramp) => {
         if (ramp.height >= pillar.top) return false;
-        const surface = rampSurface(ramp, (pillar.minX + pillar.maxX) / 2, (pillar.minZ + pillar.maxZ) / 2);
+        const surface = rampSurface(
+          ramp,
+          (pillar.minX + pillar.maxX) / 2,
+          (pillar.minZ + pillar.maxZ) / 2,
+        );
         return surface !== undefined && surface > 1;
       }),
   );
@@ -463,7 +474,8 @@ const SPAWN_ROAD = 3;
 const PARKING_OFFSET = 4.5;
 const TRAFFIC_LANE_OFFSET = 2.6;
 const parkingSide = (roadIndex: number) => (roadIndex % 2 ? 1 : -1);
-const isSpawnRoad = (axis: "x" | "z", roadIndex: number) => axis === "x" && roadIndex === SPAWN_ROAD;
+const isSpawnRoad = (axis: "x" | "z", roadIndex: number) =>
+  axis === "x" && roadIndex === SPAWN_ROAD;
 export const PARKED_CAR_HALF_LENGTH = 2.3;
 export const PARKED_CAR_HALF_WIDTH = 1.25;
 
@@ -538,7 +550,9 @@ export function generateCity(seed: number): City {
     Math.abs(z) < WORLD_HALF - 4 &&
     !ramps.some((ramp) => (rampSurface(ramp, x, z) ?? 0) > 0.4) &&
     !structures.pillars.some(
-      (pillar) => Math.abs(x - (pillar.minX + pillar.maxX) / 2) < 6 && Math.abs(z - (pillar.minZ + pillar.maxZ) / 2) < 6,
+      (pillar) =>
+        Math.abs(x - (pillar.minX + pillar.maxX) / 2) < 6 &&
+        Math.abs(z - (pillar.minZ + pillar.maxZ) / 2) < 6,
     );
 
   // Places pull from their own random stream so buildings can avoid their footprints.
@@ -557,10 +571,12 @@ export function generateCity(seed: number): City {
         [1, 1],
       ] as const) {
         const pos: Pos2 = [cx + sx * edge, cz + sz * edge];
-        const stops = ([
-          [cx + sx * lane, cz + sz * edge],
-          [cx + sx * edge, cz + sz * lane],
-        ] as Pos2[]).filter(usableStop);
+        const stops = (
+          [
+            [cx + sx * lane, cz + sz * edge],
+            [cx + sx * edge, cz + sz * lane],
+          ] as Pos2[]
+        ).filter(usableStop);
         if (stops.length) corners.push({ pos, stops });
       }
     }
@@ -624,9 +640,23 @@ export function generateCity(seed: number): City {
   }));
   // Restaurants (8.5×6, 5.2 tall) and houses (6×6, 5.1 tall) are solid too.
   for (const [px, pz] of placePoints.slice(0, restaurants.length))
-    buildingAABBs.push({ minX: px - 4.25, maxX: px + 4.25, minZ: pz - 3, maxZ: pz + 3, base: 0, top: 5.2 });
+    buildingAABBs.push({
+      minX: px - 4.25,
+      maxX: px + 4.25,
+      minZ: pz - 3,
+      maxZ: pz + 3,
+      base: 0,
+      top: 5.2,
+    });
   for (const [px, pz] of placePoints.slice(restaurants.length))
-    buildingAABBs.push({ minX: px - 3, maxX: px + 3, minZ: pz - 3, maxZ: pz + 3, base: 0, top: 5.1 });
+    buildingAABBs.push({
+      minX: px - 3,
+      maxX: px + 3,
+      minZ: pz - 3,
+      maxZ: pz + 3,
+      base: 0,
+      top: 5.1,
+    });
   buildingAABBs.push(...structures.pillars, ...structures.rails);
 
   const parkedCars = buildParking(

@@ -55,10 +55,16 @@ export function Menu() {
             maxLength={20}
             autoComplete="nickname"
           />
-          <button className="arcade-button arcade-button-primary" type="submit" disabled={!name.trim()}>
+          <button
+            className="arcade-button arcade-button-primary"
+            type="submit"
+            disabled={!name.trim()}
+          >
             START A NEW RACE
           </button>
-          <div className="join-divider"><span>OR JOIN A CREW</span></div>
+          <div className="join-divider">
+            <span>OR JOIN A CREW</span>
+          </div>
           <div className="join-row">
             <input
               aria-label="Room code"
@@ -83,13 +89,23 @@ export function Menu() {
               JOIN
             </button>
           </div>
-          {error ? <p className="arcade-error" role="alert">{error}</p> : null}
+          {error ? (
+            <p className="arcade-error" role="alert">
+              {error}
+            </p>
+          ) : null}
         </form>
 
         <div className="control-strip" aria-label="Driving controls">
-          <span><kbd>WASD</kbd> DRIVE</span>
-          <span><kbd>SPACE</kbd> DRIFT</span>
-          <span><kbd>SHIFT</kbd> BOOST</span>
+          <span>
+            <kbd>WASD</kbd> DRIVE
+          </span>
+          <span>
+            <kbd>SPACE</kbd> DRIFT
+          </span>
+          <span>
+            <kbd>SHIFT</kbd> BOOST
+          </span>
         </div>
       </section>
     </main>
@@ -108,7 +124,10 @@ export function Lobby() {
   return (
     <aside className="lobby-panel arcade-panel">
       <div className="panel-kicker">STARTING GRID</div>
-      <div className="room-code"><small>ROOM</small><strong>{room}</strong></div>
+      <div className="room-code">
+        <small>ROOM</small>
+        <strong>{room}</strong>
+      </div>
       <div className="lobby-roster">
         {players.map((player, index) => (
           <div className="lobby-driver" key={player.id}>
@@ -132,7 +151,11 @@ export function Lobby() {
         </button>
       )}
       <p className="lobby-hint">FREE ROAM IS OPEN · WASD TO DRIVE</p>
-      {error ? <p className="arcade-error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="arcade-error" role="alert">
+          {error}
+        </p>
+      ) : null}
       <button
         className="leave-room"
         onClick={() => {
@@ -148,7 +171,15 @@ export function Lobby() {
 
 const MINIMAP_SIZE = 190;
 /** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
-function Minimap({ city, target, dropoff }: { city: City; target?: [number, number]; dropoff: boolean }) {
+function Minimap({
+  city,
+  target,
+  dropoff,
+}: {
+  city: City;
+  target?: [number, number];
+  dropoff: boolean;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const players = useGameStore((state) => state.players);
   const selfId = useGameStore((state) => state.selfId);
@@ -257,9 +288,7 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
     return () => cancelAnimationFrame(frame);
   }, [city, target, dropoff, players, selfId]);
 
-  return (
-    <canvas className="minimap" ref={canvas} aria-hidden="true" />
-  );
+  return <canvas className="minimap" ref={canvas} aria-hidden="true" />;
 }
 
 function formatTime(seconds: number) {
@@ -327,39 +356,78 @@ export function HUD() {
 
       <section className="order-progress hud-panel">
         <span>ORDER</span>
-        <strong>{Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} / {DELIVERIES_TO_WIN}</strong>
-        <div className="delivery-boxes" aria-label={`${self.deliveries} of ${DELIVERIES_TO_WIN} deliveries`}>
+        <strong>
+          {Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} / {DELIVERIES_TO_WIN}
+        </strong>
+        <div
+          className="delivery-boxes"
+          aria-label={`${self.deliveries} of ${DELIVERIES_TO_WIN} deliveries`}
+        >
           {Array.from({ length: DELIVERIES_TO_WIN }, (_, index) => (
-            <i key={index} className={index < self.deliveries ? "is-complete" : index === self.deliveries ? "is-current" : ""} />
+            <i
+              key={index}
+              className={
+                index < self.deliveries
+                  ? "is-complete"
+                  : index === self.deliveries
+                    ? "is-current"
+                    : ""
+              }
+            />
           ))}
         </div>
       </section>
 
       <section className={`destination-banner ${self.leg === "dropoff" ? "is-dropoff" : ""}`}>
-        <div>{self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i /> <strong>{target?.name}</strong></div>
-        <b>{Math.round(distance)}<small>m</small></b>
-        <span className="destination-arrow" style={{ transform: `rotate(${arrowAngle}rad)` }} aria-hidden="true" />
+        <div>
+          {self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i /> <strong>{target?.name}</strong>
+        </div>
+        <b>
+          {Math.round(distance)}
+          <small>m</small>
+        </b>
+        <span
+          className="destination-arrow"
+          style={{ transform: `rotate(${arrowAngle}rad)` }}
+          aria-hidden="true"
+        />
       </section>
 
       <section className="race-panel hud-panel">
-        <header><strong>RACE</strong><span>{formatTime(elapsed)}</span></header>
+        <header>
+          <strong>RACE</strong>
+          <span>{formatTime(elapsed)}</span>
+        </header>
         {sortedPlayers.slice(0, 5).map((player, index) => (
           <div className={player.id === self.id ? "is-self" : ""} key={player.id}>
             <b>{index + 1}</b>
             <i style={{ background: player.color }} />
             <span>{player.name}</span>
-            <em>{player.deliveries}/{DELIVERIES_TO_WIN}</em>
+            <em>
+              {player.deliveries}/{DELIVERIES_TO_WIN}
+            </em>
           </div>
         ))}
       </section>
 
       <section
         className="speed-cluster"
-        style={{ "--speed": `${Math.max(8, speedRatio)}%`, "--boost": `${drivingTelemetry.boost}%` } as React.CSSProperties}
+        style={
+          {
+            "--speed": `${Math.max(8, speedRatio)}%`,
+            "--boost": `${drivingTelemetry.boost}%`,
+          } as React.CSSProperties
+        }
         aria-label={`${speed} kilometers per hour, ${Math.round(drivingTelemetry.boost)} percent boost`}
       >
-        <div className="speed-dial"><strong>{speed}</strong><span>KM/H</span></div>
-        <div className="boost-meter"><i /><b>BOOST</b></div>
+        <div className="speed-dial">
+          <strong>{speed}</strong>
+          <span>KM/H</span>
+        </div>
+        <div className="boost-meter">
+          <i />
+          <b>BOOST</b>
+        </div>
       </section>
 
       <Minimap city={city} target={target?.stop} dropoff={self.leg === "dropoff"} />
@@ -369,7 +437,10 @@ export function HUD() {
         <span>{drivingTelemetry.airTime.toFixed(1)}s</span>
       </div>
 
-      <div className={`stunt-callout ${drivingTelemetry.callout ? "is-visible" : ""}`} aria-live="polite">
+      <div
+        className={`stunt-callout ${drivingTelemetry.callout ? "is-visible" : ""}`}
+        aria-live="polite"
+      >
         <strong>{drivingTelemetry.callout}</strong>
         <span>+{Math.round(drivingTelemetry.driftScore)}</span>
       </div>
@@ -386,7 +457,9 @@ function Reconnect() {
       <section className="arcade-panel reconnect-panel">
         <h2>CONNECTION LOST</h2>
         <p>Your taxi is waiting at the curb.</p>
-        <button className="arcade-button arcade-button-primary" onClick={rejoin}>REJOIN RACE</button>
+        <button className="arcade-button arcade-button-primary" onClick={rejoin}>
+          REJOIN RACE
+        </button>
       </section>
     </div>
   );
@@ -401,7 +474,9 @@ export function WinnerScreen() {
         <h1>RACE COMPLETE!</h1>
         {standings.map((player, index) => (
           <div className={index === 0 ? "winner-row is-first" : "winner-row"} key={player.id}>
-            <b>{index + 1}</b><span>{player.name}</span><em>{player.deliveries} DELIVERIES</em>
+            <b>{index + 1}</b>
+            <span>{player.name}</span>
+            <em>{player.deliveries} DELIVERIES</em>
           </div>
         ))}
         <small>RETURNING TO THE GRID…</small>

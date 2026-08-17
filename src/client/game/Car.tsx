@@ -245,12 +245,12 @@ function useOwnCarController({
               ? 0
               : FORWARD_ACCELERATION + (boosting ? 24 : 0)) * d;
       } else if (throttle < 0) {
-        longitudinal -=
-          (longitudinal > 0 ? BRAKE_DECELERATION : REVERSE_ACCELERATION) * d;
+        longitudinal -= (longitudinal > 0 ? BRAKE_DECELERATION : REVERSE_ACCELERATION) * d;
       } else {
         longitudinal = approachZero(longitudinal, COAST_DECELERATION * d);
       }
-      if (handbrake && !flying) longitudinal = approachZero(longitudinal, HANDBRAKE_DECELERATION * d);
+      if (handbrake && !flying)
+        longitudinal = approachZero(longitudinal, HANDBRAKE_DECELERATION * d);
 
       if (longitudinal >= 0) {
         longitudinal =
@@ -275,10 +275,7 @@ function useOwnCarController({
       }
 
       if (boosting)
-        drivingTelemetry.boost = Math.max(
-          0,
-          drivingTelemetry.boost - BOOST_DRAIN_PER_SECOND * d,
-        );
+        drivingTelemetry.boost = Math.max(0, drivingTelemetry.boost - BOOST_DRAIN_PER_SECOND * d);
       else
         drivingTelemetry.boost = Math.min(
           100,
@@ -423,7 +420,9 @@ function useOwnCarController({
           ? Math.abs(finalLateral) * finalSpeed * d * 0.85
           : 150 * d;
         drivingTelemetry.combo = Math.min(8, 1 + Math.floor(drivingTelemetry.driftScore / 220));
-        drivingTelemetry.callout = soaring ? "AIRBORNE!" : driftCallout(drivingTelemetry.driftScore);
+        drivingTelemetry.callout = soaring
+          ? "AIRBORNE!"
+          : driftCallout(drivingTelemetry.driftScore);
       } else if (driftGrace.current > 0) {
         driftGrace.current = Math.max(0, driftGrace.current - d);
       } else if (driftHold.current > 0) {
@@ -507,160 +506,189 @@ export const CarVisual = ({
 }) => {
   const bodyColor = own ? "#ffe100" : color;
   return (
-  <group position={pose ? [pose.x, pose.y, pose.z] : undefined} rotation-y={pose?.yaw}>
-    {/* body: main shell, tapered hood and trunk — rounded shells */}
-    <RoundedBox
-      castShadow
-      position={[0, -0.12, 0]}
-      args={[2.9, 0.72, 5.3]}
-      radius={0.16}
-      smoothness={3}
-    >
-      <meshStandardMaterial color={bodyColor} emissive={own ? "#4a2600" : "#000"} emissiveIntensity={own ? 0.22 : 0} metalness={own ? 0.12 : 0.48} roughness={own ? 0.4 : 0.34} />
-    </RoundedBox>
-    <RoundedBox
-      castShadow
-      position={[0, 0.3, 1.85]}
-      args={[2.7, 0.34, 1.5]}
-      radius={0.12}
-      smoothness={3}
-    >
-      <meshStandardMaterial color={bodyColor} emissive={own ? "#4a2600" : "#000"} emissiveIntensity={own ? 0.22 : 0} metalness={own ? 0.12 : 0.48} roughness={own ? 0.4 : 0.34} />
-    </RoundedBox>
-    <RoundedBox
-      castShadow
-      position={[0, 0.3, -1.95]}
-      args={[2.7, 0.34, 1.3]}
-      radius={0.12}
-      smoothness={3}
-    >
-      <meshStandardMaterial color={bodyColor} emissive={own ? "#4a2600" : "#000"} emissiveIntensity={own ? 0.22 : 0} metalness={own ? 0.12 : 0.48} roughness={own ? 0.4 : 0.34} />
-    </RoundedBox>
-    {/* cabin: glasshouse + painted roof */}
-    <RoundedBox
-      castShadow
-      position={[0, 0.62, -0.15]}
-      args={[2.45, 0.68, 2.5]}
-      radius={0.18}
-      smoothness={3}
-    >
-      {glass}
-    </RoundedBox>
-    <RoundedBox
-      castShadow
-      position={[0, 0.99, -0.15]}
-      args={[2.3, 0.12, 2.3]}
-      radius={0.06}
-      smoothness={2}
-    >
-      <meshStandardMaterial color={bodyColor} emissive={own ? "#4a2600" : "#000"} emissiveIntensity={own ? 0.22 : 0} metalness={own ? 0.12 : 0.48} roughness={own ? 0.4 : 0.34} />
-    </RoundedBox>
-    {/* windshield + rear glass rake */}
-    <mesh position={[0, 0.55, 1.22]} rotation-x={-0.5}>
-      <boxGeometry args={[2.3, 0.05, 0.9]} />
-      {glass}
-    </mesh>
-    <mesh position={[0, 0.55, -1.5]} rotation-x={0.45}>
-      <boxGeometry args={[2.3, 0.05, 0.8]} />
-      {glass}
-    </mesh>
-    {/* bumpers, mirrors */}
-    <RoundedBox position={[0, -0.35, 2.68]} args={[2.95, 0.34, 0.3]} radius={0.1} smoothness={2}>
-      {trim}
-    </RoundedBox>
-    <RoundedBox position={[0, -0.35, -2.68]} args={[2.95, 0.34, 0.3]} radius={0.1} smoothness={2}>
-      {trim}
-    </RoundedBox>
-    <RoundedBox
-      position={[-1.52, 0.35, 0.95]}
-      args={[0.22, 0.16, 0.3]}
-      radius={0.05}
-      smoothness={2}
-    >
-      {trim}
-    </RoundedBox>
-    <RoundedBox position={[1.52, 0.35, 0.95]} args={[0.22, 0.16, 0.3]} radius={0.05} smoothness={2}>
-      {trim}
-    </RoundedBox>
-    {/* lights */}
-    <mesh position={[-0.95, -0.05, 2.66]}>
-      <boxGeometry args={[0.55, 0.2, 0.08]} />
-      <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={2.2} />
-    </mesh>
-    <mesh position={[0.95, -0.05, 2.66]}>
-      <boxGeometry args={[0.55, 0.2, 0.08]} />
-      <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={2.2} />
-    </mesh>
-    <mesh position={[-0.95, -0.05, -2.66]}>
-      <boxGeometry args={[0.5, 0.18, 0.08]} />
-      <meshStandardMaterial color="#7a1212" emissive="#ff2b1e" emissiveIntensity={1.6} />
-    </mesh>
-    <mesh position={[0.95, -0.05, -2.66]}>
-      <boxGeometry args={[0.5, 0.18, 0.08]} />
-      <meshStandardMaterial color="#7a1212" emissive="#ff2b1e" emissiveIntensity={1.6} />
-    </mesh>
-    {own
-      ? Array.from({ length: 6 }, (_, i) => {
-          const dark = i % 2 === 0;
-          const z = -1.45 + i * 0.58;
-          return (
-            <group key={i}>
-              <mesh position={[-1.48, -0.02, z]}>
-                <boxGeometry args={[0.07, 0.34, 0.56]} />
-                <meshStandardMaterial color={dark ? "#121417" : "#fff5cf"} />
-              </mesh>
-              <mesh position={[1.48, -0.02, z]}>
-                <boxGeometry args={[0.07, 0.34, 0.56]} />
-                <meshStandardMaterial color={dark ? "#121417" : "#fff5cf"} />
-              </mesh>
-            </group>
-          );
-        })
-      : null}
-    {/* delivery topper + hot bag when carrying */}
-    <RoundedBox
-      castShadow
-      position={[0, 1.28, -0.15]}
-      args={[1.25, 0.42, 0.85]}
-      radius={0.12}
-      smoothness={3}
-    >
-      <meshStandardMaterial
-        color={own ? "#15191d" : color}
-        emissive={own ? "#ff8a00" : color}
-        emissiveIntensity={own ? 0.35 : 0.2}
-      />
-    </RoundedBox>
-    {carrying && (
+    <group position={pose ? [pose.x, pose.y, pose.z] : undefined} rotation-y={pose?.yaw}>
+      {/* body: main shell, tapered hood and trunk — rounded shells */}
       <RoundedBox
         castShadow
-        position={[0, 0.62, -1.9]}
-        args={[1.5, 0.7, 0.95]}
-        radius={0.14}
+        position={[0, -0.12, 0]}
+        args={[2.9, 0.72, 5.3]}
+        radius={0.16}
         smoothness={3}
       >
-        <meshStandardMaterial color="#f6b73c" roughness={0.8} />
+        <meshStandardMaterial
+          color={bodyColor}
+          emissive={own ? "#4a2600" : "#000"}
+          emissiveIntensity={own ? 0.22 : 0}
+          metalness={own ? 0.12 : 0.48}
+          roughness={own ? 0.4 : 0.34}
+        />
       </RoundedBox>
-    )}
-    {WHEEL_POSITIONS.map(([x, z]) => (
-      <Wheel key={`${x}:${z}`} x={x} z={z} animate={own} steerable={z > 0} />
-    ))}
-    {own ? (
-      <>
-        <BoostFlames />
-        <DriftSmoke />
-      </>
-    ) : null}
-    {name && (
-      <Suspense fallback={null}>
-        <Billboard position={[0, 3.2, 0]}>
-          <Text fontSize={0.8} color="white" outlineWidth={0.05} outlineColor="#000">
-            {name}
-          </Text>
-        </Billboard>
-      </Suspense>
-    )}
-  </group>
+      <RoundedBox
+        castShadow
+        position={[0, 0.3, 1.85]}
+        args={[2.7, 0.34, 1.5]}
+        radius={0.12}
+        smoothness={3}
+      >
+        <meshStandardMaterial
+          color={bodyColor}
+          emissive={own ? "#4a2600" : "#000"}
+          emissiveIntensity={own ? 0.22 : 0}
+          metalness={own ? 0.12 : 0.48}
+          roughness={own ? 0.4 : 0.34}
+        />
+      </RoundedBox>
+      <RoundedBox
+        castShadow
+        position={[0, 0.3, -1.95]}
+        args={[2.7, 0.34, 1.3]}
+        radius={0.12}
+        smoothness={3}
+      >
+        <meshStandardMaterial
+          color={bodyColor}
+          emissive={own ? "#4a2600" : "#000"}
+          emissiveIntensity={own ? 0.22 : 0}
+          metalness={own ? 0.12 : 0.48}
+          roughness={own ? 0.4 : 0.34}
+        />
+      </RoundedBox>
+      {/* cabin: glasshouse + painted roof */}
+      <RoundedBox
+        castShadow
+        position={[0, 0.62, -0.15]}
+        args={[2.45, 0.68, 2.5]}
+        radius={0.18}
+        smoothness={3}
+      >
+        {glass}
+      </RoundedBox>
+      <RoundedBox
+        castShadow
+        position={[0, 0.99, -0.15]}
+        args={[2.3, 0.12, 2.3]}
+        radius={0.06}
+        smoothness={2}
+      >
+        <meshStandardMaterial
+          color={bodyColor}
+          emissive={own ? "#4a2600" : "#000"}
+          emissiveIntensity={own ? 0.22 : 0}
+          metalness={own ? 0.12 : 0.48}
+          roughness={own ? 0.4 : 0.34}
+        />
+      </RoundedBox>
+      {/* windshield + rear glass rake */}
+      <mesh position={[0, 0.55, 1.22]} rotation-x={-0.5}>
+        <boxGeometry args={[2.3, 0.05, 0.9]} />
+        {glass}
+      </mesh>
+      <mesh position={[0, 0.55, -1.5]} rotation-x={0.45}>
+        <boxGeometry args={[2.3, 0.05, 0.8]} />
+        {glass}
+      </mesh>
+      {/* bumpers, mirrors */}
+      <RoundedBox position={[0, -0.35, 2.68]} args={[2.95, 0.34, 0.3]} radius={0.1} smoothness={2}>
+        {trim}
+      </RoundedBox>
+      <RoundedBox position={[0, -0.35, -2.68]} args={[2.95, 0.34, 0.3]} radius={0.1} smoothness={2}>
+        {trim}
+      </RoundedBox>
+      <RoundedBox
+        position={[-1.52, 0.35, 0.95]}
+        args={[0.22, 0.16, 0.3]}
+        radius={0.05}
+        smoothness={2}
+      >
+        {trim}
+      </RoundedBox>
+      <RoundedBox
+        position={[1.52, 0.35, 0.95]}
+        args={[0.22, 0.16, 0.3]}
+        radius={0.05}
+        smoothness={2}
+      >
+        {trim}
+      </RoundedBox>
+      {/* lights */}
+      <mesh position={[-0.95, -0.05, 2.66]}>
+        <boxGeometry args={[0.55, 0.2, 0.08]} />
+        <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={2.2} />
+      </mesh>
+      <mesh position={[0.95, -0.05, 2.66]}>
+        <boxGeometry args={[0.55, 0.2, 0.08]} />
+        <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={2.2} />
+      </mesh>
+      <mesh position={[-0.95, -0.05, -2.66]}>
+        <boxGeometry args={[0.5, 0.18, 0.08]} />
+        <meshStandardMaterial color="#7a1212" emissive="#ff2b1e" emissiveIntensity={1.6} />
+      </mesh>
+      <mesh position={[0.95, -0.05, -2.66]}>
+        <boxGeometry args={[0.5, 0.18, 0.08]} />
+        <meshStandardMaterial color="#7a1212" emissive="#ff2b1e" emissiveIntensity={1.6} />
+      </mesh>
+      {own
+        ? Array.from({ length: 6 }, (_, i) => {
+            const dark = i % 2 === 0;
+            const z = -1.45 + i * 0.58;
+            return (
+              <group key={i}>
+                <mesh position={[-1.48, -0.02, z]}>
+                  <boxGeometry args={[0.07, 0.34, 0.56]} />
+                  <meshStandardMaterial color={dark ? "#121417" : "#fff5cf"} />
+                </mesh>
+                <mesh position={[1.48, -0.02, z]}>
+                  <boxGeometry args={[0.07, 0.34, 0.56]} />
+                  <meshStandardMaterial color={dark ? "#121417" : "#fff5cf"} />
+                </mesh>
+              </group>
+            );
+          })
+        : null}
+      {/* delivery topper + hot bag when carrying */}
+      <RoundedBox
+        castShadow
+        position={[0, 1.28, -0.15]}
+        args={[1.25, 0.42, 0.85]}
+        radius={0.12}
+        smoothness={3}
+      >
+        <meshStandardMaterial
+          color={own ? "#15191d" : color}
+          emissive={own ? "#ff8a00" : color}
+          emissiveIntensity={own ? 0.35 : 0.2}
+        />
+      </RoundedBox>
+      {carrying && (
+        <RoundedBox
+          castShadow
+          position={[0, 0.62, -1.9]}
+          args={[1.5, 0.7, 0.95]}
+          radius={0.14}
+          smoothness={3}
+        >
+          <meshStandardMaterial color="#f6b73c" roughness={0.8} />
+        </RoundedBox>
+      )}
+      {WHEEL_POSITIONS.map(([x, z]) => (
+        <Wheel key={`${x}:${z}`} x={x} z={z} animate={own} steerable={z > 0} />
+      ))}
+      {own ? (
+        <>
+          <BoostFlames />
+          <DriftSmoke />
+        </>
+      ) : null}
+      {name && (
+        <Suspense fallback={null}>
+          <Billboard position={[0, 3.2, 0]}>
+            <Text fontSize={0.8} color="white" outlineWidth={0.05} outlineColor="#000">
+              {name}
+            </Text>
+          </Billboard>
+        </Suspense>
+      )}
+    </group>
   );
 };
 function Wheel({

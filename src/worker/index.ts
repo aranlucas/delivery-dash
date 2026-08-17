@@ -6,7 +6,6 @@ import {
   MAX_PLAYERS,
   TARGET_RADIUS,
   type ClientMessage,
-  type Leg,
   type Phase,
   type PlayerPub,
   type ServerMessage,
