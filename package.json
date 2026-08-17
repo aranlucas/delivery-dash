@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@11.22.0",
   "engines": {
-    "node": ">=26 <27",
+    "node": ">=24 <27",
     "pnpm": ">=11.18.0 <12"
   },
   "scripts": {
@@ -17,27 +17,22 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
+    "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.50.0",
-    "@types/node": "^26.1.2",
+    "@cloudflare/vite-plugin": "^1.52.1",
+    "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@types/three": "^0.185.3",
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.5",
     "typescript": "^7.0.2",
-    "vite": "^8.2.0",
-    "wrangler": "^4.118.0"
-  },
-  "allowScripts": {
-    "esbuild@0.28.1": true,
-    "workerd@1.20260730.1": true,
-    "sharp@0.35.2": true
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
   }
 }
