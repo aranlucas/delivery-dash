@@ -4,6 +4,5 @@ dist
 .env*
 !.env.example
 .dev.vars*
-worker-configuration.d.ts
 *.tsbuildinfo
 .DS_Store
