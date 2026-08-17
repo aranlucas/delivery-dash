@@ -38,11 +38,11 @@ VEHICLES = {
             (1.0, 0.8, 0.15, 0.48),
         ],
         "cabin": [
-            (0.2, 0.72, 0.76, 0.86),
+            (0.2, 0.72, 0.7, 1.06),
             (0.3, 0.86, 0.76, 1.26),
             (0.44, 0.88, 0.78, 1.32),
             (0.58, 0.86, 0.78, 1.3),
-            (0.7, 0.74, 0.76, 0.94),
+            (0.7, 0.74, 0.7, 1.08),
         ],
     },
     "sedan": {},
@@ -80,10 +80,10 @@ VEHICLES = {
             (1.0, 0.82, 0.14, 0.48),
         ],
         "cabin": [
-            (0.1, 0.76, 0.96, 1.06),
+            (0.1, 0.76, 0.88, 1.16),
             (0.22, 0.88, 0.98, 1.34),
             (0.5, 0.88, 0.9, 1.34),
-            (0.66, 0.76, 0.82, 1.0),
+            (0.66, 0.76, 0.76, 1.08),
         ],
     },
     "sports": {
@@ -103,10 +103,10 @@ VEHICLES = {
             (1.0, 0.82, 0.1, 0.34),
         ],
         "cabin": [
-            (0.24, 0.7, 0.58, 0.66),
+            (0.24, 0.7, 0.5, 0.84),
             (0.36, 0.84, 0.58, 0.98),
             (0.5, 0.84, 0.58, 1.0),
-            (0.72, 0.68, 0.5, 0.62),
+            (0.72, 0.68, 0.44, 0.78),
         ],
     },
 }
@@ -192,6 +192,17 @@ def body_half_width(spec, position):
         + bump(position, 1.0 - spec["axle_inset"], 0.15)
     )
     return spec["width"] * 0.5 * width_scale + flare
+
+
+def profile_top(spec, position):
+    """Interpolate the body shoulder height at a normalized length position."""
+    top = spec["profile"][-1][3]
+    for start, end in zip(spec["profile"], spec["profile"][1:]):
+        if start[0] <= position <= end[0]:
+            progress = 0.0 if start[0] == end[0] else (position - start[0]) / (end[0] - start[0])
+            top = start[3] + (end[3] - start[3]) * progress
+            break
+    return top
 
 
 def loft(name, spec, profile, collection, mat, roof=False, glass=False, flare=False):
@@ -367,6 +378,10 @@ def build_vehicle(kind, spec, mats, display_x):
         ],
         mats["paint"],
     )
+    body_bevel = body.modifiers.new("Soft body edges", "BEVEL")
+    body_bevel.width = 0.035
+    body_bevel.segments = 2
+    body_bevel.limit_method = "ANGLE"
     glass = loft(f"{kind}_glass", spec, spec["cabin"], collection, mats["glass"], glass=True)
 
     trim_parts = []
@@ -403,6 +418,39 @@ def build_vehicle(kind, spec, mats, display_x):
                 0.018,
             )
         )
+        # A readable door break and two handles make the side elevation feel like a car rather
+        # than one uninterrupted extrusion, while remaining cheap enough for the shared LOD.
+        door_position = 0.5
+        door_top = profile_top(spec, door_position)
+        trim_parts.append(
+            cube(
+                f"{kind}_door_seam",
+                (
+                    side * (body_half_width(spec, door_position) + 0.018),
+                    spec["sill"] + 0.18 + (door_top - 0.22) * 0.5,
+                    0,
+                ),
+                (0.045, max(0.22, door_top - 0.22), 0.045),
+                collection,
+                mats["trim"],
+                0.008,
+            )
+        )
+        for handle_position in (0.38, 0.6):
+            trim_parts.append(
+                cube(
+                    f"{kind}_door_handle",
+                    (
+                        side * (body_half_width(spec, handle_position) + 0.035),
+                        spec["sill"] + profile_top(spec, handle_position) * 0.68,
+                        -spec["length"] * 0.5 + handle_position * spec["length"],
+                    ),
+                    (0.075, 0.065, 0.28),
+                    collection,
+                    mats["trim"],
+                    0.018,
+                )
+            )
         middle = spec["cabin"][len(spec["cabin"]) // 2]
         pillar_height = max(0.3, middle[3] - middle[2] - 0.08)
         trim_parts.append(
@@ -456,6 +504,21 @@ def build_vehicle(kind, spec, mats, display_x):
             ),
         ]
     )
+    for panel_position in (0.13, 0.84):
+        trim_parts.append(
+            cube(
+                f"{kind}_panel_break",
+                (
+                    0,
+                    spec["sill"] + profile_top(spec, panel_position) + 0.018,
+                    -spec["length"] * 0.5 + panel_position * spec["length"],
+                ),
+                (body_half_width(spec, panel_position) * 1.45, 0.025, 0.045),
+                collection,
+                mats["trim"],
+                0.006,
+            )
+        )
     if spec["checkers"]:
         cells = 8
         span = 0.56
@@ -529,6 +592,9 @@ def build_vehicle(kind, spec, mats, display_x):
             12,
             "x",
         )
+        for wheel_part in (tyre, rim):
+            for polygon in wheel_part.data.polygons:
+                polygon.use_smooth = True
         wheels.extend([tyre, rim])
 
     peak = spec["sill"] + max(station[3] for station in spec["cabin"])
@@ -537,7 +603,7 @@ def build_vehicle(kind, spec, mats, display_x):
         (0, peak + 0.2, -0.1),
         (1.1, 0.38, 0.72),
         collection,
-        mats["trim"],
+        mats["topper"],
         0.08,
     )
 
@@ -768,6 +834,7 @@ def main():
         "trim": material("Vehicle Trim", (0.018, 0.024, 0.032), 0.3, 0.5),
         "tyre": material("Vehicle Tyre", (0.008, 0.01, 0.014), 0, 0.92),
         "rim": material("Vehicle Rim", (0.45, 0.5, 0.58), 0.8, 0.24),
+        "topper": material("Taxi Roof Sign", (1.0, 0.42, 0.015), 0.08, 0.38, (1.0, 0.2, 0.01)),
         "head": material("Vehicle Headlight", (1.0, 0.86, 0.58), 0, 0.22, (1.0, 0.65, 0.2)),
         "tail": material("Vehicle Taillight", (0.5, 0.02, 0.015), 0, 0.25, (1.0, 0.03, 0.01)),
         "hydrant": material("Hydrant Red", (0.72, 0.025, 0.018), 0.15, 0.48),

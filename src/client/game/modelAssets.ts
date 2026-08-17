@@ -5,7 +5,7 @@ import { CAR_ORIGIN_HEIGHT, type CarKind } from "./carGeometry";
 
 // Public assets keep readable filenames, so bump this when Blender output changes. This also
 // invalidates drei's in-memory GLTF cache during development instead of showing stale geometry.
-const ASSET_REVISION = "2026-08-17-fleet-3";
+const ASSET_REVISION = "2026-08-17-car-shape-5";
 const versioned = (path: string) => `${path}?v=${ASSET_REVISION}`;
 
 const VEHICLE_URLS: Record<CarKind, string> = {
