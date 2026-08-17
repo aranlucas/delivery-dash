@@ -1,28 +1,11 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import {
-  CAR_GEOMETRY,
-  HATCH_SPEC,
-  SEDAN_SPEC,
-  SPORTS_SPEC,
-  TAXI_SPEC,
-  VAN_SPEC,
-  wheelPositions,
-  type CarKind,
-  type CarSpec,
-} from "./carGeometry";
-import { drivingTelemetry } from "./drivingState";
+import { CAR_SPECS, wheelPositions, type CarKind } from "./carGeometry";
+import { drivingTelemetry, wheelDrive } from "./drivingState";
+import { useVehicleAsset } from "./modelAssets";
 
 export type CarLod = "full" | "merged" | "box";
-
-export const CAR_SPECS: Record<CarKind, CarSpec> = {
-  taxi: TAXI_SPEC,
-  sedan: SEDAN_SPEC,
-  van: VAN_SPEC,
-  hatch: HATCH_SPEC,
-  sports: SPORTS_SPEC,
-};
 
 const glassMaterial = new THREE.MeshStandardMaterial({
   color: "#16222e",
@@ -51,9 +34,6 @@ const rimMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.28,
 });
 const boxGeometry = new THREE.BoxGeometry(2.5, 1.5, 5.2);
-
-/** Signed forward speed from the own-car simulation. */
-export const wheelDrive = { speed: 0 };
 
 type WheelProps = {
   position: [number, number, number];
@@ -112,11 +92,17 @@ export function CarModel({
   color,
   lod = "full",
   animateWheels = false,
+  topperColor = "#15191d",
+  topperEmissive = topperColor,
+  topperEmissiveIntensity = 0.2,
 }: {
   kind?: CarKind;
   color: string;
   lod?: CarLod;
   animateWheels?: boolean;
+  topperColor?: string;
+  topperEmissive?: string;
+  topperEmissiveIntensity?: number;
 }) {
   const bodyMaterial = useMemo(
     () =>
@@ -127,8 +113,24 @@ export function CarModel({
       }),
     [color],
   );
-  useEffect(() => () => bodyMaterial.dispose(), [bodyMaterial]);
-  const geometry = CAR_GEOMETRY[kind];
+  const topperMaterial = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: topperColor,
+        emissive: topperEmissive,
+        emissiveIntensity: topperEmissiveIntensity,
+        roughness: 0.5,
+      }),
+    [topperColor, topperEmissive, topperEmissiveIntensity],
+  );
+  useEffect(
+    () => () => {
+      bodyMaterial.dispose();
+      topperMaterial.dispose();
+    },
+    [bodyMaterial, topperMaterial],
+  );
+  const geometry = useVehicleAsset(kind);
   const spec = CAR_SPECS[kind];
 
   if (lod === "box")
@@ -145,6 +147,9 @@ export function CarModel({
           <mesh geometry={geometry.trim} material={trimMaterial} />
           <mesh geometry={geometry.headlights} material={headlightMaterial} />
           <mesh geometry={geometry.taillights} material={taillightMaterial} />
+          {kind === "taxi" ? (
+            <mesh geometry={geometry.topper} material={topperMaterial} castShadow />
+          ) : null}
           {wheelPositions(spec).map((position, index) => {
             const props: WheelProps = {
               position,
@@ -153,10 +158,11 @@ export function CarModel({
               radius: spec.wheelRadius,
               steerable: index < 2,
             };
+            const wheelKey = `${position[0]}:${position[2]}`;
             return animateWheels ? (
-              <AnimatedWheel key={index} {...props} />
+              <AnimatedWheel key={wheelKey} {...props} />
             ) : (
-              <StaticWheel key={index} {...props} />
+              <StaticWheel key={wheelKey} {...props} />
             );
           })}
         </>

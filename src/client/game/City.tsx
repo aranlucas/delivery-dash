@@ -3,7 +3,6 @@ import { useFrame } from "@react-three/fiber";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
   BLOCK_SIZE,
   GRID_SIZE,
@@ -19,7 +18,8 @@ import {
   type Ramp,
 } from "../../shared/city";
 import { mulberry32 } from "../../shared/rng";
-import { makeFleetGeometry } from "./carGeometry";
+import { makeFleetGeometry, useStreetPropAssets, useVehicleAsset } from "./modelAssets";
+import type { CarKind } from "./carGeometry";
 import { trafficCars, updateTraffic } from "./traffic";
 import {
   FACADE_STYLES,
@@ -170,28 +170,6 @@ type Instance = {
   rotX?: number;
   color?: string;
 };
-
-function mergeShape(parts: THREE.BufferGeometry[], label: string) {
-  const normalized = parts.map((part) => {
-    const flat = part.index ? part.toNonIndexed() : part.clone();
-
-    // These props use solid colors. Keeping only the shared attributes makes
-    // primitives from different geometry classes safe to merge.
-    for (const attribute of Object.keys(flat.attributes)) {
-      if (attribute !== "position" && attribute !== "normal") {
-        flat.deleteAttribute(attribute);
-      }
-    }
-    if (!flat.getAttribute("normal")) flat.computeVertexNormals();
-    return flat;
-  });
-
-  const geometry = mergeGeometries(normalized, false);
-  for (const part of normalized) part.dispose();
-  for (const part of parts) part.dispose();
-  if (!geometry) throw new Error(`City: failed to merge ${label}`);
-  return geometry;
-}
 
 function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
   useLayoutEffect(() => {
@@ -626,30 +604,8 @@ function BoostPads({ city }: { city: CityData }) {
   );
 }
 
-/** A tapered, downward-curving palm blade: ten triangles instead of a stretched icosahedron. */
-function makePalmFrondGeometry() {
-  const segments = 5;
-  const positions: number[] = [];
-  const indices: number[] = [];
-  for (let step = 0; step <= segments; step++) {
-    const progress = step / segments;
-    const width = Math.sin(progress * Math.PI) * 0.48 + (1 - progress) * 0.05;
-    const drop = progress * progress * 1.15;
-    const distance = progress * 3.5;
-    positions.push(-width, -drop, distance, width, -drop, distance);
-  }
-  for (let step = 0; step < segments; step++) {
-    const left = step * 2;
-    indices.push(left, left + 2, left + 1, left + 1, left + 2, left + 3);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
 function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
+  const { palmTrunk, palmFrond } = useStreetPropAssets();
   const { trunks, fronds } = useMemo(() => {
     const rng = mulberry32(seed ^ 0xc0a57),
       trunks: Instance[] = [],
@@ -664,7 +620,7 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
     for (const [x, z] of spots) {
       if (nearExpressway(city, x, z, 3)) continue;
       const h = 6.6 + rng() * 2.3;
-      trunks.push({ pos: [x, h / 2, z], scale: [0.42, h, 0.42], rotY: rng() });
+      trunks.push({ pos: [x, h / 2, z], scale: [1.35, h / 7, 1.35], rotY: rng() });
       for (let f = 0; f < 7; f++) {
         const yaw = (f / 7) * Math.PI * 2 + rng() * 0.2;
         fronds.push({
@@ -676,20 +632,18 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
     }
     return { trunks, fronds };
   }, [city, seed]);
-  const frondGeometry = useMemo(makePalmFrondGeometry, []);
   const trunkMesh = useRef<THREE.InstancedMesh>(null),
     frondMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(trunkMesh, trunks);
   useInstances(frondMesh, fronds);
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[undefined, undefined, trunks.length]} castShadow>
-        <cylinderGeometry args={[0.7, 1, 1, 7]} />
+      <instancedMesh ref={trunkMesh} args={[palmTrunk, undefined, trunks.length]} castShadow>
         <meshStandardMaterial color="#8e542d" roughness={0.96} />
       </instancedMesh>
       <instancedMesh
         ref={frondMesh}
-        args={[frondGeometry, undefined, fronds.length]}
+        args={[palmFrond, undefined, fronds.length]}
         castShadow
       >
         <meshStandardMaterial color="#27a653" roughness={0.88} flatShading side={THREE.DoubleSide} />
@@ -772,6 +726,8 @@ function Greenery({ city, seed }: { city: CityData; seed: number }) {
 }
 
 function StreetLights({ city }: { city: CityData }) {
+  const { streetlightPole: poleGeometry, streetlightLens: lensGeometry } =
+    useStreetPropAssets();
   const { poles, heads } = useMemo(() => {
     const poles: Instance[] = [];
     const heads: Instance[] = [];
@@ -791,21 +747,6 @@ function StreetLights({ city }: { city: CityData }) {
     }
     return { poles, heads };
   }, [city]);
-  const poleGeometry = useMemo(() => {
-    const pole = new THREE.CylinderGeometry(0.08, 0.1, 6, 8);
-    pole.translate(0, 3, 0);
-    const arm = new THREE.CylinderGeometry(0.07, 0.07, 1.05, 8);
-    arm.rotateX(Math.PI / 2);
-    arm.translate(0, 6, 0.48);
-    const housing = new RoundedBoxGeometry(0.7, 0.24, 0.46, 1, 0.06);
-    housing.translate(0, 5.92, 0.96);
-    return mergeShape([pole, arm, housing], "streetlight");
-  }, []);
-  const lensGeometry = useMemo(() => {
-    const lens = new RoundedBoxGeometry(0.5, 0.08, 0.32, 1, 0.025);
-    lens.translate(0, 5.78, 0.96);
-    return lens;
-  }, []);
   const poleMesh = useRef<THREE.InstancedMesh>(null),
     headMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(poleMesh, poles);
@@ -824,23 +765,31 @@ function StreetLights({ city }: { city: CityData }) {
 
 const ONE = new THREE.Vector3(1, 1, 1);
 
-/** One fleet of background cars: painted bodywork plus shared trim, headlamp and tail-lamp passes. */
-function useCarFleet(colors: string[]) {
-  const parts = useMemo(makeFleetGeometry, []);
+/** One instanced vehicle shape: painted bodywork plus glass, trim and lamp passes. */
+function useCarFleet(kind: CarKind, colors: string[]) {
+  const asset = useVehicleAsset(kind);
+  const parts = useMemo(() => makeFleetGeometry(asset), [asset]);
   useEffect(
     () => () => {
       parts.painted.dispose();
+      parts.glass.dispose();
       parts.trim.dispose();
       parts.headlights.dispose();
       parts.taillights.dispose();
+      parts.topper.dispose();
     },
     [parts],
   );
   const painted = useRef<THREE.InstancedMesh>(null),
+    glass = useRef<THREE.InstancedMesh>(null),
     trim = useRef<THREE.InstancedMesh>(null),
     heads = useRef<THREE.InstancedMesh>(null),
-    tails = useRef<THREE.InstancedMesh>(null);
-  const fleet = useMemo(() => [painted, trim, heads, tails] as const, []);
+    tails = useRef<THREE.InstancedMesh>(null),
+    toppers = useRef<THREE.InstancedMesh>(null);
+  const fleet = useMemo(
+    () => [painted, glass, trim, heads, tails, ...(kind === "taxi" ? [toppers] : [])] as const,
+    [kind],
+  );
   useLayoutEffect(() => {
     if (!painted.current) return;
     colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
@@ -862,6 +811,9 @@ function useCarFleet(colors: string[]) {
       <instancedMesh ref={painted} args={[parts.painted, undefined, count]} castShadow>
         <meshStandardMaterial roughness={0.34} metalness={0.32} />
       </instancedMesh>
+      <instancedMesh ref={glass} args={[parts.glass, undefined, count]}>
+        <meshStandardMaterial color="#162d3d" roughness={0.08} metalness={0.5} />
+      </instancedMesh>
       <instancedMesh ref={trim} args={[parts.trim, undefined, count]} castShadow>
         <meshStandardMaterial color="#191d23" roughness={0.4} metalness={0.25} />
       </instancedMesh>
@@ -871,33 +823,69 @@ function useCarFleet(colors: string[]) {
       <instancedMesh ref={tails} args={[parts.taillights, undefined, count]}>
         <meshStandardMaterial color="#8a1a12" emissive="#ff2b1e" emissiveIntensity={1.3} />
       </instancedMesh>
+      {kind === "taxi" ? (
+        <instancedMesh ref={toppers} args={[parts.topper, undefined, count]} castShadow>
+          <meshStandardMaterial color="#f59e0b" emissive="#7c2d12" emissiveIntensity={0.25} />
+        </instancedMesh>
+      ) : null}
     </>
   );
   return { write, flush, meshes };
 }
 
-function Traffic({ city }: { city: CityData }) {
-  const colors = useMemo(() => city.trafficRoutes.map((route) => route.color), [city]);
-  const { write, flush, meshes } = useCarFleet(colors);
+const FLEET_KINDS: CarKind[] = ["sedan", "van", "hatch", "sports", "taxi"];
+type FleetSlot = { color: string; index: number; moving: boolean };
+
+/** Traffic and parked cars share five shape-specific fleets, so every Blender vehicle appears. */
+function FleetCars({ city }: { city: CityData }) {
+  const groups = useMemo(() => {
+    const output: Record<CarKind, FleetSlot[]> = {
+      taxi: [],
+      sedan: [],
+      van: [],
+      hatch: [],
+      sports: [],
+    };
+    city.trafficRoutes.forEach((route, index) =>
+      output[FLEET_KINDS[index % FLEET_KINDS.length]!]!.push({
+        color: route.color,
+        index,
+        moving: true,
+      }),
+    );
+    city.parkedCars.forEach((car, index) =>
+      output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]!]!.push({
+        color: car.color,
+        index,
+        moving: false,
+      }),
+    );
+    return output;
+  }, [city]);
+  const sedan = useCarFleet("sedan", groups.sedan.map((slot) => slot.color));
+  const van = useCarFleet("van", groups.van.map((slot) => slot.color));
+  const hatch = useCarFleet("hatch", groups.hatch.map((slot) => slot.color));
+  const sports = useCarFleet("sports", groups.sports.map((slot) => slot.color));
+  const taxi = useCarFleet("taxi", groups.taxi.map((slot) => slot.color));
+  const fleets = { sedan, van, hatch, sports, taxi };
   useFrame(({ clock }) => {
     updateTraffic(city, clock.elapsedTime);
-    for (let i = 0; i < trafficCars.length; i++) {
-      const car = trafficCars[i]!;
-      write(i, car.x, car.z, car.yaw);
+    for (const kind of FLEET_KINDS) {
+      const fleet = fleets[kind];
+      groups[kind].forEach((slot, localIndex) => {
+        const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
+        if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
+      });
+      fleet.flush();
     }
-    flush();
   });
-  return meshes;
-}
-
-function ParkedCars({ city }: { city: CityData }) {
-  const colors = useMemo(() => city.parkedCars.map((car) => car.color), [city]);
-  const { write, flush, meshes } = useCarFleet(colors);
-  useLayoutEffect(() => {
-    city.parkedCars.forEach((car, i) => write(i, car.x, car.z, car.yaw));
-    flush();
-  }, [city, flush, write]);
-  return meshes;
+  return (
+    <>
+      {FLEET_KINDS.map((kind) => (
+        <group key={kind}>{fleets[kind].meshes}</group>
+      ))}
+    </>
+  );
 }
 
 /** Signals face the traffic they hold: one head per axis, lit green for through traffic. */
@@ -991,7 +979,7 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
           if (nearExpressway(city, x, z, 2)) continue;
           const roll = rng();
           if (roll < 0.34) hydrants.push({ pos: [x, 0, z] });
-          else if (roll < 0.68) bins.push({ pos: [x, 0.75, z], scale: [0.7, 1.05, 0.7] });
+          else if (roll < 0.68) bins.push({ pos: [x, 0, z] });
           else
             benches.push({
               pos: [x, 0, z],
@@ -1001,39 +989,8 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
       }
     return { hydrants, bins, benches };
   }, [city, seed]);
-  const hydrantGeometry = useMemo(() => {
-    const foot = new THREE.CylinderGeometry(0.34, 0.34, 0.2, 10);
-    foot.translate(0, 0.12, 0);
-    const body = new THREE.CylinderGeometry(0.25, 0.25, 0.82, 10);
-    body.translate(0, 0.61, 0);
-    const dome = new THREE.SphereGeometry(0.25, 10, 5);
-    dome.scale(1, 0.72, 1);
-    dome.translate(0, 1.02, 0);
-    const stem = new THREE.CylinderGeometry(0.11, 0.11, 0.25, 8);
-    stem.translate(0, 1.2, 0);
-    const parts = [foot, body, dome, stem];
-    for (const side of [-1, 1]) {
-      const port = new THREE.CylinderGeometry(0.12, 0.12, 0.22, 8);
-      port.rotateZ(Math.PI / 2);
-      port.translate(side * 0.3, 0.76, 0);
-      parts.push(port);
-    }
-    return mergeShape(parts, "hydrant");
-  }, []);
-  const benchGeometry = useMemo(() => {
-    const seat = new RoundedBoxGeometry(2.8, 0.16, 0.68, 1, 0.04);
-    seat.translate(0, 0.72, 0);
-    const back = new RoundedBoxGeometry(2.8, 0.72, 0.15, 1, 0.04);
-    back.rotateX(-0.16);
-    back.translate(0, 1.12, 0.28);
-    const parts = [seat, back];
-    for (const side of [-1, 1]) {
-      const leg = new RoundedBoxGeometry(0.18, 0.68, 0.48, 1, 0.035);
-      leg.translate(side * 0.92, 0.34, 0);
-      parts.push(leg);
-    }
-    return mergeShape(parts, "bench");
-  }, []);
+  const { hydrant: hydrantGeometry, bin: binGeometry, bench: benchGeometry } =
+    useStreetPropAssets();
   const hydrantMesh = useRef<THREE.InstancedMesh>(null),
     binMesh = useRef<THREE.InstancedMesh>(null),
     benchMesh = useRef<THREE.InstancedMesh>(null);
@@ -1049,8 +1006,7 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
       >
         <meshStandardMaterial color="#d43a2a" roughness={0.7} />
       </instancedMesh>
-      <instancedMesh ref={binMesh} args={[undefined, undefined, bins.length]} castShadow>
-        <cylinderGeometry args={[0.5, 0.42, 1, 10]} />
+      <instancedMesh ref={binMesh} args={[binGeometry, undefined, bins.length]} castShadow>
         <meshStandardMaterial color="#2f3a34" roughness={0.9} />
       </instancedMesh>
       <instancedMesh
@@ -1289,8 +1245,7 @@ export function City({ city, seed }: { city: CityData; seed: number }) {
       <Ramps city={city} />
       <Expressway city={city} />
       <BoostPads city={city} />
-      <ParkedCars city={city} />
-      <Traffic city={city} />
+      <FleetCars city={city} />
       <TrafficSignals />
       <StreetFurniture city={city} seed={seed} />
       <Greenery city={city} seed={seed} />

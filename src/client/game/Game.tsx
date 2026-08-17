@@ -98,9 +98,8 @@ function Scene({ seed }: { seed: number }) {
         color={self.color}
         carrying={self.leg === "dropoff"}
       />
-      {players
-        .filter((p) => p.id !== self.id)
-        .map((p) => (
+      {players.map((p) =>
+        p.id === self.id ? null : (
           <RemoteCar
             key={p.id}
             id={p.id}
@@ -109,7 +108,8 @@ function Scene({ seed }: { seed: number }) {
             carrying={p.leg === "dropoff"}
             spawn={city.spawns[p.spawnIndex]!.pos}
           />
-        ))}
+        ),
+      )}
       {target && phase === "racing" && (
         <>
           <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />

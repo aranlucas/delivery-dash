@@ -3,7 +3,7 @@ import { useEffect, useReducer, useRef } from "react";
 import { trafficCars } from "../game/traffic";
 
 /** Written by the render loop and sampled by the DOM overlay at 4Hz. */
-export const perfStats = { fps: 0, frameMs: 0, calls: 0, triangles: 0, traffic: 0 };
+const perfStats = { fps: 0, frameMs: 0, calls: 0, triangles: 0, traffic: 0 };
 
 export function PerfProbe() {
   const gl = useThree((state) => state.gl);

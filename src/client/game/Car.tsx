@@ -5,9 +5,9 @@ import * as THREE from "three";
 import { TICK_HZ, type Phase } from "../../shared/protocol";
 import { blocked, groundHeightAt, type City } from "../../shared/city";
 import { send } from "../net";
-import { drivingTelemetry, ownPose, type CarPose } from "./drivingState";
-import { CAR_SPECS, CarModel, wheelDrive, type CarLod } from "./CarModel";
-import { roofPeakY, type CarKind } from "./carGeometry";
+import { drivingTelemetry, ownPose, wheelDrive, type CarPose } from "./drivingState";
+import { CarModel, type CarLod } from "./CarModel";
+import type { CarKind } from "./carGeometry";
 import { trafficCars } from "./traffic";
 
 const FORWARD_ACCELERATION = 31;
@@ -516,22 +516,12 @@ export const CarVisual = ({
         color={own ? TAXI_YELLOW : color}
         lod={lod}
         animateWheels={own}
+        topperColor={own ? "#15191d" : color}
+        topperEmissive={own ? "#ff8a00" : color}
+        topperEmissiveIntensity={own ? 0.45 : 0.2}
       />
       {lod === "full" ? (
         <>
-          <RoundedBox
-            castShadow
-            position={[0, roofPeakY(CAR_SPECS[modelKind]) + 0.2, -0.1]}
-            args={[1.1, 0.38, 0.72]}
-            radius={0.1}
-            smoothness={3}
-          >
-            <meshStandardMaterial
-              color={own ? "#15191d" : color}
-              emissive={own ? "#ff8a00" : color}
-              emissiveIntensity={own ? 0.45 : 0.2}
-            />
-          </RoundedBox>
           {carrying ? (
             <RoundedBox
               castShadow
