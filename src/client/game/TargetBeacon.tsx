@@ -2,7 +2,6 @@ import { Float } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import { ownPose } from "./drivingState";
 
 /** Grounded delivery zone: pulsing ring + soft pillar + bobbing cone, sitting on the sidewalk plane. */
 export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff: boolean }) {
@@ -33,25 +32,6 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
           <meshBasicMaterial color={color} />
         </mesh>
       </Float>
-    </group>
-  );
-}
-
-/** 3D chevron hovering above the player's car, always pointing at the current target in world space. */
-export function TargetPointer({ target, dropoff }: { target: [number, number]; dropoff: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    const g = group.current;
-    if (!g) return;
-    g.position.set(ownPose.x, 4.4 + Math.sin(clock.elapsedTime * 3) * 0.16, ownPose.z);
-    g.rotation.y = Math.atan2(target[0] - ownPose.x, target[1] - ownPose.z);
-  });
-  return (
-    <group ref={group}>
-      <mesh rotation-x={Math.PI / 2} position={[0, 0, 0.5]}>
-        <coneGeometry args={[0.5, 1.5, 4]} />
-        <meshBasicMaterial color={dropoff ? "#38d986" : "#ff9d33"} />
-      </mesh>
     </group>
   );
 }

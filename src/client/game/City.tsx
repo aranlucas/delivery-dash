@@ -1,6 +1,6 @@
 import { Billboard, RoundedBox, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { Suspense, useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
@@ -112,6 +112,15 @@ function BuildingDistrict({
     );
     return shape;
   }, [buildings]);
+  useEffect(
+    () => () => {
+      material.map?.dispose();
+      material.emissiveMap?.dispose();
+      material.dispose();
+      geometry.dispose();
+    },
+    [geometry, material],
+  );
   useLayoutEffect(() => {
     const instanced = mesh.current;
     if (!instanced) return;
@@ -147,7 +156,7 @@ function Buildings({ city }: { city: CityData }) {
   return (
     <>
       {FACADE_STYLES.map((style, index) => (
-        <BuildingDistrict key={index} buildings={districts[index]!} style={style} />
+        <BuildingDistrict key={style.seed} buildings={districts[index]!} style={style} />
       ))}
     </>
   );
@@ -209,6 +218,15 @@ function Blocks({ city }: { city: CityData }) {
   );
   const paving = useMemo(makePavingTexture, []);
   const grass = useMemo(makeGrassTexture, []);
+  useEffect(
+    () => () => {
+      slabGeometry.dispose();
+      topGeometry.dispose();
+      paving.dispose();
+      grass.dispose();
+    },
+    [grass, paving, slabGeometry, topGeometry],
+  );
   const slabMesh = useRef<THREE.InstancedMesh>(null),
     parkMesh = useRef<THREE.InstancedMesh>(null),
     cityMesh = useRef<THREE.InstancedMesh>(null);
@@ -463,6 +481,15 @@ function Ramps({ city }: { city: CityData }) {
   );
   const concrete = useMemo(makeConcreteTexture, []);
   const hazard = useMemo(makeRampHazardTexture, []);
+  useEffect(
+    () => () => {
+      for (const geometry of gradeGeometries) geometry.dispose();
+      kickerGeometry.dispose();
+      concrete.dispose();
+      hazard.dispose();
+    },
+    [concrete, gradeGeometries, hazard, kickerGeometry],
+  );
   const kickerMesh = useRef<THREE.InstancedMesh>(null),
     lipMesh = useRef<THREE.InstancedMesh>(null);
   useInstances(kickerMesh, kickerItems);
@@ -499,6 +526,7 @@ function Ramps({ city }: { city: CityData }) {
 
 function Expressway({ city }: { city: CityData }) {
   const concrete = useMemo(makeConcreteTexture, []);
+  useEffect(() => () => concrete.dispose(), [concrete]);
   const pillars = useMemo(() => city.pillars.map(boxInstance), [city]);
   const rails = useMemo(() => city.rails.map(boxInstance), [city]);
   const pillarMesh = useRef<THREE.InstancedMesh>(null),
@@ -537,6 +565,7 @@ function Expressway({ city }: { city: CityData }) {
 
 function BoostPads({ city }: { city: CityData }) {
   const texture = useMemo(makeBoostPadTexture, []);
+  useEffect(() => () => texture.dispose(), [texture]);
   const pads = useMemo<Instance[]>(
     () => city.boostPads.map((p) => ({ pos: [p.x, p.y + 0.09, p.z], scale: [3.4, 0.1, 8], rotY: p.yaw })),
     [city],
@@ -712,14 +741,20 @@ const ONE = new THREE.Vector3(1, 1, 1);
 /** One fleet of background cars: painted bodywork plus shared trim, headlamp and tail-lamp passes. */
 function useCarFleet(colors: string[]) {
   const parts = useMemo(makeFleetGeometry, []);
+  useEffect(
+    () => () => {
+      parts.painted.dispose();
+      parts.trim.dispose();
+      parts.headlights.dispose();
+      parts.taillights.dispose();
+    },
+    [parts],
+  );
   const painted = useRef<THREE.InstancedMesh>(null),
     trim = useRef<THREE.InstancedMesh>(null),
     heads = useRef<THREE.InstancedMesh>(null),
     tails = useRef<THREE.InstancedMesh>(null);
-  const all = useCallback(
-    () => [painted.current, trim.current, heads.current, tails.current] as const,
-    [],
-  );
+  const fleet = useMemo(() => [painted, trim, heads, tails] as const, []);
   useLayoutEffect(() => {
     if (!painted.current) return;
     colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
@@ -728,13 +763,13 @@ function useCarFleet(colors: string[]) {
   const write = useCallback(
     (index: number, x: number, z: number, yaw: number) => {
       matrix.compose(position.set(x, 0, z), quaternion.setFromAxisAngle(UP, yaw), ONE);
-      for (const mesh of all()) mesh?.setMatrixAt(index, matrix);
+      for (const ref of fleet) ref.current?.setMatrixAt(index, matrix);
     },
-    [all],
+    [fleet],
   );
   const flush = useCallback(() => {
-    for (const mesh of all()) if (mesh) mesh.instanceMatrix.needsUpdate = true;
-  }, [all]);
+    for (const ref of fleet) if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
+  }, [fleet]);
   const count = Math.max(1, colors.length);
   const meshes = (
     <>
@@ -775,7 +810,7 @@ function ParkedCars({ city }: { city: CityData }) {
   useLayoutEffect(() => {
     city.parkedCars.forEach((car, i) => write(i, car.x, car.z, car.yaw));
     flush();
-  }, [city, write, flush]);
+  }, [city, flush, write]);
   return meshes;
 }
 
@@ -1034,6 +1069,7 @@ function House({ place, index }: { place: { name: string; pos: Pos2 }; index: nu
 
 export function City({ city, seed }: { city: CityData; seed: number }) {
   const asphalt = useMemo(makeAsphaltTexture, []);
+  useEffect(() => () => asphalt.dispose(), [asphalt]);
   return (
     <group>
       {/* asphalt ground */}

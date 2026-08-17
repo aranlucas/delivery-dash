@@ -162,10 +162,7 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
     element.width = element.height = MINIMAP_SIZE * ratio;
     const world = WORLD_HALF * 2;
     const scale = MINIMAP_SIZE / world;
-    const toMap = (x: number, z: number): [number, number] => [
-      (x + WORLD_HALF) * scale,
-      (z + WORLD_HALF) * scale,
-    ];
+    const toMap = (coordinate: number) => (coordinate + WORLD_HALF) * scale;
     const colors = new Map(players.map((p) => [p.id, p.color]));
 
     let frame = 0;
@@ -181,7 +178,8 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
       const block = BLOCK_SIZE * scale;
       context.fillStyle = "#1f4c2c";
       for (const [x, z] of city.parks) {
-        const [px, pz] = toMap(x, z);
+        const px = toMap(x),
+          pz = toMap(z);
         context.fillRect(px - block / 2, pz - block / 2, block, block);
       }
 
@@ -189,7 +187,7 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
       context.lineWidth = Math.max(1.4, ROAD_WIDTH * scale);
       context.beginPath();
       for (let i = 0; i < GRID_SIZE; i++) {
-        const [c] = toMap(roadCenter(i), 0);
+        const c = toMap(roadCenter(i));
         context.moveTo(c, 0);
         context.lineTo(c, MINIMAP_SIZE);
         context.moveTo(0, c);
@@ -204,8 +202,10 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
         const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
         const midX = (deck.minX + deck.maxX) / 2,
           midZ = (deck.minZ + deck.maxZ) / 2;
-        const [ax, az] = toMap(alongX ? deck.minX : midX, alongX ? midZ : deck.minZ);
-        const [bx, bz] = toMap(alongX ? deck.maxX : midX, alongX ? midZ : deck.maxZ);
+        const ax = toMap(alongX ? deck.minX : midX),
+          az = toMap(alongX ? midZ : deck.minZ),
+          bx = toMap(alongX ? deck.maxX : midX),
+          bz = toMap(alongX ? midZ : deck.maxZ);
         context.moveTo(ax, az);
         context.lineTo(bx, bz);
       }
@@ -214,12 +214,14 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
       context.fillStyle = "#ffd400";
       for (const ramp of city.ramps) {
         if (ramp.kind !== "kicker") continue;
-        const [px, pz] = toMap(ramp.x, ramp.z);
+        const px = toMap(ramp.x),
+          pz = toMap(ramp.z);
         context.fillRect(px - 1.6, pz - 1.6, 3.2, 3.2);
       }
 
       if (target) {
-        const [tx, tz] = toMap(target[0], target[1]);
+        const tx = toMap(target[0]),
+          tz = toMap(target[1]);
         const pulse = 5 + Math.sin(time / 220) * 2;
         context.strokeStyle = dropoff ? "#65f578" : "#ff7a00";
         context.lineWidth = 2.5;
@@ -230,7 +232,8 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
 
       for (const [id, pose] of remotePositions) {
         if (id === selfId) continue;
-        const [px, pz] = toMap(pose.x, pose.z);
+        const px = toMap(pose.x),
+          pz = toMap(pose.z);
         context.fillStyle = colors.get(id) ?? "#ffffff";
         context.beginPath();
         context.arc(px, pz, 2.8, 0, Math.PI * 2);
@@ -238,7 +241,8 @@ function Minimap({ city, target, dropoff }: { city: City; target?: [number, numb
       }
 
       // Own car as an arrow: world +z is map +y, so the heading maps straight across.
-      const [sx, sz] = toMap(ownPose.x, ownPose.z);
+      const sx = toMap(ownPose.x),
+        sz = toMap(ownPose.z);
       const dx = Math.sin(ownPose.yaw),
         dz = Math.cos(ownPose.yaw);
       context.fillStyle = "#ffe100";
