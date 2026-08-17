@@ -2,6 +2,9 @@ export type CarPose = { x: number; y: number; z: number; yaw: number; speed: num
 
 export const ownPose: CarPose = { x: 0, y: 0.8, z: 0, yaw: 0, speed: 0 };
 
+/** Actual camera view azimuth, published by ChaseCamera for screen-space guidance. */
+export const cameraPose = { yaw: 0 };
+
 export type DrivingTelemetry = {
   boost: number;
   drifting: boolean;

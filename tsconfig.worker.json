@@ -16,5 +16,6 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["./worker-configuration.d.ts"]
   },
-  "include": ["src/worker", "src/shared", "worker-configuration.d.ts"]
+  "include": ["src/worker", "src/shared", "worker-configuration.d.ts"],
+  "exclude": ["**/*.test.ts"]
 }

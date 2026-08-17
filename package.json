@@ -9,6 +9,7 @@
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "check": "tsc -b",
+    "test": "node --test 'src/**/*.test.ts'",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {

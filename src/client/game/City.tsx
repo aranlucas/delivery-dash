@@ -166,6 +166,8 @@ type Instance = {
   pos: [number, number, number];
   scale?: number | [number, number, number];
   rotY?: number;
+  rotX?: number;
+  color?: string;
 };
 
 function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
@@ -174,15 +176,21 @@ function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: I
     if (!mesh) return;
     const matrix = new THREE.Matrix4();
     const q = new THREE.Quaternion();
+    const tilt = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3(1, 0, 0);
+    const color = new THREE.Color();
     items.forEach((it, i) => {
       const s = it.scale ?? 1;
       const sv = Array.isArray(s) ? new THREE.Vector3(...s) : new THREE.Vector3(s, s, s);
       q.setFromAxisAngle(up, it.rotY ?? 0);
+      if (it.rotX) q.multiply(tilt.setFromAxisAngle(right, it.rotX));
       matrix.compose(new THREE.Vector3(...it.pos), q, sv);
       mesh.setMatrixAt(i, matrix);
+      if (it.color) mesh.setColorAt(i, color.set(it.color));
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [ref, items]);
 }
 
@@ -1011,37 +1019,139 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
 }
 
 const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];
-function Restaurant({ place, index }: { place: { name: string; pos: Pos2 }; index: number }) {
-  const accent = awningColors[index % awningColors.length]!;
+const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
+
+/** Convert an offset inside a yawed place group to an instance in world space. */
+function placeOffset(
+  [px, pz]: Pos2,
+  yaw: number,
+  x: number,
+  y: number,
+  z: number,
+): [number, number, number] {
+  const cosine = Math.cos(yaw);
+  const sine = Math.sin(yaw);
+  return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
+}
+
+/** All repeated place geometry is instanced; only restaurant text remains per-place. */
+function PlaceProps({ city }: { city: CityData }) {
+  const groups = useMemo(() => {
+    const restaurantShells: Instance[] = [];
+    const houseShells: Instance[] = [];
+    const roofs: Instance[] = [];
+    const doors: Instance[] = [];
+    const windows: Instance[] = [];
+    const signPanels: Instance[] = [];
+    const awnings: Instance[] = [];
+    const signBoards: Instance[] = [];
+
+    city.houses.forEach((place, index) => {
+      const yaw = outwardYaw(place.pos);
+      houseShells.push({
+        pos: [place.pos[0], 1.5, place.pos[1]],
+        rotY: yaw,
+        color: houseColors[index % houseColors.length]!,
+      });
+      roofs.push({ pos: placeOffset(place.pos, yaw, 0, 4.05, 0), rotY: yaw + Math.PI / 4 });
+      doors.push({ pos: placeOffset(place.pos, yaw, 0, 0.95, 3.02), rotY: yaw });
+      windows.push({ pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02), rotY: yaw });
+      windows.push({ pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02), rotY: yaw });
+    });
+
+    city.restaurants.forEach((place, index) => {
+      const yaw = outwardYaw(place.pos);
+      restaurantShells.push({ pos: [place.pos[0], 1.9, place.pos[1]], rotY: yaw });
+      signPanels.push({ pos: placeOffset(place.pos, yaw, 0, 1.35, 3.02), rotY: yaw });
+      awnings.push({
+        pos: placeOffset(place.pos, yaw, 0, 2.85, 3.4),
+        rotY: yaw,
+        rotX: 0.5,
+        color: awningColors[index % awningColors.length]!,
+      });
+      signBoards.push({ pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05), rotY: yaw });
+    });
+
+    return { restaurantShells, houseShells, roofs, doors, windows, signPanels, awnings, signBoards };
+  }, [city]);
+
+  const geometries = useMemo(
+    () => ({
+      restaurant: new RoundedBoxGeometry(8.5, 3.8, 6, 3, 0.22),
+      house: new RoundedBoxGeometry(6, 3, 6, 3, 0.2),
+      awning: new RoundedBoxGeometry(7.6, 0.16, 1.7, 2, 0.07),
+      signBoard: new RoundedBoxGeometry(7, 1.1, 0.3, 2, 0.1),
+    }),
+    [],
+  );
+  const restaurantMesh = useRef<THREE.InstancedMesh>(null);
+  const houseMesh = useRef<THREE.InstancedMesh>(null);
+  const roofMesh = useRef<THREE.InstancedMesh>(null);
+  const doorMesh = useRef<THREE.InstancedMesh>(null);
+  const windowMesh = useRef<THREE.InstancedMesh>(null);
+  const panelMesh = useRef<THREE.InstancedMesh>(null);
+  const awningMesh = useRef<THREE.InstancedMesh>(null);
+  const boardMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(restaurantMesh, groups.restaurantShells);
+  useInstances(houseMesh, groups.houseShells);
+  useInstances(roofMesh, groups.roofs);
+  useInstances(doorMesh, groups.doors);
+  useInstances(windowMesh, groups.windows);
+  useInstances(panelMesh, groups.signPanels);
+  useInstances(awningMesh, groups.awnings);
+  useInstances(boardMesh, groups.signBoards);
+
   return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
-      <RoundedBox
+    <>
+      <instancedMesh
+        ref={restaurantMesh}
+        args={[geometries.restaurant, undefined, groups.restaurantShells.length]}
         castShadow
         receiveShadow
-        position={[0, 1.9, 0]}
-        args={[8.5, 3.8, 6]}
-        radius={0.22}
-        smoothness={3}
       >
         <meshStandardMaterial color="#ffd09b" roughness={0.86} />
-      </RoundedBox>
-      <mesh position={[0, 1.35, 3.02]}>
+      </instancedMesh>
+      <instancedMesh
+        ref={houseMesh}
+        args={[geometries.house, undefined, groups.houseShells.length]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial color="white" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={roofMesh} args={[undefined, undefined, groups.roofs.length]} castShadow>
+        <coneGeometry args={[4.7, 2.1, 4]} />
+        <meshStandardMaterial color="#e85c42" roughness={0.86} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={doorMesh} args={[undefined, undefined, groups.doors.length]}>
+        <planeGeometry args={[1.1, 1.9]} />
+        <meshStandardMaterial color="#4a3527" />
+      </instancedMesh>
+      <instancedMesh ref={windowMesh} args={[undefined, undefined, groups.windows.length]}>
+        <planeGeometry args={[1.2, 1.1]} />
+        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={panelMesh} args={[undefined, undefined, groups.signPanels.length]}>
         <planeGeometry args={[6.4, 1.9]} />
         <meshStandardMaterial color="#fff0bd" emissive="#ffb84c" emissiveIntensity={0.55} />
-      </mesh>
-      <RoundedBox
+      </instancedMesh>
+      <instancedMesh
+        ref={awningMesh}
+        args={[geometries.awning, undefined, groups.awnings.length]}
         castShadow
-        position={[0, 2.85, 3.4]}
-        rotation-x={0.5}
-        args={[7.6, 0.16, 1.7]}
-        radius={0.07}
-        smoothness={2}
       >
-        <meshStandardMaterial color={accent} roughness={0.85} />
-      </RoundedBox>
-      <RoundedBox position={[0, 4.15, 3.05]} args={[7, 1.1, 0.3]} radius={0.1} smoothness={2}>
+        <meshStandardMaterial color="white" roughness={0.85} />
+      </instancedMesh>
+      <instancedMesh ref={boardMesh} args={[geometries.signBoard, undefined, groups.signBoards.length]}>
         <meshStandardMaterial color="#241f1c" />
-      </RoundedBox>
+      </instancedMesh>
+    </>
+  );
+}
+
+function RestaurantSign({ place }: { place: { name: string; pos: Pos2 } }) {
+  return (
+    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
       <Suspense fallback={null}>
         <Text
           position={[0, 4.15, 3.25]}
@@ -1054,39 +1164,6 @@ function Restaurant({ place, index }: { place: { name: string; pos: Pos2 }; inde
           {place.name}
         </Text>
       </Suspense>
-    </group>
-  );
-}
-const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
-function House({ place, index }: { place: { name: string; pos: Pos2 }; index: number }) {
-  return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
-      <RoundedBox
-        castShadow
-        receiveShadow
-        position={[0, 1.5, 0]}
-        args={[6, 3, 6]}
-        radius={0.2}
-        smoothness={3}
-      >
-        <meshStandardMaterial color={houseColors[index % houseColors.length]} roughness={0.95} />
-      </RoundedBox>
-      <mesh castShadow position={[0, 4.05, 0]} rotation-y={Math.PI / 4}>
-        <coneGeometry args={[4.7, 2.1, 4]} />
-        <meshStandardMaterial color="#e85c42" roughness={0.86} flatShading />
-      </mesh>
-      <mesh position={[0, 0.95, 3.02]}>
-        <planeGeometry args={[1.1, 1.9]} />
-        <meshStandardMaterial color="#4a3527" />
-      </mesh>
-      <mesh position={[-1.8, 1.6, 3.02]}>
-        <planeGeometry args={[1.2, 1.1]} />
-        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
-      </mesh>
-      <mesh position={[1.8, 1.6, 3.02]}>
-        <planeGeometry args={[1.2, 1.1]} />
-        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
-      </mesh>
     </group>
   );
 }
@@ -1118,11 +1195,9 @@ export function City({ city, seed }: { city: CityData; seed: number }) {
       <PalmTrees city={city} seed={seed} />
       <StreetLights city={city} />
       <ArcadeSigns />
-      {city.restaurants.map((p, i) => (
-        <Restaurant key={`r${p.id}`} place={p} index={i} />
-      ))}
-      {city.houses.map((p, i) => (
-        <House key={`h${p.id}`} place={p} index={i} />
+      <PlaceProps city={city} />
+      {city.restaurants.map((place) => (
+        <RestaurantSign key={`r${place.id}`} place={place} />
       ))}
     </group>
   );
