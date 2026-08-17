@@ -1,4 +1,5 @@
 import { mulberry32, randomInt } from "./rng.ts";
+import { buildGrid, queryRange, type SpatialGrid } from "./collision.ts";
 
 export const GRID_SIZE = 12;
 export const BLOCK_SIZE = 36;
@@ -72,6 +73,7 @@ export type City = {
   boostPads: BoostPad[];
   parkedCars: ParkedCar[];
   trafficRoutes: TrafficRoute[];
+  collisionGrid: SpatialGrid;
 };
 
 const restaurantNames = [
@@ -173,7 +175,9 @@ export function groundHeightAt(city: City, x: number, z: number, height: number)
       z < deck.maxZ
     )
       best = deck.height;
-  for (const box of city.buildingAABBs)
+  const candidateCount = queryRange(city.collisionGrid, x, z, x, z, collisionCandidates);
+  for (let index = 0; index < candidateCount; index++) {
+    const box = city.buildingAABBs[collisionCandidates[index]!]!;
     if (
       box.top > best &&
       box.top <= limit &&
@@ -183,10 +187,12 @@ export function groundHeightAt(city: City, x: number, z: number, height: number)
       z < box.maxZ
     )
       best = box.top;
+  }
   return best;
 }
 
 const SOLID_MARGIN = 2;
+const collisionCandidates: number[] = [];
 /** True when a car whose wheels sit at `height` cannot occupy this spot. */
 export function blocked(city: City, x: number, z: number, height: number): boolean {
   if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
@@ -194,7 +200,16 @@ export function blocked(city: City, x: number, z: number, height: number): boole
     const surface = rampSurface(ramp, x, z);
     if (surface !== undefined && surface > height + STEP_UP) return true;
   }
-  for (const box of city.buildingAABBs)
+  const candidateCount = queryRange(
+    city.collisionGrid,
+    x - SOLID_MARGIN,
+    z - SOLID_MARGIN,
+    x + SOLID_MARGIN,
+    z + SOLID_MARGIN,
+    collisionCandidates,
+  );
+  for (let index = 0; index < candidateCount; index++) {
+    const box = city.buildingAABBs[collisionCandidates[index]!]!;
     if (
       height < box.top - 0.6 &&
       height > box.base - 1.4 &&
@@ -204,6 +219,7 @@ export function blocked(city: City, x: number, z: number, height: number): boole
       z < box.maxZ + SOLID_MARGIN
     )
       return true;
+  }
   return false;
 }
 
@@ -563,7 +579,9 @@ export function generateCity(seed: number): City {
       const cx = blockCenter(x),
         cz = blockCenter(z),
         edge = BLOCK_SIZE / 2 - 5;
-      const lane = BLOCK_SIZE / 2 + ROAD_WIDTH / 2;
+      // Put the target just beyond the curb. The previous road-centre target
+      // was 12m from the storefront, outside the 10m delivery radius.
+      const lane = BLOCK_SIZE / 2 + ROAD_WIDTH / 4;
       for (const [sx, sz] of [
         [-1, -1],
         [1, -1],
@@ -696,6 +714,7 @@ export function generateCity(seed: number): City {
     boostPads,
     parkedCars,
     trafficRoutes: buildTraffic(seed, structures),
+    collisionGrid: buildGrid(buildingAABBs),
     spawns: Array.from({ length: 8 }, (_, i) => ({
       pos: [-WORLD_HALF + 40 + i * 10, -WORLD_HALF + 3 * PITCH + ROAD_WIDTH / 2],
       yaw: Math.PI / 2,

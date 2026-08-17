@@ -1,6 +1,7 @@
 import { Game } from "./game/Game";
 import { ArcadeAudio } from "./game/ArcadeAudio";
 import { Countdown, HUD, Lobby, Menu, WinnerScreen } from "./ui/Overlays";
+import { PerfOverlay } from "./ui/PerfOverlay";
 import { useGameStore } from "./store";
 
 export function App() {
@@ -22,6 +23,7 @@ export function App() {
       <HUD />
       {(phase === "countdown" || phase === "racing") && <Countdown />}
       {phase === "finished" && <WinnerScreen />}
+      <PerfOverlay />
     </div>
   );
 }

@@ -10,7 +10,8 @@ import {
   roadCenter,
   type City,
 } from "../../shared/city";
-import { drivingTelemetry, ownPose } from "../game/drivingState";
+import { relativeBearing } from "../../shared/nav";
+import { cameraPose, drivingTelemetry, ownPose } from "../game/drivingState";
 import { close, connect, rejoin, send } from "../net";
 import { ownPlayer, remotePositions, useGameStore } from "../store";
 
@@ -340,7 +341,7 @@ export function HUD() {
     (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
   const distance = target ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z) : 0;
   const arrowAngle = target
-    ? ownPose.yaw - Math.atan2(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z)
+    ? relativeBearing(ownPose.x, ownPose.z, cameraPose.yaw, target.stop[0], target.stop[1])
     : 0;
   const speed = Math.round(ownPose.speed * 3.6);
   const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);

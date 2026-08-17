@@ -1,8 +1,8 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import type { AABB } from "../../shared/city";
-import { drivingTelemetry, ownPose } from "./drivingState";
+import { queryRange, type SpatialGrid } from "../../shared/collision";
+import { cameraPose, drivingTelemetry, ownPose } from "./drivingState";
 
 const desired = new THREE.Vector3();
 const look = new THREE.Vector3();
@@ -12,8 +12,11 @@ function shortestAngle(from: number, to: number) {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-function obstructed(x: number, y: number, z: number, boxes: AABB[]) {
-  for (const box of boxes) {
+const cameraCandidates: number[] = [];
+function obstructed(x: number, y: number, z: number, grid: SpatialGrid) {
+  const count = queryRange(grid, x - 1.2, z - 1.2, x + 1.2, z + 1.2, cameraCandidates);
+  for (let index = 0; index < count; index++) {
+    const box = grid.boxes[cameraCandidates[index]!]!;
     if (
       y < box.top &&
       y > box.base - 1 &&
@@ -27,7 +30,7 @@ function obstructed(x: number, y: number, z: number, boxes: AABB[]) {
   return false;
 }
 
-export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
+export function ChaseCamera({ grid }: { grid: SpatialGrid }) {
   const { camera } = useThree();
   const cameraYaw = useRef(ownPose.yaw);
   const roll = useRef(0);
@@ -56,8 +59,10 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
         THREE.MathUtils.lerp(ownPose.y + 1.3, desired.y, t),
         THREE.MathUtils.lerp(ownPose.z, desired.z, t),
       );
-      if (obstructed(sample.x, sample.y, sample.z, boxes)) {
-        safeT = Math.max(0.24, t - 0.16);
+      if (obstructed(sample.x, sample.y, sample.z, grid)) {
+        // A wall immediately behind the car needs a genuinely close camera. The previous 24%
+        // floor could still leave the lens inside the facade after a sharp turn into a building.
+        safeT = Math.max(0.08, t - 0.18);
         break;
       }
     }
@@ -83,9 +88,12 @@ export function ChaseCamera({ boxes }: { boxes: AABB[] }) {
       ownPose.z + Math.cos(ownPose.yaw) * lookAhead,
     );
     camera.lookAt(look);
+    cameraPose.yaw = Math.atan2(look.x - camera.position.x, look.z - camera.position.z);
     const targetRoll = -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
     roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 1 - Math.exp(-d * 6));
-    camera.rotation.z = roll.current;
+    // lookAt writes the complete camera quaternion. Overwriting its Euler Z component can turn
+    // the horizon by 90 degrees at some headings, so apply drift lean around the local view axis.
+    camera.rotateZ(roll.current);
 
     const perspective = camera as THREE.PerspectiveCamera;
     const targetFov = 62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);

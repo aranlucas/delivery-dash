@@ -2,6 +2,8 @@ import { Float } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
+import { worldBearing } from "../../shared/nav";
+import { ownPose } from "./drivingState";
 
 /** Grounded delivery zone: pulsing ring + soft pillar + bobbing cone, sitting on the sidewalk plane. */
 export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff: boolean }) {
@@ -32,6 +34,50 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
           <meshBasicMaterial color={color} />
         </mesh>
       </Float>
+    </group>
+  );
+}
+
+const CHEVRON_COUNT = 3;
+
+/** Flowing chevrons immediately ahead of the car, aimed at the destination. */
+export function TargetPointer({ target, dropoff }: { target: [number, number]; dropoff: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const chevrons = useRef<Array<THREE.Mesh | null>>([]);
+  useFrame(({ clock }) => {
+    const g = group.current;
+    if (!g) return;
+    // ownPose.y includes the 0.8m ride height, so this hugs flat roads, ramps,
+    // and elevated decks while still following the car through a jump.
+    g.position.set(ownPose.x, ownPose.y - 0.65, ownPose.z);
+    g.rotation.y = worldBearing(ownPose.x, ownPose.z, target[0], target[1]);
+    for (let index = 0; index < chevrons.current.length; index++) {
+      const chevron = chevrons.current[index];
+      if (!chevron) continue;
+      const phase = (clock.elapsedTime * 0.85 + index / CHEVRON_COUNT) % 1;
+      chevron.position.z = 4 + phase * 7;
+      (chevron.material as THREE.MeshBasicMaterial).opacity = Math.sin(phase * Math.PI) * 0.75;
+    }
+  });
+  return (
+    <group ref={group}>
+      {Array.from({ length: CHEVRON_COUNT }, (_, index) => (
+        <mesh
+          key={index}
+          ref={(mesh) => {
+            chevrons.current[index] = mesh;
+          }}
+          rotation-x={-Math.PI / 2}
+        >
+          <coneGeometry args={[1.1, 2.2, 3]} />
+          <meshBasicMaterial
+            color={dropoff ? "#38d986" : "#ff9d33"}
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }

@@ -18,7 +18,8 @@ import {
   type Ramp,
 } from "../../shared/city";
 import { mulberry32 } from "../../shared/rng";
-import { makeFleetGeometry } from "./carGeometry";
+import { makeFleetGeometry, useStreetPropAssets, useVehicleAsset } from "./modelAssets";
+import type { CarKind } from "./carGeometry";
 import { trafficCars, updateTraffic } from "./traffic";
 import {
   FACADE_STYLES,
@@ -166,6 +167,8 @@ type Instance = {
   pos: [number, number, number];
   scale?: number | [number, number, number];
   rotY?: number;
+  rotX?: number;
+  color?: string;
 };
 
 function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
@@ -174,15 +177,21 @@ function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: I
     if (!mesh) return;
     const matrix = new THREE.Matrix4();
     const q = new THREE.Quaternion();
+    const tilt = new THREE.Quaternion();
     const up = new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3(1, 0, 0);
+    const color = new THREE.Color();
     items.forEach((it, i) => {
       const s = it.scale ?? 1;
       const sv = Array.isArray(s) ? new THREE.Vector3(...s) : new THREE.Vector3(s, s, s);
       q.setFromAxisAngle(up, it.rotY ?? 0);
+      if (it.rotX) q.multiply(tilt.setFromAxisAngle(right, it.rotX));
       matrix.compose(new THREE.Vector3(...it.pos), q, sv);
       mesh.setMatrixAt(i, matrix);
+      if (it.color) mesh.setColorAt(i, color.set(it.color));
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [ref, items]);
 }
 
@@ -596,6 +605,7 @@ function BoostPads({ city }: { city: CityData }) {
 }
 
 function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
+  const { palmTrunk, palmFrond } = useStreetPropAssets();
   const { trunks, fronds } = useMemo(() => {
     const rng = mulberry32(seed ^ 0xc0a57),
       trunks: Instance[] = [],
@@ -610,12 +620,12 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
     for (const [x, z] of spots) {
       if (nearExpressway(city, x, z, 3)) continue;
       const h = 6.6 + rng() * 2.3;
-      trunks.push({ pos: [x, h / 2, z], scale: [0.42, h, 0.42], rotY: rng() });
-      for (let f = 0; f < 6; f++) {
-        const yaw = (f / 6) * Math.PI * 2 + rng() * 0.24;
+      trunks.push({ pos: [x, h / 2, z], scale: [1.35, h / 7, 1.35], rotY: rng() });
+      for (let f = 0; f < 7; f++) {
+        const yaw = (f / 7) * Math.PI * 2 + rng() * 0.2;
         fronds.push({
-          pos: [x + Math.sin(yaw) * 1.8, h + 0.45, z + Math.cos(yaw) * 1.8],
-          scale: [0.58, 0.2, 3.5],
+          pos: [x, h + 0.5, z],
+          scale: [0.88 + rng() * 0.2, 0.85 + rng() * 0.15, 0.9 + rng() * 0.16],
           rotY: yaw,
         });
       }
@@ -628,13 +638,15 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   useInstances(frondMesh, fronds);
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[undefined, undefined, trunks.length]} castShadow>
-        <cylinderGeometry args={[0.7, 1, 1, 7]} />
+      <instancedMesh ref={trunkMesh} args={[palmTrunk, undefined, trunks.length]} castShadow>
         <meshStandardMaterial color="#8e542d" roughness={0.96} />
       </instancedMesh>
-      <instancedMesh ref={frondMesh} args={[undefined, undefined, fronds.length]} castShadow>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial color="#27a653" roughness={0.88} flatShading />
+      <instancedMesh
+        ref={frondMesh}
+        args={[palmFrond, undefined, fronds.length]}
+        castShadow
+      >
+        <meshStandardMaterial color="#27a653" roughness={0.88} flatShading side={THREE.DoubleSide} />
       </instancedMesh>
     </>
   );
@@ -714,21 +726,23 @@ function Greenery({ city, seed }: { city: CityData; seed: number }) {
 }
 
 function StreetLights({ city }: { city: CityData }) {
+  const { streetlightPole: poleGeometry, streetlightLens: lensGeometry } =
+    useStreetPropAssets();
   const { poles, heads } = useMemo(() => {
     const poles: Instance[] = [];
     const heads: Instance[] = [];
-    const put = (x: number, z: number) => {
+    const put = (x: number, z: number, yaw: number) => {
       if (nearExpressway(city, x, z, 1)) return;
-      poles.push({ pos: [x, 3.1, z], scale: [0.16, 6.2, 0.16] });
-      heads.push({ pos: [x, 6.4, z], scale: 0.42 });
+      poles.push({ pos: [x, 0, z], rotY: yaw });
+      heads.push({ pos: [x, 0, z], rotY: yaw });
     };
     for (let i = 0; i < GRID_SIZE; i++) {
       const c = roadCenter(i);
       for (let d = -WORLD_HALF + 20; d < WORLD_HALF - 10; d += 55) {
         // on the sidewalk slab (which extends 1.5 into the road), not on the asphalt
         const side = (Math.round(d / 55) % 2 === 0 ? 1 : -1) * (ROAD_WIDTH / 2 + 1.2);
-        put(c + side, d);
-        put(d, c + side);
+        put(c + side, d, side > 0 ? -Math.PI / 2 : Math.PI / 2);
+        put(d, c + side, side > 0 ? Math.PI : 0);
       }
     }
     return { poles, heads };
@@ -739,12 +753,10 @@ function StreetLights({ city }: { city: CityData }) {
   useInstances(headMesh, heads);
   return (
     <>
-      <instancedMesh ref={poleMesh} args={[undefined, undefined, poles.length]}>
-        <cylinderGeometry args={[0.5, 0.5, 1, 6]} />
+      <instancedMesh ref={poleMesh} args={[poleGeometry, undefined, poles.length]} castShadow>
         <meshStandardMaterial color="#3a3f46" metalness={0.6} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={headMesh} args={[undefined, undefined, heads.length]}>
-        <sphereGeometry args={[1, 10, 8]} />
+      <instancedMesh ref={headMesh} args={[lensGeometry, undefined, heads.length]}>
         <meshStandardMaterial color="#ffe9bd" emissive="#ffdf9e" emissiveIntensity={2.4} />
       </instancedMesh>
     </>
@@ -753,23 +765,31 @@ function StreetLights({ city }: { city: CityData }) {
 
 const ONE = new THREE.Vector3(1, 1, 1);
 
-/** One fleet of background cars: painted bodywork plus shared trim, headlamp and tail-lamp passes. */
-function useCarFleet(colors: string[]) {
-  const parts = useMemo(makeFleetGeometry, []);
+/** One instanced vehicle shape: painted bodywork plus glass, trim and lamp passes. */
+function useCarFleet(kind: CarKind, colors: string[]) {
+  const asset = useVehicleAsset(kind);
+  const parts = useMemo(() => makeFleetGeometry(asset), [asset]);
   useEffect(
     () => () => {
       parts.painted.dispose();
+      parts.glass.dispose();
       parts.trim.dispose();
       parts.headlights.dispose();
       parts.taillights.dispose();
+      parts.topper.dispose();
     },
     [parts],
   );
   const painted = useRef<THREE.InstancedMesh>(null),
+    glass = useRef<THREE.InstancedMesh>(null),
     trim = useRef<THREE.InstancedMesh>(null),
     heads = useRef<THREE.InstancedMesh>(null),
-    tails = useRef<THREE.InstancedMesh>(null);
-  const fleet = useMemo(() => [painted, trim, heads, tails] as const, []);
+    tails = useRef<THREE.InstancedMesh>(null),
+    toppers = useRef<THREE.InstancedMesh>(null);
+  const fleet = useMemo(
+    () => [painted, glass, trim, heads, tails, ...(kind === "taxi" ? [toppers] : [])] as const,
+    [kind],
+  );
   useLayoutEffect(() => {
     if (!painted.current) return;
     colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
@@ -791,6 +811,9 @@ function useCarFleet(colors: string[]) {
       <instancedMesh ref={painted} args={[parts.painted, undefined, count]} castShadow>
         <meshStandardMaterial roughness={0.34} metalness={0.32} />
       </instancedMesh>
+      <instancedMesh ref={glass} args={[parts.glass, undefined, count]}>
+        <meshStandardMaterial color="#162d3d" roughness={0.08} metalness={0.5} />
+      </instancedMesh>
       <instancedMesh ref={trim} args={[parts.trim, undefined, count]} castShadow>
         <meshStandardMaterial color="#191d23" roughness={0.4} metalness={0.25} />
       </instancedMesh>
@@ -800,33 +823,69 @@ function useCarFleet(colors: string[]) {
       <instancedMesh ref={tails} args={[parts.taillights, undefined, count]}>
         <meshStandardMaterial color="#8a1a12" emissive="#ff2b1e" emissiveIntensity={1.3} />
       </instancedMesh>
+      {kind === "taxi" ? (
+        <instancedMesh ref={toppers} args={[parts.topper, undefined, count]} castShadow>
+          <meshStandardMaterial color="#f59e0b" emissive="#7c2d12" emissiveIntensity={0.25} />
+        </instancedMesh>
+      ) : null}
     </>
   );
   return { write, flush, meshes };
 }
 
-function Traffic({ city }: { city: CityData }) {
-  const colors = useMemo(() => city.trafficRoutes.map((route) => route.color), [city]);
-  const { write, flush, meshes } = useCarFleet(colors);
+const FLEET_KINDS: CarKind[] = ["sedan", "van", "hatch", "sports", "taxi"];
+type FleetSlot = { color: string; index: number; moving: boolean };
+
+/** Traffic and parked cars share five shape-specific fleets, so every Blender vehicle appears. */
+function FleetCars({ city }: { city: CityData }) {
+  const groups = useMemo(() => {
+    const output: Record<CarKind, FleetSlot[]> = {
+      taxi: [],
+      sedan: [],
+      van: [],
+      hatch: [],
+      sports: [],
+    };
+    city.trafficRoutes.forEach((route, index) =>
+      output[FLEET_KINDS[index % FLEET_KINDS.length]!]!.push({
+        color: route.color,
+        index,
+        moving: true,
+      }),
+    );
+    city.parkedCars.forEach((car, index) =>
+      output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]!]!.push({
+        color: car.color,
+        index,
+        moving: false,
+      }),
+    );
+    return output;
+  }, [city]);
+  const sedan = useCarFleet("sedan", groups.sedan.map((slot) => slot.color));
+  const van = useCarFleet("van", groups.van.map((slot) => slot.color));
+  const hatch = useCarFleet("hatch", groups.hatch.map((slot) => slot.color));
+  const sports = useCarFleet("sports", groups.sports.map((slot) => slot.color));
+  const taxi = useCarFleet("taxi", groups.taxi.map((slot) => slot.color));
+  const fleets = { sedan, van, hatch, sports, taxi };
   useFrame(({ clock }) => {
     updateTraffic(city, clock.elapsedTime);
-    for (let i = 0; i < trafficCars.length; i++) {
-      const car = trafficCars[i]!;
-      write(i, car.x, car.z, car.yaw);
+    for (const kind of FLEET_KINDS) {
+      const fleet = fleets[kind];
+      groups[kind].forEach((slot, localIndex) => {
+        const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
+        if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
+      });
+      fleet.flush();
     }
-    flush();
   });
-  return meshes;
-}
-
-function ParkedCars({ city }: { city: CityData }) {
-  const colors = useMemo(() => city.parkedCars.map((car) => car.color), [city]);
-  const { write, flush, meshes } = useCarFleet(colors);
-  useLayoutEffect(() => {
-    city.parkedCars.forEach((car, i) => write(i, car.x, car.z, car.yaw));
-    flush();
-  }, [city, flush, write]);
-  return meshes;
+  return (
+    <>
+      {FLEET_KINDS.map((kind) => (
+        <group key={kind}>{fleets[kind].meshes}</group>
+      ))}
+    </>
+  );
 }
 
 /** Signals face the traffic they hold: one head per axis, lit green for through traffic. */
@@ -919,17 +978,19 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
             n < 2 ? [cx + alongEdge, cz + side * walk] : [cx + side * walk, cz + alongEdge];
           if (nearExpressway(city, x, z, 2)) continue;
           const roll = rng();
-          if (roll < 0.34) hydrants.push({ pos: [x, 0.68, z], scale: [0.34, 0.9, 0.34] });
-          else if (roll < 0.68) bins.push({ pos: [x, 0.75, z], scale: [0.7, 1.05, 0.7] });
+          if (roll < 0.34) hydrants.push({ pos: [x, 0, z] });
+          else if (roll < 0.68) bins.push({ pos: [x, 0, z] });
           else
             benches.push({
-              pos: [x, 0.62, z],
-              scale: n < 2 ? [2.8, 0.36, 0.7] : [0.7, 0.36, 2.8],
+              pos: [x, 0, z],
+              rotY: n < 2 ? 0 : Math.PI / 2,
             });
         }
       }
     return { hydrants, bins, benches };
   }, [city, seed]);
+  const { hydrant: hydrantGeometry, bin: binGeometry, bench: benchGeometry } =
+    useStreetPropAssets();
   const hydrantMesh = useRef<THREE.InstancedMesh>(null),
     binMesh = useRef<THREE.InstancedMesh>(null),
     benchMesh = useRef<THREE.InstancedMesh>(null);
@@ -938,16 +999,21 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
   useInstances(benchMesh, benches);
   return (
     <>
-      <instancedMesh ref={hydrantMesh} args={[undefined, undefined, hydrants.length]} castShadow>
-        <cylinderGeometry args={[0.5, 0.6, 1, 8]} />
+      <instancedMesh
+        ref={hydrantMesh}
+        args={[hydrantGeometry, undefined, hydrants.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#d43a2a" roughness={0.7} />
       </instancedMesh>
-      <instancedMesh ref={binMesh} args={[undefined, undefined, bins.length]} castShadow>
-        <cylinderGeometry args={[0.5, 0.42, 1, 10]} />
+      <instancedMesh ref={binMesh} args={[binGeometry, undefined, bins.length]} castShadow>
         <meshStandardMaterial color="#2f3a34" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={benchMesh} args={[undefined, undefined, benches.length]} castShadow>
-        <boxGeometry />
+      <instancedMesh
+        ref={benchMesh}
+        args={[benchGeometry, undefined, benches.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#8a5a33" roughness={0.95} />
       </instancedMesh>
     </>
@@ -1011,37 +1077,139 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
 }
 
 const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];
-function Restaurant({ place, index }: { place: { name: string; pos: Pos2 }; index: number }) {
-  const accent = awningColors[index % awningColors.length]!;
+const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
+
+/** Convert an offset inside a yawed place group to an instance in world space. */
+function placeOffset(
+  [px, pz]: Pos2,
+  yaw: number,
+  x: number,
+  y: number,
+  z: number,
+): [number, number, number] {
+  const cosine = Math.cos(yaw);
+  const sine = Math.sin(yaw);
+  return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
+}
+
+/** All repeated place geometry is instanced; only restaurant text remains per-place. */
+function PlaceProps({ city }: { city: CityData }) {
+  const groups = useMemo(() => {
+    const restaurantShells: Instance[] = [];
+    const houseShells: Instance[] = [];
+    const roofs: Instance[] = [];
+    const doors: Instance[] = [];
+    const windows: Instance[] = [];
+    const signPanels: Instance[] = [];
+    const awnings: Instance[] = [];
+    const signBoards: Instance[] = [];
+
+    city.houses.forEach((place, index) => {
+      const yaw = outwardYaw(place.pos);
+      houseShells.push({
+        pos: [place.pos[0], 1.5, place.pos[1]],
+        rotY: yaw,
+        color: houseColors[index % houseColors.length]!,
+      });
+      roofs.push({ pos: placeOffset(place.pos, yaw, 0, 4.05, 0), rotY: yaw + Math.PI / 4 });
+      doors.push({ pos: placeOffset(place.pos, yaw, 0, 0.95, 3.02), rotY: yaw });
+      windows.push({ pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02), rotY: yaw });
+      windows.push({ pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02), rotY: yaw });
+    });
+
+    city.restaurants.forEach((place, index) => {
+      const yaw = outwardYaw(place.pos);
+      restaurantShells.push({ pos: [place.pos[0], 1.9, place.pos[1]], rotY: yaw });
+      signPanels.push({ pos: placeOffset(place.pos, yaw, 0, 1.35, 3.02), rotY: yaw });
+      awnings.push({
+        pos: placeOffset(place.pos, yaw, 0, 2.85, 3.4),
+        rotY: yaw,
+        rotX: 0.5,
+        color: awningColors[index % awningColors.length]!,
+      });
+      signBoards.push({ pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05), rotY: yaw });
+    });
+
+    return { restaurantShells, houseShells, roofs, doors, windows, signPanels, awnings, signBoards };
+  }, [city]);
+
+  const geometries = useMemo(
+    () => ({
+      restaurant: new RoundedBoxGeometry(8.5, 3.8, 6, 3, 0.22),
+      house: new RoundedBoxGeometry(6, 3, 6, 3, 0.2),
+      awning: new RoundedBoxGeometry(7.6, 0.16, 1.7, 2, 0.07),
+      signBoard: new RoundedBoxGeometry(7, 1.1, 0.3, 2, 0.1),
+    }),
+    [],
+  );
+  const restaurantMesh = useRef<THREE.InstancedMesh>(null);
+  const houseMesh = useRef<THREE.InstancedMesh>(null);
+  const roofMesh = useRef<THREE.InstancedMesh>(null);
+  const doorMesh = useRef<THREE.InstancedMesh>(null);
+  const windowMesh = useRef<THREE.InstancedMesh>(null);
+  const panelMesh = useRef<THREE.InstancedMesh>(null);
+  const awningMesh = useRef<THREE.InstancedMesh>(null);
+  const boardMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(restaurantMesh, groups.restaurantShells);
+  useInstances(houseMesh, groups.houseShells);
+  useInstances(roofMesh, groups.roofs);
+  useInstances(doorMesh, groups.doors);
+  useInstances(windowMesh, groups.windows);
+  useInstances(panelMesh, groups.signPanels);
+  useInstances(awningMesh, groups.awnings);
+  useInstances(boardMesh, groups.signBoards);
+
   return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
-      <RoundedBox
+    <>
+      <instancedMesh
+        ref={restaurantMesh}
+        args={[geometries.restaurant, undefined, groups.restaurantShells.length]}
         castShadow
         receiveShadow
-        position={[0, 1.9, 0]}
-        args={[8.5, 3.8, 6]}
-        radius={0.22}
-        smoothness={3}
       >
         <meshStandardMaterial color="#ffd09b" roughness={0.86} />
-      </RoundedBox>
-      <mesh position={[0, 1.35, 3.02]}>
+      </instancedMesh>
+      <instancedMesh
+        ref={houseMesh}
+        args={[geometries.house, undefined, groups.houseShells.length]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial color="white" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh ref={roofMesh} args={[undefined, undefined, groups.roofs.length]} castShadow>
+        <coneGeometry args={[4.7, 2.1, 4]} />
+        <meshStandardMaterial color="#e85c42" roughness={0.86} flatShading />
+      </instancedMesh>
+      <instancedMesh ref={doorMesh} args={[undefined, undefined, groups.doors.length]}>
+        <planeGeometry args={[1.1, 1.9]} />
+        <meshStandardMaterial color="#4a3527" />
+      </instancedMesh>
+      <instancedMesh ref={windowMesh} args={[undefined, undefined, groups.windows.length]}>
+        <planeGeometry args={[1.2, 1.1]} />
+        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={panelMesh} args={[undefined, undefined, groups.signPanels.length]}>
         <planeGeometry args={[6.4, 1.9]} />
         <meshStandardMaterial color="#fff0bd" emissive="#ffb84c" emissiveIntensity={0.55} />
-      </mesh>
-      <RoundedBox
+      </instancedMesh>
+      <instancedMesh
+        ref={awningMesh}
+        args={[geometries.awning, undefined, groups.awnings.length]}
         castShadow
-        position={[0, 2.85, 3.4]}
-        rotation-x={0.5}
-        args={[7.6, 0.16, 1.7]}
-        radius={0.07}
-        smoothness={2}
       >
-        <meshStandardMaterial color={accent} roughness={0.85} />
-      </RoundedBox>
-      <RoundedBox position={[0, 4.15, 3.05]} args={[7, 1.1, 0.3]} radius={0.1} smoothness={2}>
+        <meshStandardMaterial color="white" roughness={0.85} />
+      </instancedMesh>
+      <instancedMesh ref={boardMesh} args={[geometries.signBoard, undefined, groups.signBoards.length]}>
         <meshStandardMaterial color="#241f1c" />
-      </RoundedBox>
+      </instancedMesh>
+    </>
+  );
+}
+
+function RestaurantSign({ place }: { place: { name: string; pos: Pos2 } }) {
+  return (
+    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
       <Suspense fallback={null}>
         <Text
           position={[0, 4.15, 3.25]}
@@ -1054,39 +1222,6 @@ function Restaurant({ place, index }: { place: { name: string; pos: Pos2 }; inde
           {place.name}
         </Text>
       </Suspense>
-    </group>
-  );
-}
-const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
-function House({ place, index }: { place: { name: string; pos: Pos2 }; index: number }) {
-  return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
-      <RoundedBox
-        castShadow
-        receiveShadow
-        position={[0, 1.5, 0]}
-        args={[6, 3, 6]}
-        radius={0.2}
-        smoothness={3}
-      >
-        <meshStandardMaterial color={houseColors[index % houseColors.length]} roughness={0.95} />
-      </RoundedBox>
-      <mesh castShadow position={[0, 4.05, 0]} rotation-y={Math.PI / 4}>
-        <coneGeometry args={[4.7, 2.1, 4]} />
-        <meshStandardMaterial color="#e85c42" roughness={0.86} flatShading />
-      </mesh>
-      <mesh position={[0, 0.95, 3.02]}>
-        <planeGeometry args={[1.1, 1.9]} />
-        <meshStandardMaterial color="#4a3527" />
-      </mesh>
-      <mesh position={[-1.8, 1.6, 3.02]}>
-        <planeGeometry args={[1.2, 1.1]} />
-        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
-      </mesh>
-      <mesh position={[1.8, 1.6, 3.02]}>
-        <planeGeometry args={[1.2, 1.1]} />
-        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
-      </mesh>
     </group>
   );
 }
@@ -1110,19 +1245,16 @@ export function City({ city, seed }: { city: CityData; seed: number }) {
       <Ramps city={city} />
       <Expressway city={city} />
       <BoostPads city={city} />
-      <ParkedCars city={city} />
-      <Traffic city={city} />
+      <FleetCars city={city} />
       <TrafficSignals />
       <StreetFurniture city={city} seed={seed} />
       <Greenery city={city} seed={seed} />
       <PalmTrees city={city} seed={seed} />
       <StreetLights city={city} />
       <ArcadeSigns />
-      {city.restaurants.map((p, i) => (
-        <Restaurant key={`r${p.id}`} place={p} index={i} />
-      ))}
-      {city.houses.map((p, i) => (
-        <House key={`h${p.id}`} place={p} index={i} />
+      <PlaceProps city={city} />
+      {city.restaurants.map((place) => (
+        <RestaurantSign key={`r${place.id}`} place={place} />
       ))}
     </group>
   );

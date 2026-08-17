@@ -7,9 +7,10 @@ import { useGameStore, ownPlayer } from "../store";
 import { City } from "./City";
 import { OwnCar } from "./Car";
 import { RemoteCar } from "./RemoteCar";
-import { TargetBeacon } from "./TargetBeacon";
+import { TargetBeacon, TargetPointer } from "./TargetBeacon";
 import { ChaseCamera } from "./ChaseCamera";
 import { ownPose } from "./drivingState";
+import { PerfProbe } from "../ui/PerfOverlay";
 
 export function Game() {
   const seed = useGameStore((s) => s.seed);
@@ -97,9 +98,8 @@ function Scene({ seed }: { seed: number }) {
         color={self.color}
         carrying={self.leg === "dropoff"}
       />
-      {players
-        .filter((p) => p.id !== self.id)
-        .map((p) => (
+      {players.map((p) =>
+        p.id === self.id ? null : (
           <RemoteCar
             key={p.id}
             id={p.id}
@@ -108,11 +108,16 @@ function Scene({ seed }: { seed: number }) {
             carrying={p.leg === "dropoff"}
             spawn={city.spawns[p.spawnIndex]!.pos}
           />
-        ))}
-      {target && phase === "racing" && (
-        <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
+        ),
       )}
-      <ChaseCamera boxes={city.buildingAABBs} />
+      {target && phase === "racing" && (
+        <>
+          <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
+          <TargetPointer target={target.stop} dropoff={self.leg === "dropoff"} />
+        </>
+      )}
+      <ChaseCamera grid={city.collisionGrid} />
+      <PerfProbe />
     </Suspense>
   );
 }
