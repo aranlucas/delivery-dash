@@ -5,6 +5,17 @@ import * as THREE from "three";
 import { TICK_HZ, type Phase } from "../../shared/protocol";
 import { blocked, groundHeightAt, type City } from "../../shared/city";
 import { send } from "../net";
+import {
+  MAX_TRAFFIC_SWEEP,
+  NEAR_MISS_EXIT_RADIUS,
+  TRAFFIC_CONTACT_RADIUS,
+  addDriftCharge,
+  rushRewardForCharge,
+  rushTierForCharge,
+  updateNearMissPass,
+  type NearMissTracker,
+  type RushTier,
+} from "./arcadeRewards";
 import { drivingTelemetry, ownPose, wheelDrive, type CarPose } from "./drivingState";
 import { CarModel, type CarLod } from "./CarModel";
 import type { CarKind } from "./carGeometry";
@@ -33,8 +44,7 @@ const BOOST_PAD_IMPULSE = 13;
 const BOOST_PAD_RADIUS = 4.2;
 /** Ceiling a pad can shove the car to. Without it, chained pads out-run the speed limiter's decay. */
 const BOOST_PAD_MAX_SPEED = 64;
-/** Player half-width plus a traffic car's half-width: contact, not a force field. */
-const TRAFFIC_RADIUS = 2.9;
+const RUSH_ACCELERATION = 18;
 
 const pressed = new Set<string>();
 const CONTROL_KEYS = new Set([
@@ -56,8 +66,13 @@ const resetTelemetry = () => {
   drivingTelemetry.boost = 100;
   drivingTelemetry.drifting = false;
   drivingTelemetry.driftScore = 0;
+  drivingTelemetry.driftCharge = 0;
+  drivingTelemetry.driftTier = 0;
+  drivingTelemetry.rushTier = 0;
   drivingTelemetry.callout = "";
+  drivingTelemetry.calloutScore = 0;
   drivingTelemetry.combo = 0;
+  drivingTelemetry.rewardTier = 0;
   drivingTelemetry.impactPulse = 0;
   drivingTelemetry.steer = 0;
   drivingTelemetry.throttle = 0;
@@ -122,6 +137,15 @@ function useOwnCarController({
   const [rightVector] = useState(() => new THREE.Vector2());
   const driftGrace = useRef(0);
   const driftHold = useRef(0);
+  const rewardCalloutHold = useRef(0);
+  const driftCharge = useRef(0);
+  const previousHandbrake = useRef(false);
+  const rush = useRef<{ remaining: number; maxSpeed: number; tier: RushTier }>({
+    remaining: 0,
+    maxSpeed: NORMAL_MAX_SPEED,
+    tier: 0,
+  });
+  const nearMisses = useRef(new Map<number, NearMissTracker>());
   const sent = useRef(0);
   /** Height of the ground the wheels are on (or falling toward); ownPose.y adds the ride height. */
   const surface = useRef(0);
@@ -143,6 +167,11 @@ function useOwnCarController({
     velocity.set(0, 0);
     driftGrace.current = 0;
     driftHold.current = 0;
+    rewardCalloutHold.current = 0;
+    driftCharge.current = 0;
+    previousHandbrake.current = false;
+    rush.current = { remaining: 0, maxSpeed: NORMAL_MAX_SPEED, tier: 0 };
+    nearMisses.current.clear();
     surface.current = 0;
     vertical.current = 0;
     airborne.current = false;
@@ -164,14 +193,26 @@ function useOwnCarController({
       pressed.add(key);
     };
     const keyUp = (event: KeyboardEvent) => pressed.delete(event.key.toLowerCase());
-    const clearKeys = () => pressed.clear();
+    const clearKeys = () => {
+      pressed.clear();
+      previousHandbrake.current = false;
+      driftCharge.current = 0;
+      rush.current.remaining = 0;
+      rush.current.tier = 0;
+      drivingTelemetry.rushTier = 0;
+    };
+    const clearHiddenKeys = () => {
+      if (document.hidden) clearKeys();
+    };
     window.addEventListener("keydown", keyDown);
     window.addEventListener("keyup", keyUp);
     window.addEventListener("blur", clearKeys);
+    document.addEventListener("visibilitychange", clearHiddenKeys);
     return () => {
       window.removeEventListener("keydown", keyDown);
       window.removeEventListener("keyup", keyUp);
       window.removeEventListener("blur", clearKeys);
+      document.removeEventListener("visibilitychange", clearHiddenKeys);
       clearKeys();
     };
   }, []);
@@ -187,6 +228,9 @@ function useOwnCarController({
   useFrame((state, dt) => {
     const d = Math.min(dt, 0.05);
     drivingTelemetry.impactPulse = Math.max(0, drivingTelemetry.impactPulse - d * 2.8);
+    rewardCalloutHold.current = Math.max(0, rewardCalloutHold.current - d);
+    rush.current.remaining = Math.max(0, rush.current.remaining - d);
+    if (rush.current.remaining === 0) rush.current.tier = 0;
 
     if (driving) {
       const throttle =
@@ -227,7 +271,12 @@ function useOwnCarController({
       let lateral = velocity.dot(right);
       const boosting =
         !flying && boostHeld && throttle > 0 && longitudinal > -1 && drivingTelemetry.boost > 0;
-      const maxForward = boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
+      const rushing = !flying && rush.current.remaining > 0;
+      const maxForward = Math.max(
+        NORMAL_MAX_SPEED,
+        boosting ? BOOST_MAX_SPEED : 0,
+        rushing ? rush.current.maxSpeed : 0,
+      );
 
       if (flying) {
         longitudinal *= Math.exp(-0.15 * d);
@@ -238,7 +287,8 @@ function useOwnCarController({
             ? BRAKE_DECELERATION
             : longitudinal > maxForward
               ? 0
-              : FORWARD_ACCELERATION + (boosting ? 24 : 0)) * d;
+              : FORWARD_ACCELERATION + (boosting ? 24 : 0) + (rushing ? RUSH_ACCELERATION : 0)) *
+          d;
       } else if (throttle < 0) {
         longitudinal -=
           (longitudinal > 0 ? BRAKE_DECELERATION : REVERSE_ACCELERATION) * d;
@@ -261,11 +311,11 @@ function useOwnCarController({
       lateral *= Math.exp(-(flying ? 0.12 : handbrake ? 0.65 : 3.8) * d);
       velocity.copy(forward).multiplyScalar(longitudinal).addScaledVector(right, lateral);
 
-      const speedLimit =
-        longitudinal < 0 ? REVERSE_MAX_SPEED : boosting ? BOOST_MAX_SPEED : NORMAL_MAX_SPEED;
+      const speedLimit = longitudinal < 0 ? REVERSE_MAX_SPEED : maxForward;
       const totalSpeed = velocity.length();
       if (totalSpeed > speedLimit) {
-        const easedLimit = boosting ? speedLimit : Math.max(speedLimit, totalSpeed - 9 * d);
+        const easedLimit =
+          boosting || rushing ? speedLimit : Math.max(speedLimit, totalSpeed - 9 * d);
         velocity.setLength(easedLimit);
       }
 
@@ -286,6 +336,9 @@ function useOwnCarController({
       else {
         const impact = Math.abs(velocity.x);
         velocity.x *= -COLLISION_BOUNCE;
+        rush.current.remaining = 0;
+        rush.current.tier = 0;
+        driftCharge.current = 0;
         drivingTelemetry.impactPulse = Math.max(
           drivingTelemetry.impactPulse,
           THREE.MathUtils.clamp(impact / 18, 0.18, 1),
@@ -295,6 +348,9 @@ function useOwnCarController({
       else {
         const impact = Math.abs(velocity.y);
         velocity.y *= -COLLISION_BOUNCE;
+        rush.current.remaining = 0;
+        rush.current.tier = 0;
+        driftCharge.current = 0;
         drivingTelemetry.impactPulse = Math.max(
           drivingTelemetry.impactPulse,
           THREE.MathUtils.clamp(impact / 18, 0.18, 1),
@@ -307,20 +363,47 @@ function useOwnCarController({
       )
         velocity.multiplyScalar(0.4);
 
-      // Traffic shoves rather than walls: clipping a city car costs speed, not the run.
-      if (surface.current < 2)
-        for (const car of trafficCars) {
+      // A close traffic pass pays only after the player exits cleanly. Contact
+      // still shoves the taxi and invalidates that pass.
+      let nearMissAwards = 0;
+      if (surface.current < 2) {
+        for (let index = 0; index < trafficCars.length; index++) {
+          const car = trafficCars[index]!;
           const dx = ownPose.x - car.x,
             dz = ownPose.z - car.z;
           const distance = Math.hypot(dx, dz);
-          if (distance > TRAFFIC_RADIUS || distance < 0.001) continue;
-          const push = TRAFFIC_RADIUS - distance;
+          const existingPass = nearMisses.current.get(index);
+          // A distant car cannot reach the reward zone in one valid sweep.
+          // Avoid allocating tracker results for most of the city traffic.
+          if (!existingPass && distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP) continue;
+          const trafficPass = updateNearMissPass(
+            existingPass,
+            dx,
+            dz,
+            velocity.length(),
+          );
+          if (
+            !trafficPass.tracker.pass &&
+            distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP
+          )
+            nearMisses.current.delete(index);
+          else nearMisses.current.set(index, trafficPass.tracker);
+          if (trafficPass.awarded) nearMissAwards++;
+
+          if (trafficPass.contacted) {
+            velocity.multiplyScalar(0.82);
+            rush.current.remaining = 0;
+            rush.current.tier = 0;
+            driftCharge.current = 0;
+            drivingTelemetry.impactPulse = Math.max(drivingTelemetry.impactPulse, 0.45);
+          }
+
+          if (distance > TRAFFIC_CONTACT_RADIUS || distance < 0.001) continue;
+          const push = TRAFFIC_CONTACT_RADIUS - distance;
           ownPose.x += (dx / distance) * push;
           ownPose.z += (dz / distance) * push;
-          velocity.multiplyScalar(0.82);
-          drivingTelemetry.impactPulse = Math.max(drivingTelemetry.impactPulse, 0.45);
-          break;
         }
+      } else nearMisses.current.clear();
 
       // Boost strips: full tank plus a shove, so a pad into a ramp is the big jump.
       padCooldown.current = Math.max(0, padCooldown.current - d);
@@ -331,7 +414,9 @@ function useOwnCarController({
           padCooldown.current = 0.6;
           drivingTelemetry.boost = 100;
           drivingTelemetry.callout = "TURBO!";
+          drivingTelemetry.calloutScore = 90;
           drivingTelemetry.driftScore += 90;
+          rewardCalloutHold.current = 0.55;
           driftGrace.current = 0.5;
           const along = velocity.dot(forward);
           velocity.addScaledVector(
@@ -357,8 +442,10 @@ function useOwnCarController({
             THREE.MathUtils.clamp(drop / 30, 0.12, 1),
           );
           if (drivingTelemetry.airTime > 0.4) {
-            drivingTelemetry.driftScore += drivingTelemetry.airTime * 260;
+            const airScore = drivingTelemetry.airTime * 260;
+            drivingTelemetry.driftScore += airScore;
             drivingTelemetry.callout = airCallout(drivingTelemetry.airTime);
+            drivingTelemetry.calloutScore = airScore;
             drivingTelemetry.boost = Math.min(
               100,
               drivingTelemetry.boost + drivingTelemetry.airTime * 26,
@@ -418,24 +505,117 @@ function useOwnCarController({
           ? Math.abs(finalLateral) * finalSpeed * d * 0.85
           : 150 * d;
         drivingTelemetry.combo = Math.min(8, 1 + Math.floor(drivingTelemetry.driftScore / 220));
-        drivingTelemetry.callout = soaring ? "AIRBORNE!" : driftCallout(drivingTelemetry.driftScore);
+        if (rewardCalloutHold.current === 0) {
+          drivingTelemetry.callout = soaring
+            ? "AIRBORNE!"
+            : driftCallout(drivingTelemetry.driftScore);
+          drivingTelemetry.calloutScore = drivingTelemetry.driftScore;
+        }
       } else if (driftGrace.current > 0) {
         driftGrace.current = Math.max(0, driftGrace.current - d);
       } else if (driftHold.current > 0) {
         driftHold.current = Math.max(0, driftHold.current - d);
-      } else {
+      } else if (rewardCalloutHold.current === 0) {
         drivingTelemetry.driftScore = 0;
         drivingTelemetry.combo = 0;
         drivingTelemetry.callout = "";
+        drivingTelemetry.calloutScore = 0;
+      }
+
+      if (handbrake && drifting && finalLongitudinal > 5) {
+        driftCharge.current = addDriftCharge(
+          driftCharge.current,
+          finalLateral,
+          finalSpeed,
+          d,
+        );
+      }
+      if (airborne.current) driftCharge.current = 0;
+
+      // Releasing Space cashes a controlled drift into a short, free burst.
+      // The tiers make holding a clean line a risk/reward choice instead of
+      // making the handbrake a permanently optimal steering button.
+      if (previousHandbrake.current && !handbrake) {
+        const reward = rushRewardForCharge(driftCharge.current);
+        driftCharge.current = 0;
+        if (reward) {
+          rush.current = {
+            remaining: reward.duration,
+            maxSpeed: reward.maxSpeed,
+            tier: reward.tier,
+          };
+          velocity.addScaledVector(
+            forward,
+            Math.max(0, Math.min(reward.impulse, reward.maxSpeed - finalLongitudinal)),
+          );
+          drivingTelemetry.driftScore += reward.score;
+          drivingTelemetry.combo = Math.min(
+            8,
+            Math.max(
+              drivingTelemetry.combo,
+              1 + Math.floor(drivingTelemetry.driftScore / 220),
+            ),
+          );
+          drivingTelemetry.callout = reward.label;
+          drivingTelemetry.calloutScore = reward.score;
+          drivingTelemetry.rewardTier = reward.tier;
+          drivingTelemetry.rewardSequence++;
+          rewardCalloutHold.current = 0.72;
+          driftGrace.current = Math.max(driftGrace.current, reward.duration + 0.35);
+          driftHold.current = 1;
+        }
+      }
+      previousHandbrake.current = handbrake;
+
+      if (nearMissAwards > 0) {
+        const score = 170 + (nearMissAwards - 1) * 110;
+        drivingTelemetry.boost = Math.min(100, drivingTelemetry.boost + nearMissAwards * 18);
+        drivingTelemetry.driftScore += score;
+        drivingTelemetry.combo = Math.min(
+          8,
+          Math.max(
+            drivingTelemetry.combo + nearMissAwards,
+            1 + Math.floor(drivingTelemetry.driftScore / 220),
+          ),
+        );
+        drivingTelemetry.callout =
+          nearMissAwards > 1 ? "THREAD THE NEEDLE!" : "CLOSE CALL!";
+        drivingTelemetry.calloutScore = score;
+        drivingTelemetry.rewardTier = Math.min(3, nearMissAwards + 1) as RushTier;
+        drivingTelemetry.rewardSequence++;
+        rewardCalloutHold.current = 0.82;
+        driftGrace.current = Math.max(driftGrace.current, 0.9);
+        driftHold.current = 1;
       }
 
       drivingTelemetry.drifting = drifting;
+      drivingTelemetry.driftCharge = driftCharge.current;
+      drivingTelemetry.driftTier = rushTierForCharge(driftCharge.current);
+      drivingTelemetry.rushTier = rush.current.tier;
       drivingTelemetry.steer = steer;
       drivingTelemetry.throttle = throttle;
       drivingTelemetry.boosting = boosting;
       wheelDrive.speed = finalLongitudinal;
     } else {
+      velocity.set(0, 0);
+      wheelDrive.speed = 0;
+      driftGrace.current = 0;
+      driftHold.current = 0;
+      rewardCalloutHold.current = 0;
+      driftCharge.current = 0;
+      previousHandbrake.current = false;
+      rush.current.remaining = 0;
+      rush.current.tier = 0;
+      nearMisses.current.clear();
       drivingTelemetry.drifting = false;
+      drivingTelemetry.driftCharge = 0;
+      drivingTelemetry.driftTier = 0;
+      drivingTelemetry.rushTier = 0;
+      drivingTelemetry.driftScore = 0;
+      drivingTelemetry.callout = "";
+      drivingTelemetry.calloutScore = 0;
+      drivingTelemetry.combo = 0;
+      drivingTelemetry.rewardTier = 0;
       drivingTelemetry.steer = 0;
       drivingTelemetry.throttle = 0;
       drivingTelemetry.boosting = false;
@@ -538,6 +718,7 @@ export const CarVisual = ({
       {own ? (
         <>
           <BoostFlames />
+          <RushTrails />
           <DriftSmoke />
         </>
       ) : null}
@@ -557,8 +738,9 @@ function BoostFlames() {
   const flames = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (!flames.current) return;
-    flames.current.visible = drivingTelemetry.boosting;
-    flames.current.scale.z = 0.75 + Math.sin(state.clock.elapsedTime * 55) * 0.22;
+    flames.current.visible = drivingTelemetry.boosting || drivingTelemetry.rushTier > 0;
+    flames.current.scale.z =
+      0.75 + drivingTelemetry.rushTier * 0.16 + Math.sin(state.clock.elapsedTime * 55) * 0.22;
   });
   return (
     <group ref={flames} visible={false}>
@@ -572,6 +754,45 @@ function BoostFlames() {
             transparent
             opacity={0.9}
           />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+const RUSH_COLORS = ["#00dcff", "#ffd400", "#ff4b28"] as const;
+
+/** Code-native slipstream rings keep the burst readable without adding asset weight. */
+function RushTrails() {
+  const rings = useRef<Array<THREE.Mesh | null>>([]);
+  useFrame(({ clock }) => {
+    const tier = drivingTelemetry.rushTier;
+    for (let index = 0; index < rings.current.length; index++) {
+      const ring = rings.current[index];
+      if (!ring) continue;
+      ring.visible = tier > 0;
+      if (tier === 0) continue;
+      const phase = (clock.elapsedTime * (2.7 + tier * 0.35) + index / rings.current.length) % 1;
+      ring.position.z = -3.2 - phase * (7 + tier * 1.3);
+      const scale = 0.7 + phase * (0.8 + tier * 0.12);
+      ring.scale.set(scale, scale, 1);
+      const material = ring.material as THREE.MeshBasicMaterial;
+      material.color.set(RUSH_COLORS[tier - 1]);
+      material.opacity = (1 - phase) * 0.48;
+    }
+  });
+  return (
+    <group position-y={0.1}>
+      {Array.from({ length: 4 }, (_, index) => (
+        <mesh
+          key={index}
+          ref={(mesh) => {
+            rings.current[index] = mesh;
+          }}
+          visible={false}
+        >
+          <torusGeometry args={[1.45, 0.055, 6, 24]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
     </group>

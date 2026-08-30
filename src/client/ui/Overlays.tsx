@@ -11,6 +11,7 @@ import {
   type City,
 } from "../../shared/city";
 import { relativeBearing } from "../../shared/nav";
+import { MAX_DRIFT_CHARGE } from "../game/arcadeRewards";
 import { cameraPose, drivingTelemetry, ownPose } from "../game/drivingState";
 import { close, rejoin, send } from "../net";
 import { ownPlayer, remotePositions, useGameStore } from "../store";
@@ -251,10 +252,16 @@ export function HUD() {
   const sortedPlayers = [...players].sort(
     (a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex,
   );
-  const fast = ownPose.speed > 26 || drivingTelemetry.boosting;
+  const fast = ownPose.speed > 26 || drivingTelemetry.boosting || drivingTelemetry.rushTier > 0;
+  const hasDriftCharge = drivingTelemetry.driftCharge > 1;
+  const rushLabel = ["BUILDING", "LOCAL", "EXPRESS", "OVERNIGHT"][
+    drivingTelemetry.driftTier
+  ];
 
   return (
-    <div className={`arcade-hud ${fast ? "is-fast" : ""}`}>
+    <div
+      className={`arcade-hud ${fast ? "is-fast" : ""} ${drivingTelemetry.rushTier ? `is-rushing rush-tier-${drivingTelemetry.rushTier}` : ""} ${hasDriftCharge ? "has-drift-charge" : ""}`}
+    >
       <div className="hud-speed-lines" aria-hidden="true" />
 
       <section className="order-progress hud-panel">
@@ -345,10 +352,36 @@ export function HUD() {
         aria-live="polite"
       >
         <strong>{drivingTelemetry.callout}</strong>
-        <span>+{Math.round(drivingTelemetry.driftScore)}</span>
+        <span>+{Math.round(drivingTelemetry.calloutScore)}</span>
       </div>
       <div className={`combo-strip ${drivingTelemetry.combo > 1 ? "is-visible" : ""}`}>
         <b>x{Math.max(1, drivingTelemetry.combo)}</b> COMBO
+      </div>
+      <div
+        className={`rush-meter rush-tier-${drivingTelemetry.driftTier} ${hasDriftCharge ? "is-visible" : ""}`}
+        style={
+          {
+            "--charge": `${Math.min(100, (drivingTelemetry.driftCharge / MAX_DRIFT_CHARGE) * 100)}%`,
+          } as React.CSSProperties
+        }
+        role="meter"
+        aria-hidden={!hasDriftCharge}
+        aria-label={`Delivery rush charge, ${rushLabel}`}
+        aria-valuemin={0}
+        aria-valuemax={MAX_DRIFT_CHARGE}
+        aria-valuenow={Math.round(drivingTelemetry.driftCharge)}
+      >
+        <header>
+          <b>DRIFT CHARGE</b>
+          <span>{rushLabel}</span>
+        </header>
+        <div>
+          <i />
+          <em />
+          <em />
+          <em />
+        </div>
+        <small>RELEASE SPACE</small>
       </div>
     </div>
   );

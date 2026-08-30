@@ -92,7 +92,7 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
             <kbd>WASD</kbd> DRIVE
           </span>
           <span>
-            <kbd>SPACE</kbd> DRIFT
+            <kbd>SPACE</kbd> DRIFT · RELEASE TO RUSH
           </span>
           <span>
             <kbd>SHIFT</kbd> BOOST

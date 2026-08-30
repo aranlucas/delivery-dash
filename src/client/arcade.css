@@ -755,6 +755,108 @@ kbd {
   font-size: 34px;
 }
 
+.rush-meter {
+  --rush-accent: var(--cyan);
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  width: min(320px, calc(100% - 40px));
+  padding: 8px 13px 7px;
+  transform: translate(-50%, 16px) skewX(-5deg) scale(0.9);
+  opacity: 0;
+  border: 3px solid var(--rush-accent);
+  color: white;
+  background: rgba(12, 16, 20, 0.94);
+  box-shadow: 6px 7px 0 #0008;
+  transition:
+    opacity 120ms ease,
+    transform 150ms ease,
+    border-color 120ms ease;
+}
+.rush-meter.is-visible {
+  transform: translateX(-50%) skewX(-5deg) scale(1);
+  opacity: 1;
+}
+.rush-meter.rush-tier-1 {
+  --rush-accent: var(--cyan);
+}
+.rush-meter.rush-tier-2 {
+  --rush-accent: var(--yellow);
+}
+.rush-meter.rush-tier-3 {
+  --rush-accent: var(--red);
+  animation: rush-ready 0.46s ease-in-out infinite alternate;
+}
+@keyframes rush-ready {
+  to {
+    filter: brightness(1.2);
+    box-shadow:
+      6px 7px 0 #0008,
+      0 0 18px color-mix(in srgb, var(--rush-accent), transparent 35%);
+  }
+}
+.rush-meter header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: #aeb9c5;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 1000;
+  letter-spacing: 0.1em;
+}
+.rush-meter header span {
+  color: var(--rush-accent);
+}
+.rush-meter > div {
+  position: relative;
+  height: 9px;
+  overflow: hidden;
+  background: #34404b;
+}
+.rush-meter > div > i {
+  display: block;
+  width: var(--charge);
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--rush-accent));
+  box-shadow: 0 0 12px var(--rush-accent);
+  transition: width 60ms linear;
+}
+.rush-meter > div > em {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ink);
+}
+.rush-meter > div > em:nth-of-type(1) {
+  left: 21.43%;
+}
+.rush-meter > div > em:nth-of-type(2) {
+  left: 50%;
+}
+.rush-meter > div > em:nth-of-type(3) {
+  left: 85.71%;
+}
+.rush-meter small {
+  display: block;
+  margin-top: 4px;
+  color: #8f9aa7;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: right;
+}
+.arcade-hud.has-drift-charge .combo-strip {
+  bottom: 78px;
+}
+.arcade-hud.has-drift-charge .stunt-callout {
+  bottom: 138px;
+}
+.arcade-hud.is-rushing .hud-speed-lines {
+  opacity: 0.68;
+}
+
 .minimap {
   position: absolute;
   right: 22px;
@@ -1087,6 +1189,23 @@ kbd {
   }
   .combo-strip b {
     font-size: 24px;
+  }
+  .rush-meter {
+    bottom: 132px;
+    width: 220px;
+    padding: 6px 10px 5px;
+  }
+  .rush-meter header {
+    font-size: 8px;
+  }
+  .rush-meter small {
+    font-size: 7px;
+  }
+  .arcade-hud.has-drift-charge .combo-strip {
+    bottom: 70px;
+  }
+  .arcade-hud.has-drift-charge .stunt-callout {
+    bottom: 194px;
   }
   /* the speed cluster claims the bottom-right corner on phones */
   .minimap {
