@@ -16,7 +16,8 @@ Reference concept: `arcade-direction-v1.png`
 ## Driving and camera
 
 - W/up accelerates; S/down brakes before reverse.
-- A/D or arrows steer; Space releases rear grip for a sustained drift; Shift spends boost.
+- A/D or arrows steer; Space releases rear grip for a sustained drift. A clean line charges Local,
+  Express, and Overnight delivery-rush tiers, which fire when Space is released. Shift spends boost.
 - The chase camera is low and close, looks farther ahead with speed, widens under boost, banks during a drift, and pulls forward when a building would occlude the car.
 - The car has vertical physics: slopes are ridden, lips launch, gravity lands. Ramps, expressway
   decks, and building roofs are all drivable surfaces; collision is gated by altitude so cars pass
@@ -32,11 +33,12 @@ Reference concept: `arcade-direction-v1.png`
 ## Next slices
 
 1. Server-owned fare timer, tips, skill score, and cash-based standings.
-2. Traffic that turns and brakes, near-miss scoring, and pedestrians.
+2. Traffic that turns and brakes, plus pedestrians. Clean traffic passes now pay score and boost.
 3. Original soundtrack/stingers, richer engine layers, skid marks, impact sparks, and pickup/drop-off celebrations.
 4. Air tricks (spins and flips) now that the car leaves the ground, plus shortcut routes over rooftops.
 
 Shipped since the first pass: vehicle Y physics, elevated expressways, launch ramps, boost strips,
-moving traffic and kerb parking, district topology, and the minimap.
+moving traffic and kerb parking, district topology, the minimap, tiered drift-release rushes, and
+collision-safe near-miss rewards.
 
 All branding, city layouts, characters, and art remain original. The game stays procedural and code-native unless the repository asset constraint is deliberately revised.

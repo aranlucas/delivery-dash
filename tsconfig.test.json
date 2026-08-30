@@ -14,5 +14,5 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.test.ts", "src/shared"]
+  "include": ["src/**/*.test.ts", "src/shared", "src/client/game/arcadeRewards.ts"]
 }

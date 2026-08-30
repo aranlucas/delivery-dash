@@ -12,8 +12,18 @@ export type DrivingTelemetry = {
   boost: number;
   drifting: boolean;
   driftScore: number;
+  /** Skill charge earned by holding a real drift, capped by arcadeRewards. */
+  driftCharge: number;
+  driftTier: 0 | 1 | 2 | 3;
+  /** Active drift-release burst tier; 0 when no delivery rush is running. */
+  rushTier: 0 | 1 | 2 | 3;
   callout: string;
+  /** Score shown beside the active callout, separate from the running combo total. */
+  calloutScore: number;
   combo: number;
+  /** Monotonic counter used by audio without coupling it to the renderer. */
+  rewardSequence: number;
+  rewardTier: 0 | 1 | 2 | 3;
   impactPulse: number;
   steer: number;
   throttle: number;
@@ -29,8 +39,14 @@ export const drivingTelemetry: DrivingTelemetry = {
   boost: 100,
   drifting: false,
   driftScore: 0,
+  driftCharge: 0,
+  driftTier: 0,
+  rushTier: 0,
   callout: "",
+  calloutScore: 0,
   combo: 0,
+  rewardSequence: 0,
+  rewardTier: 0,
   impactPulse: 0,
   steer: 0,
   throttle: 0,
