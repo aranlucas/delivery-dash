@@ -1,29 +1,38 @@
-import { Game } from "./game/Game";
-import { ArcadeAudio } from "./game/ArcadeAudio";
-import { Countdown, HUD, Lobby, Menu, WinnerScreen } from "./ui/Overlays";
-import { PerfOverlay } from "./ui/PerfOverlay";
+import { lazy, Suspense } from "react";
 import { useGameStore } from "./store";
+import { Menu } from "./ui/Menu";
+
+let gameSessionPromise: ReturnType<typeof importGameSession> | undefined;
+
+function importGameSession() {
+  return import("./GameSession");
+}
+
+function loadGameSession() {
+  gameSessionPromise ??= importGameSession();
+  return gameSessionPromise;
+}
+
+const GameSession = lazy(loadGameSession);
+
+function GameLoading() {
+  return (
+    <main className="arcade-menu">
+      <div className="menu-speed-lines" aria-hidden="true" />
+      <section className="arcade-panel game-loading" role="status" aria-live="polite">
+        <span>LOADING CITY</span>
+        <strong>PREPARING THE STARTING GRID...</strong>
+      </section>
+    </main>
+  );
+}
 
 export function App() {
   const screen = useGameStore((s) => s.screen);
-  const phase = useGameStore((s) => s.phase);
-  if (screen === "menu") return <Menu />;
+  if (screen === "menu") return <Menu onGameIntent={() => void loadGameSession()} />;
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        color: "white",
-        fontFamily: "Inter, system-ui, sans-serif",
-      }}
-    >
-      <ArcadeAudio />
-      <Game />
-      <Lobby />
-      <HUD />
-      {(phase === "countdown" || phase === "racing") && <Countdown />}
-      {phase === "finished" && <WinnerScreen />}
-      <PerfOverlay />
-    </div>
+    <Suspense fallback={<GameLoading />}>
+      <GameSession />
+    </Suspense>
   );
 }
