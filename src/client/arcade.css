@@ -100,6 +100,27 @@ button {
   align-items: center;
 }
 
+.game-loading {
+  display: grid;
+  min-width: min(420px, calc(100% - 40px));
+  gap: 10px;
+  padding: 30px;
+  text-align: center;
+}
+
+.game-loading span {
+  color: var(--yellow);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 950;
+  letter-spacing: 0.15em;
+}
+
+.game-loading strong {
+  font-size: clamp(20px, 4vw, 32px);
+  letter-spacing: 0.04em;
+}
+
 .arcade-logo {
   display: flex;
   flex-direction: column;
