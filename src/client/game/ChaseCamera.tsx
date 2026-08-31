@@ -14,7 +14,14 @@ function shortestAngle(from: number, to: number) {
 
 const cameraCandidates: number[] = [];
 function obstructed(x: number, y: number, z: number, grid: SpatialGrid) {
-  const count = queryRange(grid, x - 1.2, z - 1.2, x + 1.2, z + 1.2, cameraCandidates);
+  const count = queryRange(
+    grid,
+    x - 1.2,
+    z - 1.2,
+    x + 1.2,
+    z + 1.2,
+    cameraCandidates,
+  );
   for (let index = 0; index < count; index++) {
     const box = grid.boxes[cameraCandidates[index]!]!;
     if (
@@ -43,7 +50,11 @@ export function ChaseCamera({ grid }: { grid: SpatialGrid }) {
 
     const distance = 9.4 + speedRatio * 1.4;
     // Airborne the camera hangs back and higher so the landing stays in frame.
-    const height = ownPose.y + 3.85 + speedRatio * 0.75 + (drivingTelemetry.airborne ? 1.4 : 0);
+    const height =
+      ownPose.y +
+      3.85 +
+      speedRatio * 0.75 +
+      (drivingTelemetry.airborne ? 1.4 : 0);
     desired.set(
       ownPose.x - Math.sin(cameraYaw.current) * distance,
       height,
@@ -88,16 +99,29 @@ export function ChaseCamera({ grid }: { grid: SpatialGrid }) {
       ownPose.z + Math.cos(ownPose.yaw) * lookAhead,
     );
     camera.lookAt(look);
-    cameraPose.yaw = Math.atan2(look.x - camera.position.x, look.z - camera.position.z);
-    const targetRoll = -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
-    roll.current = THREE.MathUtils.lerp(roll.current, targetRoll, 1 - Math.exp(-d * 6));
+    cameraPose.yaw = Math.atan2(
+      look.x - camera.position.x,
+      look.z - camera.position.z,
+    );
+    const targetRoll =
+      -drivingTelemetry.steer * (drivingTelemetry.drifting ? 0.065 : 0.032);
+    roll.current = THREE.MathUtils.lerp(
+      roll.current,
+      targetRoll,
+      1 - Math.exp(-d * 6),
+    );
     // lookAt writes the complete camera quaternion. Overwriting its Euler Z component can turn
     // the horizon by 90 degrees at some headings, so apply drift lean around the local view axis.
     camera.rotateZ(roll.current);
 
     const perspective = camera as THREE.PerspectiveCamera;
-    const targetFov = 62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);
-    perspective.fov = THREE.MathUtils.lerp(perspective.fov, targetFov, 1 - Math.exp(-d * 4.5));
+    const targetFov =
+      62 + speedRatio * 11 + (drivingTelemetry.boosting ? 4 : 0);
+    perspective.fov = THREE.MathUtils.lerp(
+      perspective.fov,
+      targetFov,
+      1 - Math.exp(-d * 4.5),
+    );
     perspective.updateProjectionMatrix();
   });
   return null;

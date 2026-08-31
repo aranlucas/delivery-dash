@@ -247,7 +247,15 @@ export function makeConcreteTexture() {
   for (let i = 0; i < 40; i++) {
     ctx.fillStyle = `rgba(${130 + rng() * 40},${134 + rng() * 40},${140 + rng() * 40},0.4)`;
     ctx.beginPath();
-    ctx.ellipse(rng() * size, rng() * size, 6 + rng() * 22, 5 + rng() * 16, rng() * 3, 0, 7);
+    ctx.ellipse(
+      rng() * size,
+      rng() * size,
+      6 + rng() * 22,
+      5 + rng() * 16,
+      rng() * 3,
+      0,
+      7,
+    );
     ctx.fill();
   }
   grain(ctx, rng, size, 1800, 0.07);

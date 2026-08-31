@@ -22,7 +22,10 @@ test("delivery rush tiers reward longer controlled drifts", () => {
   assert.equal(rushTierForCharge(105), 2);
   assert.equal(rushTierForCharge(180), 3);
   assert.equal(rushRewardForCharge(180)?.label, "OVERNIGHT RUSH!");
-  assert.ok((rushRewardForCharge(180)?.duration ?? 0) > (rushRewardForCharge(45)?.duration ?? 0));
+  assert.ok(
+    (rushRewardForCharge(180)?.duration ?? 0) >
+      (rushRewardForCharge(45)?.duration ?? 0),
+  );
 });
 
 function samplePass(distances: number[], speed: number) {

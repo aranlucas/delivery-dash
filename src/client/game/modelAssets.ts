@@ -22,13 +22,18 @@ const localGeometry = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
 
 function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
   const object = nodes[name];
-  if (!(object instanceof THREE.Mesh)) throw new Error(`Missing mesh node \"${name}\" in Blender asset`);
+  if (!(object instanceof THREE.Mesh))
+    throw new Error(`Missing mesh node \"${name}\" in Blender asset`);
   object.updateWorldMatrix(true, false);
   return object;
 }
 
 /** Bake a Blender node into the asset root; repeated callers share the resulting buffer. */
-function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTranslation = true) {
+function geometry(
+  nodes: Record<string, THREE.Object3D>,
+  name: string,
+  keepTranslation = true,
+) {
   const object = mesh(nodes, name);
   const cache = keepTranslation ? bakedGeometry : localGeometry;
   const cached = cache.get(object);

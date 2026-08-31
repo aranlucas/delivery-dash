@@ -5,7 +5,10 @@ import { relativeBearing, worldBearing } from "./nav.ts";
 
 const HALF_PI = Math.PI / 2;
 const near = (actual: number, expected: number, message: string) =>
-  assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: got ${actual}, want ${expected}`);
+  assert.ok(
+    Math.abs(actual - expected) < 1e-9,
+    `${message}: got ${actual}, want ${expected}`,
+  );
 
 test("worldBearing matches the three.js rotation convention", () => {
   for (const [tx, tz, expected] of [

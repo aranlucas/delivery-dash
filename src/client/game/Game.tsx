@@ -68,7 +68,9 @@ function Scene({ seed }: { seed: number }) {
   const order = orders[self.orderIndex];
   const target =
     order &&
-    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
+    (self.leg === "pickup"
+      ? city.restaurants[order.restaurantId]
+      : city.houses[order.houseId]);
   return (
     <Suspense
       fallback={
@@ -113,7 +115,10 @@ function Scene({ seed }: { seed: number }) {
       {target && phase === "racing" && (
         <>
           <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
-          <TargetPointer target={target.stop} dropoff={self.leg === "dropoff"} />
+          <TargetPointer
+            target={target.stop}
+            dropoff={self.leg === "dropoff"}
+          />
         </>
       )}
       <ChaseCamera grid={city.collisionGrid} />

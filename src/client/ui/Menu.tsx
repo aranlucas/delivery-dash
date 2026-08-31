@@ -3,9 +3,9 @@ import { connect } from "../net";
 import { useGameStore } from "../store";
 
 const randomCode = () =>
-  Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join(
-    "",
-  );
+  Array.from({ length: 4 }, () =>
+    String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+  ).join("");
 
 export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
   const [name, setName] = useState("");

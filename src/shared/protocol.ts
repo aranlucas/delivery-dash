@@ -42,7 +42,21 @@ export type ServerMessage =
       raceStartedAt?: number;
       standings?: Standing[];
     }
-  | { t: "pos"; id: string; x: number; y: number; z: number; yaw: number; speed: number }
-  | { t: "progress"; id: string; orderIndex: number; leg: Leg; deliveries: number }
+  | {
+      t: "pos";
+      id: string;
+      x: number;
+      y: number;
+      z: number;
+      yaw: number;
+      speed: number;
+    }
+  | {
+      t: "progress";
+      id: string;
+      orderIndex: number;
+      leg: Leg;
+      deliveries: number;
+    }
   | { t: "win"; id: string; standings: Standing[] }
   | { t: "error"; message: string };

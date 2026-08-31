@@ -27,7 +27,10 @@ const taillightMaterial = new THREE.MeshStandardMaterial({
   emissive: "#ff2b1e",
   emissiveIntensity: 1.7,
 });
-const tyreMaterial = new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.95 });
+const tyreMaterial = new THREE.MeshStandardMaterial({
+  color: "#111317",
+  roughness: 0.95,
+});
 const rimMaterial = new THREE.MeshStandardMaterial({
   color: "#d7dce3",
   metalness: 0.75,
@@ -52,17 +55,12 @@ function WheelMeshes({ tyre, rim }: Pick<WheelProps, "tyre" | "rim">) {
   );
 }
 
-function AnimatedWheel({
-  position,
-  tyre,
-  rim,
-  radius,
-  steerable,
-}: WheelProps) {
+function AnimatedWheel({ position, tyre, rim, radius, steerable }: WheelProps) {
   const steering = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
-    if (spin.current) spin.current.rotation.x -= (wheelDrive.speed / radius) * dt;
+    if (spin.current)
+      spin.current.rotation.x -= (wheelDrive.speed / radius) * dt;
     if (steerable && steering.current)
       steering.current.rotation.y = THREE.MathUtils.lerp(
         steering.current.rotation.y,
@@ -135,7 +133,12 @@ export function CarModel({
 
   if (lod === "box")
     return (
-      <mesh geometry={boxGeometry} material={bodyMaterial} position={[0, -0.05, 0]} castShadow />
+      <mesh
+        geometry={boxGeometry}
+        material={bodyMaterial}
+        position={[0, -0.05, 0]}
+        castShadow
+      />
     );
 
   return (
@@ -148,7 +151,11 @@ export function CarModel({
           <mesh geometry={geometry.headlights} material={headlightMaterial} />
           <mesh geometry={geometry.taillights} material={taillightMaterial} />
           {kind === "taxi" ? (
-            <mesh geometry={geometry.topper} material={topperMaterial} castShadow />
+            <mesh
+              geometry={geometry.topper}
+              material={topperMaterial}
+              castShadow
+            />
           ) : null}
           {wheelPositions(spec).map((position, index) => {
             const props: WheelProps = {

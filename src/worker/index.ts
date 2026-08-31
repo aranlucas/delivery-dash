@@ -11,7 +11,12 @@ import {
   type ServerMessage,
   type Standing,
 } from "../shared/protocol";
-import { generateCity, generateOrders, type City, type Order } from "../shared/city";
+import {
+  generateCity,
+  generateOrders,
+  type City,
+  type Order,
+} from "../shared/city";
 
 type Player = Omit<PlayerPub, "id">;
 type RoomState = {
@@ -42,7 +47,11 @@ export class RaceRoom extends DurableObject<Env> {
   /** The city is large enough that regenerating it per position update would dominate the tick. */
   private route(seed: number) {
     if (this.world?.seed !== seed)
-      this.world = { seed, city: generateCity(seed), orders: generateOrders(seed) };
+      this.world = {
+        seed,
+        city: generateCity(seed),
+        orders: generateOrders(seed),
+      };
     return this.world;
   }
 
@@ -72,7 +81,10 @@ export class RaceRoom extends DurableObject<Env> {
       if (this.playerId(socket) !== exceptId) this.send(socket, message);
   }
   private roster(): PlayerPub[] {
-    return Object.entries(this.state?.players ?? {}).map(([id, player]) => ({ id, ...player }));
+    return Object.entries(this.state?.players ?? {}).map(([id, player]) => ({
+      id,
+      ...player,
+    }));
   }
   private phaseMessage(): ServerMessage {
     const s = this.state!;
@@ -86,7 +98,9 @@ export class RaceRoom extends DurableObject<Env> {
   }
   private standings(): Standing[] {
     return this.roster()
-      .sort((a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex)
+      .sort(
+        (a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex,
+      )
       .map(({ id, name, deliveries }) => ({ id, name, deliveries }));
   }
 
@@ -100,11 +114,16 @@ export class RaceRoom extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+  async webSocketMessage(
+    socket: WebSocket,
+    message: string | ArrayBuffer,
+  ): Promise<void> {
     let parsed: ClientMessage;
     try {
       parsed = JSON.parse(
-        typeof message === "string" ? message : new TextDecoder().decode(message),
+        typeof message === "string"
+          ? message
+          : new TextDecoder().decode(message),
       ) as ClientMessage;
     } catch {
       this.send(socket, { t: "error", message: "Invalid message." });
@@ -155,7 +174,10 @@ export class RaceRoom extends DurableObject<Env> {
       };
     }
     if (state.phase !== "lobby") {
-      this.send(socket, { t: "error", message: "Race already in progress. Try again shortly." });
+      this.send(socket, {
+        t: "error",
+        message: "Race already in progress. Try again shortly.",
+      });
       socket.close(4003, "race in progress");
       return;
     }
@@ -195,7 +217,12 @@ export class RaceRoom extends DurableObject<Env> {
   private async maybeCountdown() {
     const state = this.state!;
     const players = Object.values(state.players);
-    if (state.phase !== "lobby" || !players.length || !players.every((p) => p.ready)) return;
+    if (
+      state.phase !== "lobby" ||
+      !players.length ||
+      !players.every((p) => p.ready)
+    )
+      return;
     state.phase = "countdown";
     state.countdownEndsAt = Date.now() + COUNTDOWN_MS;
     await this.save();
@@ -203,7 +230,10 @@ export class RaceRoom extends DurableObject<Env> {
     this.broadcast(this.phaseMessage());
   }
 
-  private async position(id: string, update: Extract<ClientMessage, { t: "pos" }>) {
+  private async position(
+    id: string,
+    update: Extract<ClientMessage, { t: "pos" }>,
+  ) {
     const state = this.state!;
     if (
       state.phase === "finished" ||
@@ -212,7 +242,15 @@ export class RaceRoom extends DurableObject<Env> {
       return;
     this.positions.set(id, { x: update.x, z: update.z });
     this.broadcast(
-      { t: "pos", id, x: update.x, y: update.y, z: update.z, yaw: update.yaw, speed: update.speed },
+      {
+        t: "pos",
+        id,
+        x: update.x,
+        y: update.y,
+        z: update.z,
+        yaw: update.yaw,
+        speed: update.speed,
+      },
       id,
     );
     if (state.phase !== "racing") return; // lobby/countdown: free-roam relay only, no delivery progress
@@ -221,8 +259,14 @@ export class RaceRoom extends DurableObject<Env> {
     const order = orders[player.orderIndex];
     if (!order) return;
     const target =
-      player.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId];
-    if (Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) > TARGET_RADIUS) return;
+      player.leg === "pickup"
+        ? city.restaurants[order.restaurantId]
+        : city.houses[order.houseId];
+    if (
+      Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) >
+      TARGET_RADIUS
+    )
+      return;
     if (player.leg === "pickup") player.leg = "dropoff";
     else {
       player.deliveries++;
@@ -283,7 +327,12 @@ export class RaceRoom extends DurableObject<Env> {
       state.standings = undefined;
       state.raceStartedAt = undefined;
       for (const player of Object.values(state.players))
-        Object.assign(player, { ready: false, deliveries: 0, orderIndex: 0, leg: "pickup" });
+        Object.assign(player, {
+          ready: false,
+          deliveries: 0,
+          orderIndex: 0,
+          leg: "pickup",
+        });
       await this.save();
       this.broadcast(this.phaseMessage());
       this.broadcast({ t: "roster", players: this.roster() });
@@ -293,7 +342,9 @@ export class RaceRoom extends DurableObject<Env> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const match = new URL(request.url).pathname.match(/^\/api\/room\/([A-Z]{4})\/ws$/);
+    const match = new URL(request.url).pathname.match(
+      /^\/api\/room\/([A-Z]{4})\/ws$/,
+    );
     if (!match) return new Response("Not found", { status: 404 });
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
       return new Response("WebSocket upgrade required", { status: 426 });

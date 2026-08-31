@@ -1,6 +1,13 @@
 import { Billboard, RoundedBox, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
@@ -18,7 +25,11 @@ import {
   type Ramp,
 } from "../../shared/city";
 import { mulberry32 } from "../../shared/rng";
-import { makeFleetGeometry, useStreetPropAssets, useVehicleAsset } from "./modelAssets";
+import {
+  makeFleetGeometry,
+  useStreetPropAssets,
+  useVehicleAsset,
+} from "./modelAssets";
 import type { CarKind } from "./carGeometry";
 import { trafficCars, updateTraffic } from "./traffic";
 import {
@@ -47,7 +58,10 @@ function outwardYaw([x, z]: Pos2) {
     blockCenter(
       Math.max(
         0,
-        Math.min(GRID_SIZE - 1, Math.round((v + WORLD_HALF - ROAD_WIDTH - BLOCK_SIZE / 2) / PITCH)),
+        Math.min(
+          GRID_SIZE - 1,
+          Math.round((v + WORLD_HALF - ROAD_WIDTH - BLOCK_SIZE / 2) / PITCH),
+        ),
       ),
     );
   return Math.atan2(Math.sign(x - grid(x)) || 1, Math.sign(z - grid(z)) || 1);
@@ -68,7 +82,10 @@ function facadeMaterial(map: THREE.Texture, emissiveMap: THREE.Texture) {
   });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec3 facadeSize;")
+      .replace(
+        "#include <common>",
+        "#include <common>\nattribute vec3 facadeSize;",
+      )
       .replace(
         "#include <uv_vertex>",
         `#include <uv_vertex>
@@ -106,7 +123,11 @@ function BuildingDistrict({
       "facadeSize",
       new THREE.InstancedBufferAttribute(
         new Float32Array(
-          buildings.flatMap((b) => [b.w / FACADE_TILE_X, b.h / FACADE_TILE_Y, b.d / FACADE_TILE_X]),
+          buildings.flatMap((b) => [
+            b.w / FACADE_TILE_X,
+            b.h / FACADE_TILE_Y,
+            b.d / FACADE_TILE_X,
+          ]),
         ),
         3,
       ),
@@ -151,13 +172,20 @@ function BuildingDistrict({
 
 function Buildings({ city }: { city: CityData }) {
   const districts = useMemo(
-    () => FACADE_STYLES.map((_, index) => city.buildings.filter((b) => b.district === index)),
+    () =>
+      FACADE_STYLES.map((_, index) =>
+        city.buildings.filter((b) => b.district === index),
+      ),
     [city],
   );
   return (
     <>
       {FACADE_STYLES.map((style, index) => (
-        <BuildingDistrict key={style.seed} buildings={districts[index]!} style={style} />
+        <BuildingDistrict
+          key={style.seed}
+          buildings={districts[index]!}
+          style={style}
+        />
       ))}
     </>
   );
@@ -171,7 +199,10 @@ type Instance = {
   color?: string;
 };
 
-function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: Instance[]) {
+function useInstances(
+  ref: React.RefObject<THREE.InstancedMesh | null>,
+  items: Instance[],
+) {
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
@@ -183,7 +214,9 @@ function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: I
     const color = new THREE.Color();
     items.forEach((it, i) => {
       const s = it.scale ?? 1;
-      const sv = Array.isArray(s) ? new THREE.Vector3(...s) : new THREE.Vector3(s, s, s);
+      const sv = Array.isArray(s)
+        ? new THREE.Vector3(...s)
+        : new THREE.Vector3(s, s, s);
       q.setFromAxisAngle(up, it.rotY ?? 0);
       if (it.rotX) q.multiply(tilt.setFromAxisAngle(right, it.rotX));
       matrix.compose(new THREE.Vector3(...it.pos), q, sv);
@@ -197,7 +230,11 @@ function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, items: I
 
 /** Box instance that exactly fills a solid AABB, so visuals and collision never disagree. */
 const boxInstance = (box: AABB): Instance => ({
-  pos: [(box.minX + box.maxX) / 2, (box.base + box.top) / 2, (box.minZ + box.maxZ) / 2],
+  pos: [
+    (box.minX + box.maxX) / 2,
+    (box.base + box.top) / 2,
+    (box.minZ + box.maxZ) / 2,
+  ],
   scale: [box.maxX - box.minX, box.top - box.base, box.maxZ - box.minZ],
 });
 
@@ -212,7 +249,9 @@ function Blocks({ city }: { city: CityData }) {
         const x = blockCenter(gx),
           z = blockCenter(gz);
         slabs.push({ pos: [x, 0.06, z] });
-        const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
+        const park = city.parks.some(
+          (p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1,
+        );
         (park ? parkTops : cityTops).push({ pos: [x, 0.2, z] });
       }
     return { slabs, parkTops, cityTops };
@@ -244,7 +283,11 @@ function Blocks({ city }: { city: CityData }) {
   useInstances(cityMesh, cityTops);
   return (
     <>
-      <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabs.length]} receiveShadow>
+      <instancedMesh
+        ref={slabMesh}
+        args={[slabGeometry, undefined, slabs.length]}
+        receiveShadow
+      >
         <meshStandardMaterial color="#ffd36e" roughness={0.86} />
       </instancedMesh>
       <instancedMesh
@@ -280,12 +323,17 @@ function RoadMarkings({ city }: { city: CityData }) {
       const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
       const from = alongX ? deck.minX : deck.minZ,
         to = alongX ? deck.maxX : deck.maxZ;
-      const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
+      const cross = alongX
+        ? (deck.minZ + deck.maxZ) / 2
+        : (deck.minX + deck.maxX) / 2;
       for (let d = from + 3; d < to - 3; d += 7)
         items.push(
           alongX
             ? { pos: [d + 1.5, deck.height + 0.03, cross], scale: [3, 1, 0.35] }
-            : { pos: [cross, deck.height + 0.03, d + 1.5], scale: [0.35, 1, 3] },
+            : {
+                pos: [cross, deck.height + 0.03, d + 1.5],
+                scale: [0.35, 1, 3],
+              },
         );
     }
     return items;
@@ -310,11 +358,26 @@ function ArcadeCurbs() {
         const cx = blockCenter(gx),
           cz = blockCenter(gz);
         for (let n = -BLOCK_SIZE / 2 + 2; n < BLOCK_SIZE / 2; n += 4) {
-          const target = (Math.floor((n + BLOCK_SIZE / 2) / 4) + gx + gz) % 2 ? black : yellow;
-          target.push({ pos: [cx + n, 0.31, cz - edge], scale: [4.05, 0.38, 0.46] });
-          target.push({ pos: [cx + n, 0.31, cz + edge], scale: [4.05, 0.38, 0.46] });
-          target.push({ pos: [cx - edge, 0.31, cz + n], scale: [0.46, 0.38, 4.05] });
-          target.push({ pos: [cx + edge, 0.31, cz + n], scale: [0.46, 0.38, 4.05] });
+          const target =
+            (Math.floor((n + BLOCK_SIZE / 2) / 4) + gx + gz) % 2
+              ? black
+              : yellow;
+          target.push({
+            pos: [cx + n, 0.31, cz - edge],
+            scale: [4.05, 0.38, 0.46],
+          });
+          target.push({
+            pos: [cx + n, 0.31, cz + edge],
+            scale: [4.05, 0.38, 0.46],
+          });
+          target.push({
+            pos: [cx - edge, 0.31, cz + n],
+            scale: [0.46, 0.38, 4.05],
+          });
+          target.push({
+            pos: [cx + edge, 0.31, cz + n],
+            scale: [0.46, 0.38, 4.05],
+          });
         }
       }
     return { yellow, black };
@@ -325,11 +388,17 @@ function ArcadeCurbs() {
   useInstances(blackMesh, black);
   return (
     <>
-      <instancedMesh ref={yellowMesh} args={[undefined, undefined, yellow.length]}>
+      <instancedMesh
+        ref={yellowMesh}
+        args={[undefined, undefined, yellow.length]}
+      >
         <boxGeometry />
         <meshStandardMaterial color="#ffd400" roughness={0.72} />
       </instancedMesh>
-      <instancedMesh ref={blackMesh} args={[undefined, undefined, black.length]}>
+      <instancedMesh
+        ref={blackMesh}
+        args={[undefined, undefined, black.length]}
+      >
         <boxGeometry />
         <meshStandardMaterial color="#15191d" roughness={0.82} />
       </instancedMesh>
@@ -371,7 +440,9 @@ function Crosswalks() {
  * Wedge whose top face follows the same profile the physics samples, so what you see is what you
  * drive. Local +z climbs; the mesh is rotated into place by the ramp's yaw.
  */
-function makeRampGeometry(ramp: Pick<Ramp, "kind" | "length" | "width" | "height">) {
+function makeRampGeometry(
+  ramp: Pick<Ramp, "kind" | "length" | "width" | "height">,
+) {
   const segments = ramp.kind === "kicker" ? 10 : 16;
   const halfW = ramp.width / 2,
     halfL = ramp.length / 2;
@@ -380,7 +451,10 @@ function makeRampGeometry(ramp: Pick<Ramp, "kind" | "length" | "width" | "height
   const uvs: number[] = [];
   type Vertex = [number, number, number];
   type UV = [number, number];
-  const quad = (corners: [Vertex, Vertex, Vertex, Vertex], texels: [UV, UV, UV, UV]) => {
+  const quad = (
+    corners: [Vertex, Vertex, Vertex, Vertex],
+    texels: [UV, UV, UV, UV],
+  ) => {
     const [a, b, c, d] = corners;
     const [ta, tb, tc, td] = texels;
     positions.push(...a, ...b, ...c, ...a, ...c, ...d);
@@ -456,18 +530,30 @@ function makeRampGeometry(ramp: Pick<Ramp, "kind" | "length" | "width" | "height
     ],
   );
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
   return geometry;
 }
 
 function Ramps({ city }: { city: CityData }) {
-  const grades = useMemo(() => city.ramps.filter((r) => r.kind === "grade"), [city]);
-  const kickers = useMemo(() => city.ramps.filter((r) => r.kind === "kicker"), [city]);
+  const grades = useMemo(
+    () => city.ramps.filter((r) => r.kind === "grade"),
+    [city],
+  );
+  const kickers = useMemo(
+    () => city.ramps.filter((r) => r.kind === "kicker"),
+    [city],
+  );
   const gradeGeometries = useMemo(() => grades.map(makeRampGeometry), [grades]);
   const kickerGeometry = useMemo(
-    () => makeRampGeometry(kickers[0] ?? { kind: "kicker", length: 10, width: 9.5, height: 2.8 }),
+    () =>
+      makeRampGeometry(
+        kickers[0] ?? { kind: "kicker", length: 10, width: 9.5, height: 2.8 },
+      ),
     [kickers],
   );
   const kickerItems = useMemo<Instance[]>(
@@ -525,9 +611,16 @@ function Ramps({ city }: { city: CityData }) {
       >
         <meshStandardMaterial map={hazard} roughness={0.72} />
       </instancedMesh>
-      <instancedMesh ref={lipMesh} args={[undefined, undefined, Math.max(1, lips.length)]}>
+      <instancedMesh
+        ref={lipMesh}
+        args={[undefined, undefined, Math.max(1, lips.length)]}
+      >
         <boxGeometry />
-        <meshStandardMaterial color="#ffe89a" emissive="#ffd400" emissiveIntensity={1.6} />
+        <meshStandardMaterial
+          color="#ffe89a"
+          emissive="#ffd400"
+          emissiveIntensity={1.6}
+        />
       </instancedMesh>
     </>
   );
@@ -547,11 +640,17 @@ function Expressway({ city }: { city: CityData }) {
       {city.decks.map((deck) => (
         <mesh
           key={`${deck.minX}:${deck.minZ}`}
-          position={[(deck.minX + deck.maxX) / 2, deck.height - 0.45, (deck.minZ + deck.maxZ) / 2]}
+          position={[
+            (deck.minX + deck.maxX) / 2,
+            deck.height - 0.45,
+            (deck.minZ + deck.maxZ) / 2,
+          ]}
           castShadow
           receiveShadow
         >
-          <boxGeometry args={[deck.maxX - deck.minX, 0.9, deck.maxZ - deck.minZ]} />
+          <boxGeometry
+            args={[deck.maxX - deck.minX, 0.9, deck.maxZ - deck.minZ]}
+          />
           <meshStandardMaterial color="#4a525b" roughness={0.95} />
         </mesh>
       ))}
@@ -564,7 +663,10 @@ function Expressway({ city }: { city: CityData }) {
         <boxGeometry />
         <meshStandardMaterial map={concrete} roughness={0.95} />
       </instancedMesh>
-      <instancedMesh ref={railMesh} args={[undefined, undefined, Math.max(1, rails.length)]}>
+      <instancedMesh
+        ref={railMesh}
+        args={[undefined, undefined, Math.max(1, rails.length)]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color="#ffd400"
@@ -592,7 +694,10 @@ function BoostPads({ city }: { city: CityData }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   useInstances(mesh, pads);
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(1, pads.length)]}>
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, Math.max(1, pads.length)]}
+    >
       <boxGeometry />
       <meshStandardMaterial
         map={texture}
@@ -612,15 +717,21 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
       fronds: Instance[] = [];
     const spots: Pos2[] = [];
     for (const [x, z] of city.parks)
-      for (let i = 0; i < 3; i++) spots.push([x + (rng() - 0.5) * 23, z + (rng() - 0.5) * 23]);
+      for (let i = 0; i < 3; i++)
+        spots.push([x + (rng() - 0.5) * 23, z + (rng() - 0.5) * 23]);
     for (let i = 0; i < GRID_SIZE; i++) {
       spots.push([blockCenter(i), -WORLD_HALF + ROAD_WIDTH + 2.2]);
-      if (i % 2 === 0) spots.push([WORLD_HALF - ROAD_WIDTH - 2.2, blockCenter(i)]);
+      if (i % 2 === 0)
+        spots.push([WORLD_HALF - ROAD_WIDTH - 2.2, blockCenter(i)]);
     }
     for (const [x, z] of spots) {
       if (nearExpressway(city, x, z, 3)) continue;
       const h = 6.6 + rng() * 2.3;
-      trunks.push({ pos: [x, h / 2, z], scale: [1.35, h / 7, 1.35], rotY: rng() });
+      trunks.push({
+        pos: [x, h / 2, z],
+        scale: [1.35, h / 7, 1.35],
+        rotY: rng(),
+      });
       for (let f = 0; f < 7; f++) {
         const yaw = (f / 7) * Math.PI * 2 + rng() * 0.2;
         fronds.push({
@@ -638,7 +749,11 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   useInstances(frondMesh, fronds);
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[palmTrunk, undefined, trunks.length]} castShadow>
+      <instancedMesh
+        ref={trunkMesh}
+        args={[palmTrunk, undefined, trunks.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#8e542d" roughness={0.96} />
       </instancedMesh>
       <instancedMesh
@@ -646,18 +761,43 @@ function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
         args={[palmFrond, undefined, fronds.length]}
         castShadow
       >
-        <meshStandardMaterial color="#27a653" roughness={0.88} flatShading side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color="#27a653"
+          roughness={0.88}
+          flatShading
+          side={THREE.DoubleSide}
+        />
       </instancedMesh>
     </>
   );
 }
 
 const arcadeSigns = [
-  { label: "RUSH RADIO", color: "#00d9ff", pos: [blockCenter(2), 30, blockCenter(9)] as const },
-  { label: "COAST FUEL", color: "#ffd400", pos: [blockCenter(9), 26, blockCenter(2)] as const },
-  { label: "SUNSET MALL", color: "#ff5b35", pos: [blockCenter(5), 44, blockCenter(6)] as const },
-  { label: "DASH FM", color: "#7cff66", pos: [blockCenter(10), 22, blockCenter(8)] as const },
-  { label: "SKY EXPRESSWAY", color: "#ff9d33", pos: [blockCenter(4), 34, blockCenter(1)] as const },
+  {
+    label: "RUSH RADIO",
+    color: "#00d9ff",
+    pos: [blockCenter(2), 30, blockCenter(9)] as const,
+  },
+  {
+    label: "COAST FUEL",
+    color: "#ffd400",
+    pos: [blockCenter(9), 26, blockCenter(2)] as const,
+  },
+  {
+    label: "SUNSET MALL",
+    color: "#ff5b35",
+    pos: [blockCenter(5), 44, blockCenter(6)] as const,
+  },
+  {
+    label: "DASH FM",
+    color: "#7cff66",
+    pos: [blockCenter(10), 22, blockCenter(8)] as const,
+  },
+  {
+    label: "SKY EXPRESSWAY",
+    color: "#ff9d33",
+    pos: [blockCenter(4), 34, blockCenter(1)] as const,
+  },
 ];
 
 function ArcadeSigns() {
@@ -697,7 +837,10 @@ function Greenery({ city, seed }: { city: CityData; seed: number }) {
     };
     for (const [px, pz] of city.parks)
       for (let n = 0; n < 8; n++)
-        put(px + (rng() - 0.5) * (BLOCK_SIZE - 8), pz + (rng() - 0.5) * (BLOCK_SIZE - 8));
+        put(
+          px + (rng() - 0.5) * (BLOCK_SIZE - 8),
+          pz + (rng() - 0.5) * (BLOCK_SIZE - 8),
+        );
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++)
         if (rng() < 0.55)
@@ -713,11 +856,19 @@ function Greenery({ city, seed }: { city: CityData; seed: number }) {
   useInstances(canopyMesh, canopies);
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[undefined, undefined, trunks.length]} castShadow>
+      <instancedMesh
+        ref={trunkMesh}
+        args={[undefined, undefined, trunks.length]}
+        castShadow
+      >
         <cylinderGeometry args={[0.5, 0.65, 1, 6]} />
         <meshStandardMaterial color="#5d4630" roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={canopyMesh} args={[undefined, undefined, canopies.length]} castShadow>
+      <instancedMesh
+        ref={canopyMesh}
+        args={[undefined, undefined, canopies.length]}
+        castShadow
+      >
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color="#3f7443" roughness={0.95} flatShading />
       </instancedMesh>
@@ -740,7 +891,8 @@ function StreetLights({ city }: { city: CityData }) {
       const c = roadCenter(i);
       for (let d = -WORLD_HALF + 20; d < WORLD_HALF - 10; d += 55) {
         // on the sidewalk slab (which extends 1.5 into the road), not on the asphalt
-        const side = (Math.round(d / 55) % 2 === 0 ? 1 : -1) * (ROAD_WIDTH / 2 + 1.2);
+        const side =
+          (Math.round(d / 55) % 2 === 0 ? 1 : -1) * (ROAD_WIDTH / 2 + 1.2);
         put(c + side, d, side > 0 ? -Math.PI / 2 : Math.PI / 2);
         put(d, c + side, side > 0 ? Math.PI : 0);
       }
@@ -753,11 +905,22 @@ function StreetLights({ city }: { city: CityData }) {
   useInstances(headMesh, heads);
   return (
     <>
-      <instancedMesh ref={poleMesh} args={[poleGeometry, undefined, poles.length]} castShadow>
+      <instancedMesh
+        ref={poleMesh}
+        args={[poleGeometry, undefined, poles.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#3a3f46" metalness={0.6} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={headMesh} args={[lensGeometry, undefined, heads.length]}>
-        <meshStandardMaterial color="#ffe9bd" emissive="#ffdf9e" emissiveIntensity={2.4} />
+      <instancedMesh
+        ref={headMesh}
+        args={[lensGeometry, undefined, heads.length]}
+      >
+        <meshStandardMaterial
+          color="#ffe9bd"
+          emissive="#ffdf9e"
+          emissiveIntensity={2.4}
+        />
       </instancedMesh>
     </>
   );
@@ -787,45 +950,93 @@ function useCarFleet(kind: CarKind, colors: string[]) {
     tails = useRef<THREE.InstancedMesh>(null),
     toppers = useRef<THREE.InstancedMesh>(null);
   const fleet = useMemo(
-    () => [painted, glass, trim, heads, tails, ...(kind === "taxi" ? [toppers] : [])] as const,
+    () =>
+      [
+        painted,
+        glass,
+        trim,
+        heads,
+        tails,
+        ...(kind === "taxi" ? [toppers] : []),
+      ] as const,
     [kind],
   );
   useLayoutEffect(() => {
     if (!painted.current) return;
-    colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
-    if (painted.current.instanceColor) painted.current.instanceColor.needsUpdate = true;
+    colors.forEach((color, i) =>
+      painted.current!.setColorAt(i, tint.set(color)),
+    );
+    if (painted.current.instanceColor)
+      painted.current.instanceColor.needsUpdate = true;
   }, [colors]);
   const write = useCallback(
     (index: number, x: number, z: number, yaw: number) => {
-      matrix.compose(position.set(x, 0, z), quaternion.setFromAxisAngle(UP, yaw), ONE);
+      matrix.compose(
+        position.set(x, 0, z),
+        quaternion.setFromAxisAngle(UP, yaw),
+        ONE,
+      );
       for (const ref of fleet) ref.current?.setMatrixAt(index, matrix);
     },
     [fleet],
   );
   const flush = useCallback(() => {
-    for (const ref of fleet) if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
+    for (const ref of fleet)
+      if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
   }, [fleet]);
   const count = Math.max(1, colors.length);
   const meshes = (
     <>
-      <instancedMesh ref={painted} args={[parts.painted, undefined, count]} castShadow>
+      <instancedMesh
+        ref={painted}
+        args={[parts.painted, undefined, count]}
+        castShadow
+      >
         <meshStandardMaterial roughness={0.34} metalness={0.32} />
       </instancedMesh>
       <instancedMesh ref={glass} args={[parts.glass, undefined, count]}>
-        <meshStandardMaterial color="#162d3d" roughness={0.08} metalness={0.5} />
+        <meshStandardMaterial
+          color="#162d3d"
+          roughness={0.08}
+          metalness={0.5}
+        />
       </instancedMesh>
-      <instancedMesh ref={trim} args={[parts.trim, undefined, count]} castShadow>
-        <meshStandardMaterial color="#191d23" roughness={0.4} metalness={0.25} />
+      <instancedMesh
+        ref={trim}
+        args={[parts.trim, undefined, count]}
+        castShadow
+      >
+        <meshStandardMaterial
+          color="#191d23"
+          roughness={0.4}
+          metalness={0.25}
+        />
       </instancedMesh>
       <instancedMesh ref={heads} args={[parts.headlights, undefined, count]}>
-        <meshStandardMaterial color="#fff6da" emissive="#ffedb8" emissiveIntensity={1.5} />
+        <meshStandardMaterial
+          color="#fff6da"
+          emissive="#ffedb8"
+          emissiveIntensity={1.5}
+        />
       </instancedMesh>
       <instancedMesh ref={tails} args={[parts.taillights, undefined, count]}>
-        <meshStandardMaterial color="#8a1a12" emissive="#ff2b1e" emissiveIntensity={1.3} />
+        <meshStandardMaterial
+          color="#8a1a12"
+          emissive="#ff2b1e"
+          emissiveIntensity={1.3}
+        />
       </instancedMesh>
       {kind === "taxi" ? (
-        <instancedMesh ref={toppers} args={[parts.topper, undefined, count]} castShadow>
-          <meshStandardMaterial color="#f59e0b" emissive="#7c2d12" emissiveIntensity={0.25} />
+        <instancedMesh
+          ref={toppers}
+          args={[parts.topper, undefined, count]}
+          castShadow
+        >
+          <meshStandardMaterial
+            color="#f59e0b"
+            emissive="#7c2d12"
+            emissiveIntensity={0.25}
+          />
         </instancedMesh>
       ) : null}
     </>
@@ -862,18 +1073,35 @@ function FleetCars({ city }: { city: CityData }) {
     );
     return output;
   }, [city]);
-  const sedan = useCarFleet("sedan", groups.sedan.map((slot) => slot.color));
-  const van = useCarFleet("van", groups.van.map((slot) => slot.color));
-  const hatch = useCarFleet("hatch", groups.hatch.map((slot) => slot.color));
-  const sports = useCarFleet("sports", groups.sports.map((slot) => slot.color));
-  const taxi = useCarFleet("taxi", groups.taxi.map((slot) => slot.color));
+  const sedan = useCarFleet(
+    "sedan",
+    groups.sedan.map((slot) => slot.color),
+  );
+  const van = useCarFleet(
+    "van",
+    groups.van.map((slot) => slot.color),
+  );
+  const hatch = useCarFleet(
+    "hatch",
+    groups.hatch.map((slot) => slot.color),
+  );
+  const sports = useCarFleet(
+    "sports",
+    groups.sports.map((slot) => slot.color),
+  );
+  const taxi = useCarFleet(
+    "taxi",
+    groups.taxi.map((slot) => slot.color),
+  );
   const fleets = { sedan, van, hatch, sports, taxi };
   useFrame(({ clock }) => {
     updateTraffic(city, clock.elapsedTime);
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
       groups[kind].forEach((slot, localIndex) => {
-        const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
+        const car = slot.moving
+          ? trafficCars[slot.index]
+          : city.parkedCars[slot.index];
         if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
       });
       fleet.flush();
@@ -918,7 +1146,10 @@ function TrafficSignals() {
             scale: 0.23,
           });
           dark.push({ pos: [lx, LAMP_Y.amber, lz], scale: 0.23 });
-          dark.push({ pos: [lx, goes ? LAMP_Y.red : LAMP_Y.green, lz], scale: 0.23 });
+          dark.push({
+            pos: [lx, goes ? LAMP_Y.red : LAMP_Y.green, lz],
+            scale: 0.23,
+          });
         }
       }
     return { poles, heads, green, red, dark };
@@ -943,13 +1174,24 @@ function TrafficSignals() {
         <boxGeometry />
         <meshStandardMaterial color="#15191d" roughness={0.8} />
       </instancedMesh>
-      <instancedMesh ref={greenMesh} args={[undefined, undefined, green.length]}>
+      <instancedMesh
+        ref={greenMesh}
+        args={[undefined, undefined, green.length]}
+      >
         <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial color="#8bffb0" emissive="#25e06a" emissiveIntensity={2.6} />
+        <meshStandardMaterial
+          color="#8bffb0"
+          emissive="#25e06a"
+          emissiveIntensity={2.6}
+        />
       </instancedMesh>
       <instancedMesh ref={redMesh} args={[undefined, undefined, red.length]}>
         <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial color="#ffb0a6" emissive="#ff2d1a" emissiveIntensity={2.6} />
+        <meshStandardMaterial
+          color="#ffb0a6"
+          emissive="#ff2d1a"
+          emissiveIntensity={2.6}
+        />
       </instancedMesh>
       <instancedMesh ref={darkMesh} args={[undefined, undefined, dark.length]}>
         <sphereGeometry args={[1, 8, 6]} />
@@ -975,7 +1217,9 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
           const side = n % 2 ? 1 : -1;
           const alongEdge = (rng() - 0.5) * (BLOCK_SIZE - 8);
           const [x, z] =
-            n < 2 ? [cx + alongEdge, cz + side * walk] : [cx + side * walk, cz + alongEdge];
+            n < 2
+              ? [cx + alongEdge, cz + side * walk]
+              : [cx + side * walk, cz + alongEdge];
           if (nearExpressway(city, x, z, 2)) continue;
           const roll = rng();
           if (roll < 0.34) hydrants.push({ pos: [x, 0, z] });
@@ -989,8 +1233,11 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
       }
     return { hydrants, bins, benches };
   }, [city, seed]);
-  const { hydrant: hydrantGeometry, bin: binGeometry, bench: benchGeometry } =
-    useStreetPropAssets();
+  const {
+    hydrant: hydrantGeometry,
+    bin: binGeometry,
+    bench: benchGeometry,
+  } = useStreetPropAssets();
   const hydrantMesh = useRef<THREE.InstancedMesh>(null),
     binMesh = useRef<THREE.InstancedMesh>(null),
     benchMesh = useRef<THREE.InstancedMesh>(null);
@@ -1006,7 +1253,11 @@ function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
       >
         <meshStandardMaterial color="#d43a2a" roughness={0.7} />
       </instancedMesh>
-      <instancedMesh ref={binMesh} args={[binGeometry, undefined, bins.length]} castShadow>
+      <instancedMesh
+        ref={binMesh}
+        args={[binGeometry, undefined, bins.length]}
+        castShadow
+      >
         <meshStandardMaterial color="#2f3a34" roughness={0.9} />
       </instancedMesh>
       <instancedMesh
@@ -1031,12 +1282,20 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
       if (b.h < 14) continue;
       const hutW = Math.min(b.w, b.d) * 0.34;
       huts.push({
-        pos: [b.x + (rng() - 0.5) * b.w * 0.3, b.h + 1.1, b.z + (rng() - 0.5) * b.d * 0.3],
+        pos: [
+          b.x + (rng() - 0.5) * b.w * 0.3,
+          b.h + 1.1,
+          b.z + (rng() - 0.5) * b.d * 0.3,
+        ],
         scale: [hutW, 2.2, hutW],
       });
       if (rng() < 0.45)
         tanks.push({
-          pos: [b.x - (rng() - 0.5) * b.w * 0.4, b.h + 1.7, b.z - (rng() - 0.5) * b.d * 0.4],
+          pos: [
+            b.x - (rng() - 0.5) * b.w * 0.4,
+            b.h + 1.7,
+            b.z - (rng() - 0.5) * b.d * 0.4,
+          ],
           scale: [1.5, 3.4, 1.5],
         });
       if (b.h > 30 && rng() < 0.7)
@@ -1068,7 +1327,10 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
         <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
         <meshStandardMaterial color="#7d5a3c" roughness={0.95} />
       </instancedMesh>
-      <instancedMesh ref={mastMesh} args={[undefined, undefined, Math.max(1, masts.length)]}>
+      <instancedMesh
+        ref={mastMesh}
+        args={[undefined, undefined, Math.max(1, masts.length)]}
+      >
         <boxGeometry />
         <meshStandardMaterial color="#c8ccd2" metalness={0.6} roughness={0.4} />
       </instancedMesh>
@@ -1076,7 +1338,14 @@ function Rooftops({ city, seed }: { city: CityData; seed: number }) {
   );
 }
 
-const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];
+const awningColors = [
+  "#ff4f2e",
+  "#00aeea",
+  "#25bd69",
+  "#f03363",
+  "#9b62e7",
+  "#ff8a20",
+];
 const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
 
 /** Convert an offset inside a yawed place group to an instance in world space. */
@@ -1111,26 +1380,56 @@ function PlaceProps({ city }: { city: CityData }) {
         rotY: yaw,
         color: houseColors[index % houseColors.length]!,
       });
-      roofs.push({ pos: placeOffset(place.pos, yaw, 0, 4.05, 0), rotY: yaw + Math.PI / 4 });
-      doors.push({ pos: placeOffset(place.pos, yaw, 0, 0.95, 3.02), rotY: yaw });
-      windows.push({ pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02), rotY: yaw });
-      windows.push({ pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02), rotY: yaw });
+      roofs.push({
+        pos: placeOffset(place.pos, yaw, 0, 4.05, 0),
+        rotY: yaw + Math.PI / 4,
+      });
+      doors.push({
+        pos: placeOffset(place.pos, yaw, 0, 0.95, 3.02),
+        rotY: yaw,
+      });
+      windows.push({
+        pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02),
+        rotY: yaw,
+      });
+      windows.push({
+        pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02),
+        rotY: yaw,
+      });
     });
 
     city.restaurants.forEach((place, index) => {
       const yaw = outwardYaw(place.pos);
-      restaurantShells.push({ pos: [place.pos[0], 1.9, place.pos[1]], rotY: yaw });
-      signPanels.push({ pos: placeOffset(place.pos, yaw, 0, 1.35, 3.02), rotY: yaw });
+      restaurantShells.push({
+        pos: [place.pos[0], 1.9, place.pos[1]],
+        rotY: yaw,
+      });
+      signPanels.push({
+        pos: placeOffset(place.pos, yaw, 0, 1.35, 3.02),
+        rotY: yaw,
+      });
       awnings.push({
         pos: placeOffset(place.pos, yaw, 0, 2.85, 3.4),
         rotY: yaw,
         rotX: 0.5,
         color: awningColors[index % awningColors.length]!,
       });
-      signBoards.push({ pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05), rotY: yaw });
+      signBoards.push({
+        pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05),
+        rotY: yaw,
+      });
     });
 
-    return { restaurantShells, houseShells, roofs, doors, windows, signPanels, awnings, signBoards };
+    return {
+      restaurantShells,
+      houseShells,
+      roofs,
+      doors,
+      windows,
+      signPanels,
+      awnings,
+      signBoards,
+    };
   }, [city]);
 
   const geometries = useMemo(
@@ -1163,7 +1462,11 @@ function PlaceProps({ city }: { city: CityData }) {
     <>
       <instancedMesh
         ref={restaurantMesh}
-        args={[geometries.restaurant, undefined, groups.restaurantShells.length]}
+        args={[
+          geometries.restaurant,
+          undefined,
+          groups.restaurantShells.length,
+        ]}
         castShadow
         receiveShadow
       >
@@ -1177,21 +1480,42 @@ function PlaceProps({ city }: { city: CityData }) {
       >
         <meshStandardMaterial color="white" roughness={0.95} />
       </instancedMesh>
-      <instancedMesh ref={roofMesh} args={[undefined, undefined, groups.roofs.length]} castShadow>
+      <instancedMesh
+        ref={roofMesh}
+        args={[undefined, undefined, groups.roofs.length]}
+        castShadow
+      >
         <coneGeometry args={[4.7, 2.1, 4]} />
         <meshStandardMaterial color="#e85c42" roughness={0.86} flatShading />
       </instancedMesh>
-      <instancedMesh ref={doorMesh} args={[undefined, undefined, groups.doors.length]}>
+      <instancedMesh
+        ref={doorMesh}
+        args={[undefined, undefined, groups.doors.length]}
+      >
         <planeGeometry args={[1.1, 1.9]} />
         <meshStandardMaterial color="#4a3527" />
       </instancedMesh>
-      <instancedMesh ref={windowMesh} args={[undefined, undefined, groups.windows.length]}>
+      <instancedMesh
+        ref={windowMesh}
+        args={[undefined, undefined, groups.windows.length]}
+      >
         <planeGeometry args={[1.2, 1.1]} />
-        <meshStandardMaterial color="#ffe6b0" emissive="#ffd98c" emissiveIntensity={0.9} />
+        <meshStandardMaterial
+          color="#ffe6b0"
+          emissive="#ffd98c"
+          emissiveIntensity={0.9}
+        />
       </instancedMesh>
-      <instancedMesh ref={panelMesh} args={[undefined, undefined, groups.signPanels.length]}>
+      <instancedMesh
+        ref={panelMesh}
+        args={[undefined, undefined, groups.signPanels.length]}
+      >
         <planeGeometry args={[6.4, 1.9]} />
-        <meshStandardMaterial color="#fff0bd" emissive="#ffb84c" emissiveIntensity={0.55} />
+        <meshStandardMaterial
+          color="#fff0bd"
+          emissive="#ffb84c"
+          emissiveIntensity={0.55}
+        />
       </instancedMesh>
       <instancedMesh
         ref={awningMesh}
@@ -1200,7 +1524,10 @@ function PlaceProps({ city }: { city: CityData }) {
       >
         <meshStandardMaterial color="white" roughness={0.85} />
       </instancedMesh>
-      <instancedMesh ref={boardMesh} args={[geometries.signBoard, undefined, groups.signBoards.length]}>
+      <instancedMesh
+        ref={boardMesh}
+        args={[geometries.signBoard, undefined, groups.signBoards.length]}
+      >
         <meshStandardMaterial color="#241f1c" />
       </instancedMesh>
     </>
@@ -1209,7 +1536,10 @@ function PlaceProps({ city }: { city: CityData }) {
 
 function RestaurantSign({ place }: { place: { name: string; pos: Pos2 } }) {
   return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
+    <group
+      position={[place.pos[0], 0, place.pos[1]]}
+      rotation-y={outwardYaw(place.pos)}
+    >
       <Suspense fallback={null}>
         <Text
           position={[0, 4.15, 3.25]}

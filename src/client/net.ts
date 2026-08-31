@@ -11,11 +11,18 @@ export function connect(code: string, name: string) {
   socket.onopen = () => {
     useGameStore
       .getState()
-      .set({ connected: true, lastError: undefined, roomCode: code, screen: "game" });
+      .set({
+        connected: true,
+        lastError: undefined,
+        roomCode: code,
+        screen: "game",
+      });
     send({ t: "join", name });
   };
-  socket.onmessage = (event) => handle(JSON.parse(String(event.data)) as ServerMessage);
-  socket.onerror = () => useGameStore.getState().set({ lastError: "Connection error." });
+  socket.onmessage = (event) =>
+    handle(JSON.parse(String(event.data)) as ServerMessage);
+  socket.onerror = () =>
+    useGameStore.getState().set({ lastError: "Connection error." });
   socket.onclose = () => {
     if (session) useGameStore.getState().set({ connected: false });
     socket = undefined;
@@ -30,7 +37,8 @@ export function rejoin() {
   if (session) connect(session.code, session.name);
 }
 export function send(message: ClientMessage) {
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+  if (socket?.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify(message));
 }
 function handle(message: ServerMessage) {
   const store = useGameStore.getState();

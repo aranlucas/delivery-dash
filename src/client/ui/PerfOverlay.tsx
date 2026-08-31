@@ -49,7 +49,10 @@ export function PerfOverlay() {
   if (!visible) return null;
   const overBudget = perfStats.frameMs > 16.6 || perfStats.calls > 60;
   return (
-    <aside className={`perf-overlay ${overBudget ? "is-over" : ""}`} aria-label="Render performance">
+    <aside
+      className={`perf-overlay ${overBudget ? "is-over" : ""}`}
+      aria-label="Render performance"
+    >
       <b>{perfStats.fps.toFixed(0)} FPS</b>
       <span>{perfStats.frameMs.toFixed(2)} ms</span>
       <span>{perfStats.calls} calls</span>

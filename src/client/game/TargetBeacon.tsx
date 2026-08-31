@@ -6,7 +6,13 @@ import { worldBearing } from "../../shared/nav";
 import { ownPose } from "./drivingState";
 
 /** Grounded delivery zone: pulsing ring + soft pillar + bobbing cone, sitting on the sidewalk plane. */
-export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff: boolean }) {
+export function TargetBeacon({
+  pos,
+  dropoff,
+}: {
+  pos: [number, number];
+  dropoff: boolean;
+}) {
   const color = dropoff ? "#65f578" : "#ff7a00";
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
@@ -18,7 +24,12 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
     <group position={[pos[0], 0, pos[1]]}>
       <mesh ref={ring} rotation-x={-Math.PI / 2} position={[0, 0.34, 0]}>
         <ringGeometry args={[4.6, 6.4, 8]} />
-        <meshBasicMaterial color={color} transparent opacity={0.96} side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.96}
+          side={THREE.DoubleSide}
+        />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.32, 0]}>
         <circleGeometry args={[4.7, 48]} />
@@ -26,7 +37,12 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
       </mesh>
       <mesh position={[0, 7, 0]}>
         <cylinderGeometry args={[0.75, 3.1, 18, 20, 1, true]} />
-        <meshBasicMaterial color={color} transparent opacity={0.24} depthWrite={false} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.24}
+          depthWrite={false}
+        />
       </mesh>
       <Float speed={3} floatIntensity={0.5} rotationIntensity={0}>
         <mesh position={[0, 15.5, 0]} rotation-x={Math.PI}>
@@ -41,7 +57,13 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
 const CHEVRON_COUNT = 3;
 
 /** Flowing chevrons immediately ahead of the car, aimed at the destination. */
-export function TargetPointer({ target, dropoff }: { target: [number, number]; dropoff: boolean }) {
+export function TargetPointer({
+  target,
+  dropoff,
+}: {
+  target: [number, number];
+  dropoff: boolean;
+}) {
   const group = useRef<THREE.Group>(null);
   const chevrons = useRef<Array<THREE.Mesh | null>>([]);
   useFrame(({ clock }) => {
@@ -56,7 +78,8 @@ export function TargetPointer({ target, dropoff }: { target: [number, number]; d
       if (!chevron) continue;
       const phase = (clock.elapsedTime * 0.85 + index / CHEVRON_COUNT) % 1;
       chevron.position.z = 4 + phase * 7;
-      (chevron.material as THREE.MeshBasicMaterial).opacity = Math.sin(phase * Math.PI) * 0.75;
+      (chevron.material as THREE.MeshBasicMaterial).opacity =
+        Math.sin(phase * Math.PI) * 0.75;
     }
   });
   return (

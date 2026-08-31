@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { generateCity, rampSurface, STEP_UP, WORLD_HALF, type AABB, type City } from "./city.ts";
+import {
+  generateCity,
+  rampSurface,
+  STEP_UP,
+  WORLD_HALF,
+  type AABB,
+  type City,
+} from "./city.ts";
 import { buildGrid, queryRange } from "./collision.ts";
 import { mulberry32 } from "./rng.ts";
 
@@ -83,6 +90,9 @@ test("current city buckets keep candidate sets small", () => {
   const grid = generateCity(42).collisionGrid;
   let largest = 0;
   for (let index = 0; index < grid.cols * grid.rows; index++)
-    largest = Math.max(largest, grid.bucketStart[index + 1]! - grid.bucketStart[index]!);
+    largest = Math.max(
+      largest,
+      grid.bucketStart[index + 1]! - grid.bucketStart[index]!,
+    );
   assert.ok(largest < 30, `largest bucket contains ${largest} boxes`);
 });

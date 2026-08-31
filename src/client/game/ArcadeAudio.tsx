@@ -2,13 +2,20 @@ import { useEffect } from "react";
 import { useGameStore } from "../store";
 import { drivingTelemetry, ownPose } from "./drivingState";
 
-function playRewardStinger(context: AudioContext, destination: AudioNode, tier: number) {
+function playRewardStinger(
+  context: AudioContext,
+  destination: AudioNode,
+  tier: number,
+) {
   const now = context.currentTime;
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   oscillator.type = tier >= 3 ? "sawtooth" : "square";
   oscillator.frequency.setValueAtTime(210 + tier * 70, now);
-  oscillator.frequency.exponentialRampToValueAtTime(430 + tier * 150, now + 0.13);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    430 + tier * 150,
+    now + 0.13,
+  );
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(0.075, now + 0.018);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
@@ -65,7 +72,15 @@ export function ArcadeAudio() {
       tire.start();
 
       timer = window.setInterval(() => {
-        if (!context || !master || !engine || !engineGain || !engineFilter || !tire || !tireGain)
+        if (
+          !context ||
+          !master ||
+          !engine ||
+          !engineGain ||
+          !engineFilter ||
+          !tire ||
+          !tireGain
+        )
           return;
         const now = context.currentTime;
         const speedRatio = Math.min(1, ownPose.speed / 52);
@@ -80,9 +95,17 @@ export function ArcadeAudio() {
           now,
           0.04,
         );
-        engineGain.gain.setTargetAtTime(active ? 0.055 + speedRatio * 0.085 : 0, now, 0.08);
+        engineGain.gain.setTargetAtTime(
+          active ? 0.055 + speedRatio * 0.085 : 0,
+          now,
+          0.08,
+        );
         tire.frequency.setTargetAtTime(360 + speedRatio * 190, now, 0.035);
-        tireGain.gain.setTargetAtTime(drivingTelemetry.drifting ? 0.045 : 0, now, 0.035);
+        tireGain.gain.setTargetAtTime(
+          drivingTelemetry.drifting ? 0.045 : 0,
+          now,
+          0.035,
+        );
         if (heardReward !== drivingTelemetry.rewardSequence) {
           heardReward = drivingTelemetry.rewardSequence;
           playRewardStinger(context, master, drivingTelemetry.rewardTier);

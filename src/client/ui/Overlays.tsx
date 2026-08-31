@@ -35,10 +35,14 @@ export function Lobby() {
       <div className="lobby-roster">
         {players.map((player, index) => (
           <div className="lobby-driver" key={player.id}>
-            <span className="grid-position">{String(index + 1).padStart(2, "0")}</span>
+            <span className="grid-position">
+              {String(index + 1).padStart(2, "0")}
+            </span>
             <i style={{ background: player.color }} />
             <b>{player.name}</b>
-            <em className={player.ready ? "is-ready" : ""}>{player.ready ? "READY" : "WAITING"}</em>
+            <em className={player.ready ? "is-ready" : ""}>
+              {player.ready ? "READY" : "WAITING"}
+            </em>
           </div>
         ))}
       </div>
@@ -50,7 +54,10 @@ export function Lobby() {
           {self?.ready ? "CANCEL READY" : "READY TO RACE"}
         </button>
       ) : (
-        <button className="arcade-button arcade-button-primary lobby-ready" onClick={rejoin}>
+        <button
+          className="arcade-button arcade-button-primary lobby-ready"
+          onClick={rejoin}
+        >
           REJOIN RACE
         </button>
       )}
@@ -211,7 +218,8 @@ export function Countdown() {
   }, []);
 
   const count = Math.ceil(((ends ?? now) - now) / 1000);
-  const showGo = phase === "racing" && started !== undefined && now - started < 900;
+  const showGo =
+    phase === "racing" && started !== undefined && now - started < 900;
   if (phase !== "countdown" && !showGo) return null;
   return (
     <div className={`countdown ${showGo ? "is-go" : ""}`} aria-live="assertive">
@@ -227,8 +235,14 @@ export function HUD() {
   const self = useGameStore(ownPlayer);
   const connected = useGameStore((state) => state.connected);
   const raceStartedAt = useGameStore((state) => state.raceStartedAt);
-  const city = useMemo(() => (seed === undefined ? undefined : generateCity(seed)), [seed]);
-  const orders = useMemo(() => (seed === undefined ? [] : generateOrders(seed)), [seed]);
+  const city = useMemo(
+    () => (seed === undefined ? undefined : generateCity(seed)),
+    [seed],
+  );
+  const orders = useMemo(
+    () => (seed === undefined ? [] : generateOrders(seed)),
+    [seed],
+  );
   const [, tick] = useReducer((value: number) => value + 1, 0);
 
   useEffect(() => {
@@ -237,14 +251,25 @@ export function HUD() {
     return () => window.clearInterval(timer);
   }, [phase]);
 
-  if (phase !== "racing" || !city || !self) return connected ? null : <Reconnect />;
+  if (phase !== "racing" || !city || !self)
+    return connected ? null : <Reconnect />;
   const order = orders[self.orderIndex];
   const target =
     order &&
-    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
-  const distance = target ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z) : 0;
+    (self.leg === "pickup"
+      ? city.restaurants[order.restaurantId]
+      : city.houses[order.houseId]);
+  const distance = target
+    ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z)
+    : 0;
   const arrowAngle = target
-    ? relativeBearing(ownPose.x, ownPose.z, cameraPose.yaw, target.stop[0], target.stop[1])
+    ? relativeBearing(
+        ownPose.x,
+        ownPose.z,
+        cameraPose.yaw,
+        target.stop[0],
+        target.stop[1],
+      )
     : 0;
   const speed = Math.round(ownPose.speed * 3.6);
   const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);
@@ -252,7 +277,10 @@ export function HUD() {
   const sortedPlayers = [...players].sort(
     (a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex,
   );
-  const fast = ownPose.speed > 26 || drivingTelemetry.boosting || drivingTelemetry.rushTier > 0;
+  const fast =
+    ownPose.speed > 26 ||
+    drivingTelemetry.boosting ||
+    drivingTelemetry.rushTier > 0;
   const hasDriftCharge = drivingTelemetry.driftCharge > 1;
   const rushLabel = ["BUILDING", "LOCAL", "EXPRESS", "OVERNIGHT"][
     drivingTelemetry.driftTier
@@ -267,7 +295,8 @@ export function HUD() {
       <section className="order-progress hud-panel">
         <span>ORDER</span>
         <strong>
-          {Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} / {DELIVERIES_TO_WIN}
+          {Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} /{" "}
+          {DELIVERIES_TO_WIN}
         </strong>
         <div
           className="delivery-boxes"
@@ -288,9 +317,12 @@ export function HUD() {
         </div>
       </section>
 
-      <section className={`destination-banner ${self.leg === "dropoff" ? "is-dropoff" : ""}`}>
+      <section
+        className={`destination-banner ${self.leg === "dropoff" ? "is-dropoff" : ""}`}
+      >
         <div>
-          {self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i /> <strong>{target?.name}</strong>
+          {self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i />{" "}
+          <strong>{target?.name}</strong>
         </div>
         <b>
           {Math.round(distance)}
@@ -309,7 +341,10 @@ export function HUD() {
           <span>{formatTime(elapsed)}</span>
         </header>
         {sortedPlayers.slice(0, 5).map((player, index) => (
-          <div className={player.id === self.id ? "is-self" : ""} key={player.id}>
+          <div
+            className={player.id === self.id ? "is-self" : ""}
+            key={player.id}
+          >
             <b>{index + 1}</b>
             <i style={{ background: player.color }} />
             <span>{player.name}</span>
@@ -340,9 +375,15 @@ export function HUD() {
         </div>
       </section>
 
-      <Minimap city={city} target={target?.stop} dropoff={self.leg === "dropoff"} />
+      <Minimap
+        city={city}
+        target={target?.stop}
+        dropoff={self.leg === "dropoff"}
+      />
 
-      <div className={`air-gauge ${drivingTelemetry.airborne ? "is-visible" : ""}`}>
+      <div
+        className={`air-gauge ${drivingTelemetry.airborne ? "is-visible" : ""}`}
+      >
         <b>AIR</b>
         <span>{drivingTelemetry.airTime.toFixed(1)}s</span>
       </div>
@@ -354,7 +395,9 @@ export function HUD() {
         <strong>{drivingTelemetry.callout}</strong>
         <span>+{Math.round(drivingTelemetry.calloutScore)}</span>
       </div>
-      <div className={`combo-strip ${drivingTelemetry.combo > 1 ? "is-visible" : ""}`}>
+      <div
+        className={`combo-strip ${drivingTelemetry.combo > 1 ? "is-visible" : ""}`}
+      >
         <b>x{Math.max(1, drivingTelemetry.combo)}</b> COMBO
       </div>
       <div
@@ -393,7 +436,10 @@ function Reconnect() {
       <section className="arcade-panel reconnect-panel">
         <h2>CONNECTION LOST</h2>
         <p>Your taxi is waiting at the curb.</p>
-        <button className="arcade-button arcade-button-primary" onClick={rejoin}>
+        <button
+          className="arcade-button arcade-button-primary"
+          onClick={rejoin}
+        >
           REJOIN RACE
         </button>
       </section>
@@ -409,7 +455,10 @@ export function WinnerScreen() {
         <div className="panel-kicker">CHECKERED FLAG</div>
         <h1>RACE COMPLETE!</h1>
         {standings.map((player, index) => (
-          <div className={index === 0 ? "winner-row is-first" : "winner-row"} key={player.id}>
+          <div
+            className={index === 0 ? "winner-row is-first" : "winner-row"}
+            key={player.id}
+          >
             <b>{index + 1}</b>
             <span>{player.name}</span>
             <em>{player.deliveries} DELIVERIES</em>

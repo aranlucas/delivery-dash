@@ -19,7 +19,11 @@ function GameLoading() {
   return (
     <main className="arcade-menu">
       <div className="menu-speed-lines" aria-hidden="true" />
-      <section className="arcade-panel game-loading" role="status" aria-live="polite">
+      <section
+        className="arcade-panel game-loading"
+        role="status"
+        aria-live="polite"
+      >
         <span>LOADING CITY</span>
         <strong>PREPARING THE STARTING GRID...</strong>
       </section>
@@ -29,7 +33,8 @@ function GameLoading() {
 
 export function App() {
   const screen = useGameStore((s) => s.screen);
-  if (screen === "menu") return <Menu onGameIntent={() => void loadGameSession()} />;
+  if (screen === "menu")
+    return <Menu onGameIntent={() => void loadGameSession()} />;
   return (
     <Suspense fallback={<GameLoading />}>
       <GameSession />

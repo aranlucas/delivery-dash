@@ -145,7 +145,8 @@ export function bodyHalfWidth(spec: CarSpec, position: number) {
   }
   const flare =
     spec.arch *
-    (bump(position, spec.axleInset, 0.15) + bump(position, 1 - spec.axleInset, 0.15));
+    (bump(position, spec.axleInset, 0.15) +
+      bump(position, 1 - spec.axleInset, 0.15));
   return (spec.width / 2) * widthScale + flare;
 }
 

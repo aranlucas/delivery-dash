@@ -52,7 +52,8 @@ export function addDriftCharge(
   totalSpeed: number,
   deltaSeconds: number,
 ) {
-  const driftEnergy = Math.abs(lateralSpeed) * Math.max(0, totalSpeed - 7) * deltaSeconds * 0.72;
+  const driftEnergy =
+    Math.abs(lateralSpeed) * Math.max(0, totalSpeed - 7) * deltaSeconds * 0.72;
   return Math.min(MAX_DRIFT_CHARGE, Math.max(0, current) + driftEnergy);
 }
 
@@ -94,7 +95,12 @@ export type NearMissUpdate = {
   contacted: boolean;
 };
 
-function closestSegmentPointToOrigin(ax: number, az: number, bx: number, bz: number) {
+function closestSegmentPointToOrigin(
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+) {
   const dx = bx - ax;
   const dz = bz - az;
   const lengthSquared = dx * dx + dz * dz;
@@ -116,7 +122,11 @@ export function updateNearMissPass(
   speed: number,
 ): NearMissUpdate {
   const distance = Math.hypot(relativeX, relativeZ);
-  const nextPosition = { previousX: relativeX, previousZ: relativeZ, previousSpeed: speed };
+  const nextPosition = {
+    previousX: relativeX,
+    previousZ: relativeZ,
+    previousSpeed: speed,
+  };
   if (!Number.isFinite(distance)) {
     return {
       tracker: tracker ?? nextPosition,
@@ -145,7 +155,10 @@ export function updateNearMissPass(
     };
   }
 
-  const step = Math.hypot(relativeX - tracker.previousX, relativeZ - tracker.previousZ);
+  const step = Math.hypot(
+    relativeX - tracker.previousX,
+    relativeZ - tracker.previousZ,
+  );
   if (step > MAX_TRAFFIC_SWEEP) {
     const contacted = distance <= TRAFFIC_CONTACT_RADIUS;
     return {
@@ -173,7 +186,11 @@ export function updateNearMissPass(
     relativeZ,
   );
   const contacted = sweep.distance <= TRAFFIC_CONTACT_RADIUS;
-  const closest = Math.min(tracker.pass?.closest ?? Infinity, sweep.distance, distance);
+  const closest = Math.min(
+    tracker.pass?.closest ?? Infinity,
+    sweep.distance,
+    distance,
+  );
   const speedAtClosest =
     tracker.previousSpeed + (speed - tracker.previousSpeed) * sweep.progress;
   const pass =
@@ -182,7 +199,8 @@ export function updateNearMissPass(
           closest,
           fastEnough:
             (tracker.pass?.fastEnough ?? false) ||
-            (sweep.distance <= NEAR_MISS_ENTRY_RADIUS && speedAtClosest >= NEAR_MISS_MIN_SPEED),
+            (sweep.distance <= NEAR_MISS_ENTRY_RADIUS &&
+              speedAtClosest >= NEAR_MISS_MIN_SPEED),
           hit: (tracker.pass?.hit ?? false) || contacted,
         }
       : undefined;
@@ -197,7 +215,8 @@ export function updateNearMissPass(
 
   return {
     tracker: nextPosition,
-    awarded: pass.fastEnough && !pass.hit && pass.closest <= NEAR_MISS_ENTRY_RADIUS,
+    awarded:
+      pass.fastEnough && !pass.hit && pass.closest <= NEAR_MISS_ENTRY_RADIUS,
     contacted,
   };
 }

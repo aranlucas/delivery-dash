@@ -9,7 +9,10 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
     for (const place of [...city.restaurants, ...city.houses]) {
       const [x, z] = place.stop;
       const distance = Math.hypot(x - place.pos[0], z - place.pos[1]);
-      assert.ok(distance < TARGET_RADIUS, `${place.name} is ${distance.toFixed(1)}m from its stop`);
+      assert.ok(
+        distance < TARGET_RADIUS,
+        `${place.name} is ${distance.toFixed(1)}m from its stop`,
+      );
       assert.ok(distance > 4.25, `${place.name} stop is inside its shell`);
       assert.ok(
         !city.buildingAABBs.some(
