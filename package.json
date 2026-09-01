@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm cf-typegen && tsc -b && vite build",
-    "preview": "npm run build && vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "preview": "pnpm build && vite preview",
+    "deploy": "pnpm build && wrangler deploy",
     "check": "pnpm cf-typegen && tsc -b",
     "test": "node --test 'src/**/*.test.ts'",
     "cf-typegen": "wrangler types"
@@ -33,7 +33,7 @@
   },
   "engines": {
     "node": ">=24 <27",
-    "pnpm": ">=11.18.0 <12"
+    "pnpm": ">=12.2.1 <13"
   },
-  "packageManager": "pnpm@11.25.0"
+  "packageManager": "pnpm@12.2.1"
 }

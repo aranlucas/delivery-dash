@@ -7,7 +7,7 @@ A DoorDash-style delivery racing game: players drive delivery cars through a pro
 - Cloudflare Worker + **Durable Object** `RaceRoom` (WebSocket Hibernation API, SQLite-backed storage) — `src/worker/`
 - **React 19 + @react-three/fiber 9 + drei + zustand** client — `src/client/`
 - Shared code (protocol + city generation) — `src/shared/`
-- Build: Vite + `@cloudflare/vite-plugin` (worker and client served together in dev, same origin). `npm run dev` runs everything. `npm run check` typechecks, `npm run build` builds.
+- Build: Vite + `@cloudflare/vite-plugin` (worker and client served together in dev, same origin). `pnpm dev` runs everything. `pnpm check` typechecks, `pnpm build` builds.
 - `wrangler.jsonc` already binds `RACE_ROOM` → class `RaceRoom` with a `v1` sqlite migration. `Env` types are generated in `worker-configuration.d.ts` (global `Env` type available in worker code).
 
 ## File layout to produce
@@ -104,8 +104,8 @@ Server → Client:
 
 ## Constraints & quality bar
 
-- `npm run check` and `npm run build` MUST pass with zero errors — run them yourself and fix everything.
-- No extra npm dependencies beyond what's installed (react, react-dom, three, @react-three/fiber, @react-three/drei, zustand).
+- `pnpm check` and `pnpm build` MUST pass with zero errors — run them yourself and fix everything.
+- No extra dependencies beyond what's installed (react, react-dom, three, @react-three/fiber, @react-three/drei, zustand).
 - No assets/textures — everything procedural.
 - Shared code must not import worker- or DOM-only APIs.
 - Durable Object must use the Hibernation WebSocket API (`ctx.acceptWebSocket`), not `server.accept()`.
