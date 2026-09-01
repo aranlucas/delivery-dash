@@ -8,6 +8,10 @@
     "build": "pnpm cf-typegen && tsc -b && vite build",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && wrangler deploy",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
     "check": "pnpm cf-typegen && tsc -b",
     "test": "node --test 'src/**/*.test.ts'",
     "cf-typegen": "wrangler types"
@@ -27,6 +31,8 @@
     "@types/react-dom": "^19.2.5",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.1.1",
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "wrangler": "^4.127.1"
