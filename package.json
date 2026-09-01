@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "pnpm cf-typegen && tsc -b && vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
-    "check": "tsc -b",
+    "check": "pnpm cf-typegen && tsc -b",
     "test": "node --test 'src/**/*.test.ts'",
     "cf-typegen": "wrangler types"
   },
