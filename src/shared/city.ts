@@ -1,3 +1,6 @@
+import { rampSurface, rampBlocks } from "./ramps.ts";
+export { rampSurface } from "./ramps.ts";
+
 import { mulberry32, randomInt } from "./rng.ts";
 import { buildGrid, queryRange, type SpatialGrid } from "./collision.ts";
 
@@ -210,26 +213,18 @@ const districtBuilding = [
   { park: 0.26, count: 4, size: 8, spread: 9, base: 7, rise: 12 },
 ] as const;
 
-/** Height of a ramp's surface at a world point, or undefined when the point is off the ramp. */
-export function rampSurface(ramp: Ramp, x: number, z: number): number | undefined {
-  const dx = x - ramp.x,
-    dz = z - ramp.z;
-  const sin = Math.sin(ramp.yaw),
-    cos = Math.cos(ramp.yaw);
-  const along = dx * sin + dz * cos;
-  const across = dx * cos - dz * sin;
-  if (Math.abs(along) > ramp.length / 2 || Math.abs(across) > ramp.width / 2) return undefined;
-  const t = along / ramp.length + 0.5;
-  // Kickers keep climbing into a sharp lip; grades flatten at both ends so decks join smoothly.
-  return ramp.height * (ramp.kind === "kicker" ? t ** 1.7 : t * t * (3 - 2 * t));
-}
-
 /**
  * Highest drivable surface under a car sitting at `height`. Surfaces more than STEP_UP above the
  * car are ignored, which is what lets a deck be a road from on top and a ceiling from below.
  */
-export function groundHeightAt(city: City, x: number, z: number, height: number): number {
-  const limit = height + STEP_UP;
+export function groundHeightAt(
+  city: City,
+  x: number,
+  z: number,
+  height: number,
+  stepUp = STEP_UP,
+): number {
+  const limit = height + stepUp;
   let best = 0;
   for (const ramp of city.ramps) {
     const surface = rampSurface(ramp, x, z);
@@ -267,8 +262,7 @@ const collisionCandidates: number[] = [];
 export function blocked(city: City, x: number, z: number, height: number): boolean {
   if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
   for (const ramp of city.ramps) {
-    const surface = rampSurface(ramp, x, z);
-    if (surface !== undefined && surface > height + STEP_UP) return true;
+    if (rampBlocks(ramp, x, z, height, STEP_UP)) return true;
   }
   const candidateCount = queryRange(
     city.collisionGrid,
@@ -291,6 +285,23 @@ export function blocked(city: City, x: number, z: number, height: number): boole
       return true;
   }
   return false;
+}
+
+/** Fraction of a move reachable without skipping a thin wall or a ramp's side face. */
+export function safeTravel(
+  city: City,
+  x: number,
+  z: number,
+  dx: number,
+  dz: number,
+  height: number,
+): number {
+  const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.75);
+  for (let step = 1; step <= steps; step++) {
+    const t = step / steps;
+    if (blocked(city, x + dx * t, z + dz * t, height)) return (step - 1) / steps;
+  }
+  return 1;
 }
 
 /** True near any elevated structure — used to keep trees and props out of the expressway. */
@@ -484,6 +495,13 @@ function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] 
   const kickers: Ramp[] = [];
   const boostPads: BoostPad[] = [];
   const clear = (x: number, z: number, margin: number) => {
+    // Reserve the starting grid and its braking space, just like parking and traffic do.
+    if (
+      Math.abs(z - roadCenter(SPAWN_ROAD)) < 4 + margin &&
+      x > -WORLD_HALF + 34 - margin &&
+      x < -WORLD_HALF + 116 + margin
+    )
+      return false;
     for (const ramp of structures.ramps)
       if (Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin) return false;
     for (const deck of structures.decks)
