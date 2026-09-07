@@ -54,17 +54,9 @@ const SEA_WALLS: StaticInstance[] = [-1, 1].flatMap((side) => [
   { position: [side * (WORLD_HALF - 1.5), 0.5, 0], scale: [1.5, 1, 600] },
   { position: [0, 0.5, side * (WORLD_HALF - 1.5)], scale: [600, 1, 1.5] },
 ]);
-const PORTALS: StaticInstance[] = CITY_ZONES.flatMap((zone) => [
-  { position: [zone.x, 0, zone.z - 43] as [number, number, number] },
-  ...(zone.id === "stunt"
-    ? [
-        {
-          position: [zone.x, 0, zone.z] as [number, number, number],
-          scale: [1, 1.65, 1] as [number, number, number],
-        },
-      ]
-    : []),
-]);
+const PORTALS: StaticInstance[] = CITY_ZONES.map((zone) => ({
+  position: [zone.x, 0, zone.z - 43],
+}));
 
 function Portals() {
   const { scene } = useGLTF(assetUrl("portal"));
@@ -163,7 +155,6 @@ function Plaza({ zone }: { zone: CityZone }) {
               FLY THIS WAY
             </Text>
           </Suspense>
-          <group position={[0, 0, 0]} scale={[1, 1.65, 1]}></group>
         </>
       )}
       {/* Flat approach arrows make the shortcut legible at driving speed. */}

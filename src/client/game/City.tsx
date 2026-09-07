@@ -19,6 +19,8 @@ import {
 } from "../../shared/city";
 import { makeRampGeometry } from "./rampGeometry";
 import { rampHeight } from "../../shared/ramps";
+import { DeliveryAssets } from "./DeliveryAssets";
+import { storefrontModel, storefrontYaw } from "../../shared/deliveryAssets";
 import { LandmarkCity } from "./LandmarkCity";
 import { mulberry32 } from "../../shared/rng";
 import { makeFleetGeometry, useStreetPropAssets, useVehicleAsset } from "./modelAssets";
@@ -1078,6 +1080,7 @@ function PlaceProps({ city }: { city: CityData }) {
     });
 
     city.restaurants.forEach((place, index) => {
+      if (storefrontModel(place.name)) return;
       const yaw = outwardYaw(place.pos);
       restaurantShells.push({
         pos: [place.pos[0], 1.9, place.pos[1]],
@@ -1188,12 +1191,15 @@ function PlaceProps({ city }: { city: CityData }) {
   );
 }
 
-function RestaurantSign({ place }: { place: { name: string; pos: Pos2 } }) {
+function RestaurantSign({ place }: { place: CityData["restaurants"][number] }) {
   return (
-    <group position={[place.pos[0], 0, place.pos[1]]} rotation-y={outwardYaw(place.pos)}>
+    <group
+      position={[place.pos[0], 0, place.pos[1]]}
+      rotation-y={storefrontModel(place.name) ? storefrontYaw(place) : outwardYaw(place.pos)}
+    >
       <Suspense fallback={null}>
         <Text
-          position={[0, 4.15, 3.25]}
+          position={[0, storefrontModel(place.name) ? 4.5 : 4.15, 3.25]}
           fontSize={0.78}
           color="#ffd98c"
           anchorX="center"
@@ -1233,6 +1239,7 @@ export function City({ city, seed }: { city: CityData; seed: number }) {
       <PalmTrees city={city} seed={seed} />
       <StreetLights city={city} />
       <LandmarkCity />
+      <DeliveryAssets city={city} />
       <PlaceProps city={city} />
       {city.restaurants.map((place) => (
         <RestaurantSign key={`r${place.id}`} place={place} />
