@@ -17,7 +17,7 @@ export function Game() {
   if (seed === undefined) return null;
   return (
     <Canvas
-      shadows="basic"
+      shadows="percentage"
       camera={{ position: [0, 5.4, -10], fov: 62, near: 0.35, far: 6000 }}
       dpr={[1, 1.5]}
     >
@@ -42,11 +42,12 @@ function Sun() {
         ref={light}
         target={target}
         position={[100, 128, -75]}
-        intensity={2.65}
-        color="#fff0c2"
+        intensity={2.25}
+        color="#ffdfad"
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
+        shadow-normalBias={0.12}
         shadow-camera-left={-115}
         shadow-camera-right={115}
         shadow-camera-top={115}
@@ -68,9 +69,7 @@ function Scene({ seed }: { seed: number }) {
   const order = orders[self.orderIndex];
   const target =
     order &&
-    (self.leg === "pickup"
-      ? city.restaurants[order.restaurantId]
-      : city.houses[order.houseId]);
+    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
   return (
     <Suspense
       fallback={
@@ -82,14 +81,14 @@ function Scene({ seed }: { seed: number }) {
     >
       <Sky
         distance={3000}
-        sunPosition={[100, 38, -70]}
-        turbidity={3.2}
-        rayleigh={1.25}
+        sunPosition={[100, 22, -70]}
+        turbidity={4.5}
+        rayleigh={1.6}
         mieCoefficient={0.012}
         mieDirectionalG={0.85}
       />
-      <fog attach="fog" args={["#72c9ee", 300, 790]} />
-      <hemisphereLight intensity={1.15} color="#c9efff" groundColor="#d8974c" />
+      <fog attach="fog" args={["#aac9cf", 380, 1250]} />
+      <hemisphereLight intensity={1.15} color="#c9efff" groundColor="#d6a57e" />
       <Sun />
       <City city={city} seed={seed} />
       <OwnCar
@@ -115,10 +114,7 @@ function Scene({ seed }: { seed: number }) {
       {target && phase === "racing" && (
         <>
           <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
-          <TargetPointer
-            target={target.stop}
-            dropoff={self.leg === "dropoff"}
-          />
+          <TargetPointer target={target.stop} dropoff={self.leg === "dropoff"} />
         </>
       )}
       <ChaseCamera grid={city.collisionGrid} />
