@@ -1,3 +1,9 @@
+import {
+  storefrontModel,
+  storefrontYaw,
+  modelColliders,
+  jumpGatePosition,
+} from "./deliveryAssets.ts";
 import { rampSurface, rampBlocks } from "./ramps.ts";
 export { rampSurface } from "./ramps.ts";
 
@@ -807,15 +813,20 @@ export function generateCity(seed: number): City {
     top: h,
   }));
   // Restaurants (8.5×6, 5.2 tall) and houses (6×6, 5.1 tall) are solid too.
-  for (const [px, pz] of placePoints.slice(0, restaurants.length))
-    buildingAABBs.push({
-      minX: px - 4.25,
-      maxX: px + 4.25,
-      minZ: pz - 3,
-      maxZ: pz + 3,
-      base: 0,
-      top: 5.2,
-    });
+  for (const place of restaurants) {
+    const model = storefrontModel(place.name);
+    const [px, pz] = place.pos;
+    if (model) buildingAABBs.push(...modelColliders(model, px, pz, storefrontYaw(place)));
+    else
+      buildingAABBs.push({
+        minX: px - 4.25,
+        maxX: px + 4.25,
+        minZ: pz - 3,
+        maxZ: pz + 3,
+        base: 0,
+        top: 5.2,
+      });
+  }
   for (const [px, pz] of placePoints.slice(restaurants.length))
     buildingAABBs.push({
       minX: px - 3,
@@ -827,7 +838,7 @@ export function generateCity(seed: number): City {
     });
   buildingAABBs.push(...structures.pillars, ...structures.rails);
   for (const zone of CITY_ZONES) {
-    for (const offset of zone.id === "stunt" ? [-43, 0] : [-43])
+    for (const offset of [-43])
       for (const side of [-1, 1])
         buildingAABBs.push({
           minX: zone.x + side * 8.5 - 0.5,
@@ -835,8 +846,10 @@ export function generateCity(seed: number): City {
           minZ: zone.z + offset - 0.65,
           maxZ: zone.z + offset + 0.65,
           base: 0,
-          top: offset === 0 ? 15.84 : 9.6,
+          top: 9.6,
         });
+    if (zone.id === "stunt" || zone.id === "freight")
+      buildingAABBs.push(...modelColliders("jump-gate", ...jumpGatePosition(zone)));
     if (zone.radius)
       buildingAABBs.push({
         minX: zone.x - zone.radius,
