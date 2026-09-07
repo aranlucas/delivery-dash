@@ -17,6 +17,7 @@
   "include": [
     "src/**/*.test.ts",
     "src/shared",
-    "src/client/game/arcadeRewards.ts"
+    "src/client/game/arcadeRewards.ts",
+    "src/client/game/rampGeometry.ts"
   ]
 }

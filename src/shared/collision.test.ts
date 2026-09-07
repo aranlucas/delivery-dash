@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  generateCity,
-  rampSurface,
-  STEP_UP,
-  WORLD_HALF,
-  type AABB,
-  type City,
-} from "./city.ts";
+import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "./city.ts";
+import { rampBlocks } from "./ramps.ts";
 import { buildGrid, queryRange } from "./collision.ts";
 import { mulberry32 } from "./rng.ts";
 
@@ -45,10 +39,7 @@ test("queryRange exactly matches a brute-force XZ query", () => {
     const got = new Set(out.slice(0, count));
     const wanted = new Set(
       boxes.flatMap((box, index) =>
-        box.maxX >= range[0] &&
-        box.minX <= range[2] &&
-        box.maxZ >= range[1] &&
-        box.minZ <= range[3]
+        box.maxX >= range[0] && box.minX <= range[2] && box.maxZ >= range[1] && box.minZ <= range[3]
           ? [index]
           : [],
       ),
@@ -60,8 +51,7 @@ test("queryRange exactly matches a brute-force XZ query", () => {
 const bruteBlocked = (city: City, x: number, z: number, height: number) => {
   if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
   for (const ramp of city.ramps) {
-    const surface = rampSurface(ramp, x, z);
-    if (surface !== undefined && surface > height + STEP_UP) return true;
+    if (rampBlocks(ramp, x, z, height, STEP_UP)) return true;
   }
   return city.buildingAABBs.some(
     (box) =>
@@ -74,7 +64,7 @@ const bruteBlocked = (city: City, x: number, z: number, height: number) => {
   );
 };
 
-test("altitude-aware grid collision matches the previous full scan", async () => {
+test("altitude-aware grid collision matches a brute-force solid scan", async () => {
   const { blocked } = await import("./city.ts");
   const city = generateCity(42);
   const random = mulberry32(4242);
@@ -90,9 +80,6 @@ test("current city buckets keep candidate sets small", () => {
   const grid = generateCity(42).collisionGrid;
   let largest = 0;
   for (let index = 0; index < grid.cols * grid.rows; index++)
-    largest = Math.max(
-      largest,
-      grid.bucketStart[index + 1]! - grid.bucketStart[index]!,
-    );
+    largest = Math.max(largest, grid.bucketStart[index + 1]! - grid.bucketStart[index]!);
   assert.ok(largest < 30, `largest bucket contains ${largest} boxes`);
 });

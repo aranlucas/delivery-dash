@@ -211,22 +211,23 @@ export function makeGrassTexture() {
   return finish(element, 4);
 }
 
-/** Hazard chevrons for the launch ramps: black and construction yellow, pointing up the slope. */
+/** Yellow launch chevrons and edge stripes on dark ramp asphalt. */
 export function makeRampHazardTexture() {
-  const size = 128;
+  const size = 256;
   const [element, ctx] = canvas(size);
-  ctx.fillStyle = "#1b1d21";
+  ctx.fillStyle = "#233844";
   ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = "#ffc61a";
-  for (let i = -1; i < 4; i++) {
-    const y = i * 36;
+  ctx.fillStyle = "#ffcd48";
+  ctx.fillRect(8, 12, 9, size - 24);
+  ctx.fillRect(size - 17, 12, 9, size - 24);
+  for (const y of [56, 126, 196]) {
     ctx.beginPath();
-    ctx.moveTo(0, y + 20);
-    ctx.lineTo(size / 2, y);
-    ctx.lineTo(size, y + 20);
-    ctx.lineTo(size, y + 36);
-    ctx.lineTo(size / 2, y + 16);
-    ctx.lineTo(0, y + 36);
+    ctx.moveTo(48, y + 18);
+    ctx.lineTo(128, y - 18);
+    ctx.lineTo(208, y + 18);
+    ctx.lineTo(208, y + 32);
+    ctx.lineTo(128, y - 4);
+    ctx.lineTo(48, y + 32);
     ctx.closePath();
     ctx.fill();
   }
@@ -247,15 +248,7 @@ export function makeConcreteTexture() {
   for (let i = 0; i < 40; i++) {
     ctx.fillStyle = `rgba(${130 + rng() * 40},${134 + rng() * 40},${140 + rng() * 40},0.4)`;
     ctx.beginPath();
-    ctx.ellipse(
-      rng() * size,
-      rng() * size,
-      6 + rng() * 22,
-      5 + rng() * 16,
-      rng() * 3,
-      0,
-      7,
-    );
+    ctx.ellipse(rng() * size, rng() * size, 6 + rng() * 22, 5 + rng() * 16, rng() * 3, 0, 7);
     ctx.fill();
   }
   grain(ctx, rng, size, 1800, 0.07);
