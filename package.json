@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "pnpm cf-typegen && tsc -b && vite build",
+    "build": "pnpm typecheck && vite build",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && wrangler deploy",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm cf-typegen && tsc -b",
+    "check": "pnpm typecheck",
     "test": "node --test 'src/**/*.test.ts'",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "typecheck": "pnpm cf-typegen && tsc -b"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
