@@ -794,9 +794,21 @@ function useCarFleet(kind: CarKind, colors: string[]) {
     },
     [fleet],
   );
-  const flush = useCallback(() => {
-    for (const ref of fleet) if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
-  }, [fleet]);
+  const flush = useCallback(
+    (count = colors.length) => {
+      if (!count) return;
+      for (const ref of fleet) {
+        if (!ref.current) continue;
+        const attribute = ref.current.instanceMatrix;
+        // Preserve a full initialization upload if the frame loop runs before the next draw.
+        const pendingCount = attribute.updateRanges[0]?.count ?? 0;
+        attribute.clearUpdateRanges();
+        attribute.addUpdateRange(0, Math.max(pendingCount, count * 16));
+        attribute.needsUpdate = true;
+      }
+    },
+    [fleet, colors.length],
+  );
   const count = Math.max(1, colors.length);
   const meshes = (
     <>
@@ -875,8 +887,8 @@ function FleetCars({ city }: { city: CityData }) {
     groups.taxi.map((slot) => slot.color),
   );
   const fleets = { sedan, van, hatch, sports, taxi };
-  useFrame(({ clock }) => {
-    updateTraffic(city, clock.elapsedTime);
+  useLayoutEffect(() => {
+    updateTraffic(city, 0);
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
       groups[kind].forEach((slot, localIndex) => {
@@ -884,6 +896,21 @@ function FleetCars({ city }: { city: CityData }) {
         if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
       });
       fleet.flush();
+    }
+  });
+  useFrame(({ clock }) => {
+    updateTraffic(city, clock.elapsedTime);
+    for (const kind of FLEET_KINDS) {
+      const fleet = fleets[kind];
+      const slots = groups[kind];
+      let movingCount = 0;
+      // Moving slots precede parking in each batch. Parked transforms never change per frame.
+      while (movingCount < slots.length && slots[movingCount]!.moving) {
+        const car = trafficCars[slots[movingCount]!.index];
+        if (car) fleet.write(movingCount, car.x, car.z, car.yaw);
+        movingCount++;
+      }
+      fleet.flush(movingCount);
     }
   });
   return (

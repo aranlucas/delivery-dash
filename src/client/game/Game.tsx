@@ -17,9 +17,9 @@ export function Game() {
   if (seed === undefined) return null;
   return (
     <Canvas
-      shadows="percentage"
+      shadows="basic"
       camera={{ position: [0, 5.4, -10], fov: 62, near: 0.35, far: 6000 }}
-      dpr={[1, 1.5]}
+      dpr={[1, 1.25]}
     >
       <Scene seed={seed} />
     </Canvas>
