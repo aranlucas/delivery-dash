@@ -1,8 +1,10 @@
 import { Text, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { CITY_ZONES, WORLD_HALF, type CityZone } from "../../shared/city";
+
+import { StaticInstances, type StaticInstance } from "./StaticInstances";
 
 const assetUrl = (name: string) => `/models/landmarks/${name}.glb?v=coast-1`;
 
@@ -20,6 +22,74 @@ function Landmark({ name }: { name: string }) {
     return clone;
   }, [scene]);
   return <primitive object={instance} dispose={null} />;
+}
+
+const LANE_DASHES: StaticInstance[] = Array.from({ length: 16 }, (_, i) => {
+  const yaw = (i * Math.PI) / 8;
+  return {
+    position: [Math.sin(yaw) * 28, 0.055, Math.cos(yaw) * 28],
+    rotation: [-Math.PI / 2, 0, yaw],
+  };
+});
+const APPROACH_ARROWS: StaticInstance[] = [-1, 1].flatMap((direction) =>
+  [-1, 1].map((side) => ({
+    position: [side * 1.25 * direction, 0.065, -direction * 40],
+    rotation: [-Math.PI / 2, 0, side * 0.7 + (direction === 1 ? 0 : Math.PI)],
+  })),
+);
+const BUOYS: StaticInstance[] = Array.from({ length: 20 }, (_, i) => ({
+  position: [-350, -0.3, -300 + i * 32],
+  color: i % 2 ? "#fff3d7" : "#ff654d",
+}));
+const ISLANDS: StaticInstance[] = Array.from({ length: 11 }, (_, i) => {
+  const angle = (i * Math.PI * 2) / 11;
+  const radius = 90 + (i % 3) * 25;
+  return {
+    position: [Math.cos(angle) * (700 + i * 13), -18, Math.sin(angle) * (700 + i * 13)],
+    scale: [radius * 1.8, 65 + (i % 4) * 30, radius * 1.15],
+    color: i % 2 ? "#547d83" : "#648d87",
+  };
+});
+const SEA_WALLS: StaticInstance[] = [-1, 1].flatMap((side) => [
+  { position: [side * (WORLD_HALF - 1.5), 0.5, 0], scale: [1.5, 1, 600] },
+  { position: [0, 0.5, side * (WORLD_HALF - 1.5)], scale: [600, 1, 1.5] },
+]);
+const PORTALS: StaticInstance[] = CITY_ZONES.flatMap((zone) => [
+  { position: [zone.x, 0, zone.z - 43] as [number, number, number] },
+  ...(zone.id === "stunt"
+    ? [
+        {
+          position: [zone.x, 0, zone.z] as [number, number, number],
+          scale: [1, 1.65, 1] as [number, number, number],
+        },
+      ]
+    : []),
+]);
+
+function Portals() {
+  const { scene } = useGLTF(assetUrl("portal"));
+  const parts = useMemo(() => {
+    scene.updateMatrixWorld(true);
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) meshes.push(object);
+    });
+    return meshes;
+  }, [scene]);
+  // Share the cached model's buffers. Only the instance matrices belong to these batches.
+  return (
+    <>
+      {parts.map((part) => (
+        <StaticInstances
+          key={part.uuid}
+          items={PORTALS}
+          geometry={part.geometry}
+          material={part.material}
+          localMatrix={part.matrixWorld}
+        />
+      ))}
+    </>
+  );
 }
 
 function Plaza({ zone }: { zone: CityZone }) {
@@ -50,14 +120,10 @@ function Plaza({ zone }: { zone: CityZone }) {
               />
             </mesh>
           ))}
-          {Array.from({ length: 16 }, (_, i) => (
-            <group key={i} rotation-y={(i * Math.PI) / 8}>
-              <mesh position={[0, 0.055, 28]} rotation-x={-Math.PI / 2}>
-                <planeGeometry args={[0.35, 3]} />
-                <meshBasicMaterial color="#fff0c8" />
-              </mesh>
-            </group>
-          ))}
+          <StaticInstances items={LANE_DASHES}>
+            <planeGeometry args={[0.35, 3]} />
+            <meshBasicMaterial color="#fff0c8" />
+          </StaticInstances>
         </>
       )}
       {zone.id === "freight" && (
@@ -66,55 +132,49 @@ function Plaza({ zone }: { zone: CityZone }) {
           <meshStandardMaterial color="#283f4d" roughness={0.9} />
         </mesh>
       )}
-      {zone.model && <Landmark name={zone.model} />}
+      {zone.model && (
+        <Suspense fallback={null}>
+          <Landmark name={zone.model} />
+        </Suspense>
+      )}
       <group position={[0, 0, -43]}>
-        <Landmark name="portal" />
-        {[0, Math.PI].map((yaw) => (
-          <Text
-            key={yaw}
-            rotation-y={yaw}
-            material-side={THREE.FrontSide}
-            position={[0, 10.5, Math.cos(yaw) * 0.12]}
-            fontSize={2.1}
-            color={zone.color}
-            outlineWidth={0.07}
-            outlineColor="#152c40"
-            maxWidth={35}
-          >
-            {zone.name}
-          </Text>
-        ))}
+        <Suspense fallback={null}>
+          {[0, Math.PI].map((yaw) => (
+            <Text
+              key={yaw}
+              rotation-y={yaw}
+              material-side={THREE.FrontSide}
+              position={[0, 10.5, Math.cos(yaw) * 0.12]}
+              fontSize={2.1}
+              color={zone.color}
+              outlineWidth={0.07}
+              outlineColor="#152c40"
+              maxWidth={35}
+            >
+              {zone.name}
+            </Text>
+          ))}
+        </Suspense>
       </group>
       {stunt && (
         <>
-          <Text position={[0, 0.07, 8]} rotation-x={-Math.PI / 2} fontSize={4.5} color="#cafa54">
-            FLY THIS WAY
-          </Text>
-          <group position={[0, 0, 0]} scale={[1, 1.65, 1]}>
-            <Landmark name="portal" />
-          </group>
+          <Suspense fallback={null}>
+            <Text position={[0, 0.07, 8]} rotation-x={-Math.PI / 2} fontSize={4.5} color="#cafa54">
+              FLY THIS WAY
+            </Text>
+          </Suspense>
+          <group position={[0, 0, 0]} scale={[1, 1.65, 1]}></group>
         </>
       )}
       {/* Flat approach arrows make the shortcut legible at driving speed. */}
-      {(stunt || zone.id === "freight") &&
-        [-1, 1].map((direction) => (
-          <group
-            key={direction}
-            position={[zone.id === "freight" ? 24 : 0, 0.065, -direction * 40]}
-            rotation-y={direction === 1 ? 0 : Math.PI}
-          >
-            {[-1, 1].map((side) => (
-              <mesh
-                key={side}
-                position={[side * 1.25, 0, 0]}
-                rotation={[-Math.PI / 2, 0, side * 0.7]}
-              >
-                <planeGeometry args={[0.6, 3.5]} />
-                <meshBasicMaterial color={zone.color} />
-              </mesh>
-            ))}
-          </group>
-        ))}
+      {(stunt || zone.id === "freight") && (
+        <group position={[zone.id === "freight" ? 24 : 0, 0, 0]}>
+          <StaticInstances items={APPROACH_ARROWS}>
+            <planeGeometry args={[0.6, 3.5]} />
+            <meshBasicMaterial color={zone.color} />
+          </StaticInstances>
+        </group>
+      )}
     </group>
   );
 }
@@ -135,38 +195,18 @@ function Coast() {
         <planeGeometry args={[665, 665]} />
         <meshStandardMaterial color="#eecb92" roughness={1} />
       </mesh>
-      {[-1, 1].map((side) => (
-        <group key={side}>
-          <mesh position={[side * (WORLD_HALF - 1.5), 0.5, 0]}>
-            <boxGeometry args={[1.5, 1, 600]} />
-            <meshStandardMaterial color="#e5c598" />
-          </mesh>
-          <mesh position={[0, 0.5, side * (WORLD_HALF - 1.5)]}>
-            <boxGeometry args={[600, 1, 1.5]} />
-            <meshStandardMaterial color="#e5c598" />
-          </mesh>
-        </group>
-      ))}
-      {Array.from({ length: 11 }, (_, i) => {
-        const angle = (i * Math.PI * 2) / 11;
-        return (
-          <mesh
-            key={i}
-            position={[Math.cos(angle) * (700 + i * 13), -18, Math.sin(angle) * (700 + i * 13)]}
-            scale={[1.8, 1, 1.15]}
-          >
-            <coneGeometry args={[90 + (i % 3) * 25, 65 + (i % 4) * 30, 5]} />
-            <meshStandardMaterial color={i % 2 ? "#547d83" : "#648d87"} flatShading roughness={1} />
-          </mesh>
-        );
-      })}
-      {/* Offshore racing buoys give scale to the coastline. */}
-      {Array.from({ length: 20 }, (_, i) => (
-        <mesh key={i} position={[-350, -0.3, -300 + i * 32]}>
-          <coneGeometry args={[1.5, 3, 6]} />
-          <meshStandardMaterial color={i % 2 ? "#fff3d7" : "#ff654d"} />
-        </mesh>
-      ))}
+      <StaticInstances items={SEA_WALLS}>
+        <boxGeometry />
+        <meshStandardMaterial color="#e5c598" />
+      </StaticInstances>
+      <StaticInstances items={ISLANDS}>
+        <coneGeometry args={[1, 1, 5]} />
+        <meshStandardMaterial flatShading roughness={1} />
+      </StaticInstances>
+      <StaticInstances items={BUOYS}>
+        <coneGeometry args={[1.5, 3, 6]} />
+        <meshStandardMaterial />
+      </StaticInstances>
     </>
   );
 }
@@ -175,6 +215,9 @@ export function LandmarkCity() {
   return (
     <group>
       <Coast />
+      <Suspense fallback={null}>
+        <Portals />
+      </Suspense>
       {CITY_ZONES.map((zone) => (
         <Plaza key={zone.id} zone={zone} />
       ))}
