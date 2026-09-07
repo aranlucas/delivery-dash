@@ -132,60 +132,108 @@ const districtColors = [
 // Each 50-unit cell is road [0,14] then block [14,50]; block center sits at +32.
 export const blockCenter = (index: number) =>
   -WORLD_HALF + ROAD_WIDTH + BLOCK_SIZE / 2 + index * PITCH;
-export const roadCenter = (index: number) =>
-  -WORLD_HALF + index * PITCH + ROAD_WIDTH / 2;
+export const roadCenter = (index: number) => -WORLD_HALF + index * PITCH + ROAD_WIDTH / 2;
 
-const GRID_CENTER = (GRID_SIZE - 1) / 2;
-/** 0 downtown towers, 1 midtown mid-rise, 2 low-rise outskirts, as concentric rings. */
+/** Authored superblocks break up the grid; their interiors are reserved before any scattering. */
+export const CITY_ZONES = [
+  {
+    id: "festival",
+    name: "SUNSET FAIR",
+    x: blockCenter(0) + 25,
+    z: blockCenter(1) + 25,
+    half: 43,
+    color: "#ff668c",
+    model: "ferris",
+    radius: 13,
+    height: 33,
+  },
+  {
+    id: "harbor",
+    name: "LIGHTHOUSE POINT",
+    x: blockCenter(0) + 25,
+    z: blockCenter(8) + 25,
+    half: 43,
+    color: "#51dfdb",
+    model: "lighthouse",
+    radius: 5,
+    height: 36,
+  },
+  {
+    id: "skyline",
+    name: "ROCKET PLAZA",
+    x: blockCenter(5) + 25,
+    z: blockCenter(4) + 25,
+    half: 43,
+    color: "#b79cff",
+    model: "rocket",
+    radius: 7,
+    height: 72,
+  },
+  {
+    id: "freight",
+    name: "FREIGHT YARD",
+    x: blockCenter(9) + 25,
+    z: blockCenter(1) + 25,
+    half: 43,
+    color: "#ffab54",
+    model: "crane",
+    radius: 7,
+    height: 38,
+  },
+  {
+    id: "stunt",
+    name: "TURBO PARK",
+    x: blockCenter(8) + 25,
+    z: blockCenter(9) + 25,
+    half: 43,
+    color: "#cafa54",
+    model: null,
+    radius: 0,
+    height: 0,
+  },
+] as const;
+export type CityZone = (typeof CITY_ZONES)[number];
+export const zoneAt = (x: number, z: number, margin = 0) =>
+  CITY_ZONES.find(
+    (zone) =>
+      Math.abs(x - zone.x) < zone.half + margin && Math.abs(z - zone.z) < zone.half + margin,
+  );
+
+/** A coastal low-rise strip, a compact glass skyline, and a warm warehouse quarter. */
 export function districtAt(gx: number, gz: number) {
-  const ring =
-    Math.max(Math.abs(gx - GRID_CENTER), Math.abs(gz - GRID_CENTER)) /
-    GRID_CENTER;
-  return ring < 0.36 ? 0 : ring < 0.73 ? 1 : 2;
+  if (gx < 3 || gz > 8) return 2;
+  return gx >= 4 && gx <= 7 && gz >= 3 && gz <= 7 ? 0 : 1;
 }
 const districtBuilding = [
-  { park: 0.07, count: 3, size: 13, spread: 11, base: 24, rise: 44 },
+  { park: 0.07, count: 3, size: 13, spread: 11, base: 24, rise: 32 },
   { park: 0.16, count: 4, size: 10, spread: 10, base: 13, rise: 24 },
   { park: 0.26, count: 4, size: 8, spread: 9, base: 7, rise: 12 },
 ] as const;
 
 /** Height of a ramp's surface at a world point, or undefined when the point is off the ramp. */
-export function rampSurface(
-  ramp: Ramp,
-  x: number,
-  z: number,
-): number | undefined {
+export function rampSurface(ramp: Ramp, x: number, z: number): number | undefined {
   const dx = x - ramp.x,
     dz = z - ramp.z;
   const sin = Math.sin(ramp.yaw),
     cos = Math.cos(ramp.yaw);
   const along = dx * sin + dz * cos;
   const across = dx * cos - dz * sin;
-  if (Math.abs(along) > ramp.length / 2 || Math.abs(across) > ramp.width / 2)
-    return undefined;
+  if (Math.abs(along) > ramp.length / 2 || Math.abs(across) > ramp.width / 2) return undefined;
   const t = along / ramp.length + 0.5;
   // Kickers keep climbing into a sharp lip; grades flatten at both ends so decks join smoothly.
-  return (
-    ramp.height * (ramp.kind === "kicker" ? t ** 1.7 : t * t * (3 - 2 * t))
-  );
+  return ramp.height * (ramp.kind === "kicker" ? t ** 1.7 : t * t * (3 - 2 * t));
 }
 
 /**
  * Highest drivable surface under a car sitting at `height`. Surfaces more than STEP_UP above the
  * car are ignored, which is what lets a deck be a road from on top and a ceiling from below.
  */
-export function groundHeightAt(
-  city: City,
-  x: number,
-  z: number,
-  height: number,
-): number {
+export function groundHeightAt(city: City, x: number, z: number, height: number): number {
   const limit = height + STEP_UP;
   let best = 0;
   for (const ramp of city.ramps) {
     const surface = rampSurface(ramp, x, z);
-    if (surface !== undefined && surface > best && surface <= limit)
-      best = surface;
+    if (surface !== undefined && surface > best && surface <= limit) best = surface;
   }
   for (const deck of city.decks)
     if (
@@ -197,14 +245,7 @@ export function groundHeightAt(
       z < deck.maxZ
     )
       best = deck.height;
-  const candidateCount = queryRange(
-    city.collisionGrid,
-    x,
-    z,
-    x,
-    z,
-    collisionCandidates,
-  );
+  const candidateCount = queryRange(city.collisionGrid, x, z, x, z, collisionCandidates);
   for (let index = 0; index < candidateCount; index++) {
     const box = city.buildingAABBs[collisionCandidates[index]!]!;
     if (
@@ -223,12 +264,7 @@ export function groundHeightAt(
 const SOLID_MARGIN = 2;
 const collisionCandidates: number[] = [];
 /** True when a car whose wheels sit at `height` cannot occupy this spot. */
-export function blocked(
-  city: City,
-  x: number,
-  z: number,
-  height: number,
-): boolean {
+export function blocked(city: City, x: number, z: number, height: number): boolean {
   if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
   for (const ramp of city.ramps) {
     const surface = rampSurface(ramp, x, z);
@@ -258,12 +294,7 @@ export function blocked(
 }
 
 /** True near any elevated structure — used to keep trees and props out of the expressway. */
-export function nearExpressway(
-  city: City,
-  x: number,
-  z: number,
-  margin: number,
-): boolean {
+export function nearExpressway(city: City, x: number, z: number, margin: number): boolean {
   for (const deck of city.decks)
     if (
       x > deck.minX - margin &&
@@ -273,10 +304,7 @@ export function nearExpressway(
     )
       return true;
   for (const ramp of city.ramps)
-    if (
-      ramp.kind === "grade" &&
-      Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin
-    )
+    if (ramp.kind === "grade" && Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin)
       return true;
   return false;
 }
@@ -322,8 +350,7 @@ function buildExpressways() {
   for (const spec of EXPRESSWAYS) {
     const cross = roadCenter(spec.road);
     const alongYaw = spec.axis === "x" ? Math.PI / 2 : 0;
-    const at = (u: number): Pos2 =>
-      spec.axis === "x" ? [u, cross] : [cross, u];
+    const at = (u: number): Pos2 => (spec.axis === "x" ? [u, cross] : [cross, u]);
     const span = (a: number, b: number, half: number) =>
       spec.axis === "x"
         ? { minX: a, maxX: b, minZ: cross - half, maxZ: cross + half }
@@ -361,9 +388,7 @@ function buildExpressways() {
     const junction = roadCenter(spec.sideRoad);
     const sideOffset = spec.sideFrom * (DECK_HALF + sideLength / 2);
     const [sideX, sideZ] =
-      spec.axis === "z"
-        ? [cross + sideOffset, junction]
-        : [junction, cross + sideOffset];
+      spec.axis === "z" ? [cross + sideOffset, junction] : [junction, cross + sideOffset];
     ramps.push({
       x: sideX,
       z: sideZ,
@@ -454,17 +479,13 @@ function buildExpressways() {
 }
 
 /** Seeded jump ramps on the street grid, each with a boost strip on its approach. */
-function scatterStunts(
-  seed: number,
-  structures: { ramps: Ramp[]; decks: Deck[] },
-) {
+function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }) {
   const random = mulberry32(seed ^ 0x2b3c1d);
   const kickers: Ramp[] = [];
   const boostPads: BoostPad[] = [];
   const clear = (x: number, z: number, margin: number) => {
     for (const ramp of structures.ramps)
-      if (Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin)
-        return false;
+      if (Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin) return false;
     for (const deck of structures.decks)
       if (
         x > deck.minX - margin &&
@@ -478,14 +499,13 @@ function scatterStunts(
   const onRoad = () => {
     const alongZ = random() < 0.5;
     const cross = roadCenter(randomInt(random, GRID_SIZE));
-    const u =
-      blockCenter(randomInt(random, GRID_SIZE)) +
-      (random() - 0.5) * BLOCK_SIZE * 0.6;
+    const u = blockCenter(randomInt(random, GRID_SIZE)) + (random() - 0.5) * BLOCK_SIZE * 0.6;
     const yaw = (alongZ ? 0 : Math.PI / 2) + (random() < 0.5 ? 0 : Math.PI);
     return { x: alongZ ? cross : u, z: alongZ ? u : cross, yaw };
   };
   for (let attempt = 0; attempt < 260 && kickers.length < 22; attempt++) {
     const { x, z, yaw } = onRoad();
+    if (zoneAt(x, z, 20)) continue;
     if (!clear(x, z, 26)) continue;
     if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 74)) continue;
     kickers.push({
@@ -506,6 +526,7 @@ function scatterStunts(
   }
   for (let attempt = 0; attempt < 200 && boostPads.length < 42; attempt++) {
     const { x, z, yaw } = onRoad();
+    if (zoneAt(x, z, 20)) continue;
     if (!clear(x, z, 12)) continue;
     if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 26)) continue;
     if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 44)) continue;
@@ -536,9 +557,7 @@ function roadHasStructure(
   for (const deck of structures.decks) {
     const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
     if (alongX !== (axis === "x")) continue;
-    const mid = alongX
-      ? (deck.minZ + deck.maxZ) / 2
-      : (deck.minX + deck.maxX) / 2;
+    const mid = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
     if (Math.abs(mid - cross) < ROAD_WIDTH) return true;
   }
   for (const ramp of structures.ramps) {
@@ -562,16 +581,15 @@ export const PARKED_CAR_HALF_LENGTH = 2.3;
 export const PARKED_CAR_HALF_WIDTH = 1.25;
 
 /** A lane of moving traffic on every ordinary road line — the streets should look inhabited. */
-function buildTraffic(
-  seed: number,
-  structures: { ramps: Ramp[]; decks: Deck[] },
-): TrafficRoute[] {
+function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }): TrafficRoute[] {
   const random = mulberry32(seed ^ 0x1c0ffee);
   const routes: TrafficRoute[] = [];
   for (const axis of ["x", "z"] as const)
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
-      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road))
+      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) continue;
+      // Straight traffic cannot turn around the landmark islands; keep it on through streets.
+      if (CITY_ZONES.some((zone) => Math.abs((axis === "x" ? zone.z : zone.x) - road) < zone.half))
         continue;
       const direction = i % 2 ? 1 : -1;
       for (let n = 0; n < 2; n++)
@@ -600,8 +618,7 @@ function buildParking(
   for (const axis of ["x", "z"] as const)
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
-      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road))
-        continue;
+      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) continue;
       const cross = road + parkingSide(i) * PARKING_OFFSET;
       for (let j = 0; j < GRID_SIZE; j++)
         for (const slot of [-10, -3, 4, 11]) {
@@ -609,12 +626,9 @@ function buildParking(
           const along = blockCenter(j) + slot;
           const x = axis === "x" ? along : cross,
             z = axis === "x" ? cross : along;
-          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10))
-            continue;
-          if (
-            ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)
-          )
-            continue;
+          if (zoneAt(x, z, 6)) continue;
+          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) continue;
+          if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) continue;
           if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) continue;
           cars.push({
             x,
@@ -631,6 +645,29 @@ export function generateCity(seed: number): City {
   const random = mulberry32(seed);
   const structures = buildExpressways();
   const stunts = scatterStunts(seed, structures);
+  // Two authored cross-block launches, with long clear run-ups and landing zones.
+  // They sit between traffic lanes, so drivers choose the shortcut rather than being forced onto it.
+  for (const id of ["stunt", "freight"] as const) {
+    const zone = CITY_ZONES.find((zone) => zone.id === id)!;
+    const x = zone.x + (id === "freight" ? 24 : 0);
+    for (const direction of [-1, 1]) {
+      stunts.kickers.push({
+        x,
+        z: zone.z - direction * 18,
+        yaw: direction === 1 ? 0 : Math.PI,
+        length: 14,
+        width: 11,
+        height: 3.8,
+        kind: "kicker",
+      });
+      stunts.boostPads.push({
+        x,
+        z: zone.z - direction * 35,
+        y: 0,
+        yaw: direction === 1 ? 0 : Math.PI,
+      });
+    }
+  }
   const ramps = [...structures.ramps, ...stunts.kickers];
   const boostPads = [...structures.boostPads, ...stunts.boostPads];
 
@@ -651,6 +688,7 @@ export function generateCity(seed: number): City {
   const corners: { pos: Pos2; stops: Pos2[] }[] = [];
   for (let x = 0; x < GRID_SIZE; x++)
     for (let z = 0; z < GRID_SIZE; z++) {
+      if (zoneAt(blockCenter(x), blockCenter(z))) continue;
       const cx = blockCenter(x),
         cz = blockCenter(z),
         edge = BLOCK_SIZE / 2 - 5;
@@ -674,10 +712,22 @@ export function generateCity(seed: number): City {
       }
     }
   const placeRandom = mulberry32(seed ^ 0x9e3779b9);
-  const takePlace = () =>
-    corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
+  const takePlace = (id: number) => {
+    // Most destinations frame the landmarks, encouraging routes through the authored districts.
+    // A few stay city-wide so each seed still offers different delivery runs.
+    if (id >= 10) return corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
+    const zone = CITY_ZONES[id % CITY_ZONES.length]!;
+    const candidates = corners
+      .map((corner, index) => ({
+        index,
+        distance: Math.hypot(corner.pos[0] - zone.x, corner.pos[1] - zone.z),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 12);
+    return corners.splice(candidates[randomInt(placeRandom, candidates.length)]!.index, 1)[0]!;
+  };
   const makePlace = (name: string, id: number): Place => {
-    const corner = takePlace();
+    const corner = takePlace(id);
     return {
       id,
       name,
@@ -695,6 +745,7 @@ export function generateCity(seed: number): City {
     for (let gz = 0; gz < GRID_SIZE; gz++) {
       const cx = blockCenter(gx),
         cz = blockCenter(gz);
+      if (zoneAt(cx, cz)) continue;
       const district = districtAt(gx, gz);
       const shape = districtBuilding[district]!;
       if (random() < shape.park) {
@@ -711,8 +762,7 @@ export function generateCity(seed: number): City {
           const z = cz + (random() - 0.5) * (BLOCK_SIZE - d - 3);
           if (
             placePoints.some(
-              ([px, pz]) =>
-                Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
+              ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
             )
           )
             continue;
@@ -758,6 +808,27 @@ export function generateCity(seed: number): City {
       top: 5.1,
     });
   buildingAABBs.push(...structures.pillars, ...structures.rails);
+  for (const zone of CITY_ZONES) {
+    for (const offset of zone.id === "stunt" ? [-43, 0] : [-43])
+      for (const side of [-1, 1])
+        buildingAABBs.push({
+          minX: zone.x + side * 8.5 - 0.5,
+          maxX: zone.x + side * 8.5 + 0.5,
+          minZ: zone.z + offset - 0.65,
+          maxZ: zone.z + offset + 0.65,
+          base: 0,
+          top: offset === 0 ? 15.84 : 9.6,
+        });
+    if (zone.radius)
+      buildingAABBs.push({
+        minX: zone.x - zone.radius,
+        maxX: zone.x + zone.radius,
+        minZ: zone.z - zone.radius,
+        maxZ: zone.z + zone.radius,
+        base: 0,
+        top: zone.height,
+      });
+  }
 
   const parkedCars = buildParking(
     seed,
@@ -798,10 +869,7 @@ export function generateCity(seed: number): City {
     trafficRoutes: buildTraffic(seed, structures),
     collisionGrid: buildGrid(buildingAABBs),
     spawns: Array.from({ length: 8 }, (_, i) => ({
-      pos: [
-        -WORLD_HALF + 40 + i * 10,
-        -WORLD_HALF + 3 * PITCH + ROAD_WIDTH / 2,
-      ],
+      pos: [-WORLD_HALF + 40 + i * 10, -WORLD_HALF + 3 * PITCH + ROAD_WIDTH / 2],
       yaw: Math.PI / 2,
     })),
   };
@@ -813,8 +881,7 @@ export function generateOrders(seed: number): Order[] {
   let previous = -1;
   for (let i = 0; i < 6; i++) {
     let restaurant = randomInt(random, restaurantNames.length);
-    while (restaurant === previous)
-      restaurant = randomInt(random, restaurantNames.length);
+    while (restaurant === previous) restaurant = randomInt(random, restaurantNames.length);
     previous = restaurant;
     orders.push({
       restaurantId: restaurant,
