@@ -1,3 +1,5 @@
+import type { GameMode } from "./gameModes.ts";
+
 export const DELIVERIES_TO_WIN = 3;
 export const TARGET_RADIUS = 10;
 export const TICK_HZ = 12;
@@ -15,12 +17,13 @@ export type PlayerPub = {
   deliveries: number;
   orderIndex: number;
   leg: Leg;
+  checkpointIndex: number;
   spawnIndex: number;
 };
-export type Standing = Pick<PlayerPub, "id" | "name" | "deliveries">;
+export type Standing = Pick<PlayerPub, "id" | "name" | "deliveries" | "checkpointIndex">;
 
 export type ClientMessage =
-  | { t: "join"; name: string }
+  | { t: "join"; name: string; mode?: GameMode }
   | { t: "ready"; ready: boolean }
   | { t: "pos"; x: number; y: number; z: number; yaw: number; speed: number };
 
@@ -29,17 +32,21 @@ export type ServerMessage =
       t: "welcome";
       id: string;
       seed: number;
+      mode: GameMode;
       phase: Phase;
       players: PlayerPub[];
       countdownEndsAt?: number;
       raceStartedAt?: number;
+      raceEndsAt?: number;
     }
   | { t: "roster"; players: PlayerPub[] }
   | {
       t: "phase";
+      mode: GameMode;
       phase: Phase;
       countdownEndsAt?: number;
       raceStartedAt?: number;
+      raceEndsAt?: number;
       standings?: Standing[];
     }
   | {
@@ -57,6 +64,7 @@ export type ServerMessage =
       orderIndex: number;
       leg: Leg;
       deliveries: number;
+      checkpointIndex: number;
     }
-  | { t: "win"; id: string; standings: Standing[] }
+  | { t: "win"; id?: string; standings: Standing[] }
   | { t: "error"; message: string };

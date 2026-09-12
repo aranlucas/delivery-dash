@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { CITY_ZONES, WORLD_HALF, type CityZone } from "../../shared/city";
 
 import { StaticInstances, type StaticInstance } from "./StaticInstances";
+import { WorldDetails } from "./WorldDetails";
 
 const assetUrl = (name: string) => `/models/landmarks/${name}.glb?v=coast-1`;
 
@@ -209,6 +210,7 @@ export function LandmarkCity() {
       <Suspense fallback={null}>
         <Portals />
       </Suspense>
+      <WorldDetails />
       {CITY_ZONES.map((zone) => (
         <Plaza key={zone.id} zone={zone} />
       ))}

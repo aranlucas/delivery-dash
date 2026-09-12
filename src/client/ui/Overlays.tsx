@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DELIVERIES_TO_WIN } from "../../shared/protocol";
+import { CHECKPOINT_COUNT, GAME_MODES, getObjective } from "../../shared/gameModes";
 import {
   BLOCK_SIZE,
   CITY_ZONES,
@@ -17,6 +18,11 @@ import { cameraPose, drivingTelemetry, ownPose } from "../game/drivingState";
 import { close, rejoin, send } from "../net";
 import { ownPlayer, remotePositions, useGameStore } from "../store";
 
+function leaveRoom() {
+  close();
+  useGameStore.getState().reset();
+}
+
 export function Lobby() {
   const phase = useGameStore((state) => state.phase);
   const players = useGameStore((state) => state.players);
@@ -24,15 +30,17 @@ export function Lobby() {
   const self = useGameStore(ownPlayer);
   const connected = useGameStore((state) => state.connected);
   const error = useGameStore((state) => state.lastError);
+  const mode = useGameStore((state) => state.mode);
   if (phase !== "lobby") return null;
 
   return (
     <aside className="lobby-panel arcade-panel">
-      <div className="panel-kicker">STARTING GRID</div>
+      <div className="panel-kicker">{GAME_MODES[mode].name.toUpperCase()}</div>
       <div className="room-code">
         <small>ROOM</small>
         <strong>{room}</strong>
       </div>
+      <p className="lobby-mode-description">{GAME_MODES[mode].description}</p>
       <div className="lobby-roster">
         {players.map((player, index) => (
           <div className="lobby-driver" key={player.id}>
@@ -48,7 +56,7 @@ export function Lobby() {
           className="arcade-button arcade-button-primary lobby-ready"
           onClick={() => self && send({ t: "ready", ready: !self.ready })}
         >
-          {self?.ready ? "CANCEL READY" : "READY TO RACE"}
+          {self?.ready ? "CANCEL READY" : mode === "free" ? "READY TO EXPLORE" : "READY TO RACE"}
         </button>
       ) : (
         <button className="arcade-button arcade-button-primary lobby-ready" onClick={rejoin}>
@@ -61,13 +69,7 @@ export function Lobby() {
           {error}
         </p>
       ) : null}
-      <button
-        className="leave-room"
-        onClick={() => {
-          close();
-          useGameStore.getState().reset();
-        }}
-      >
+      <button className="leave-room" onClick={leaveRoom}>
         LEAVE ROOM
       </button>
     </aside>
@@ -80,10 +82,12 @@ function Minimap({
   city,
   target,
   dropoff,
+  checkpoint = false,
 }: {
   city: City;
   target?: [number, number];
   dropoff: boolean;
+  checkpoint?: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const players = useGameStore((state) => state.players);
@@ -175,7 +179,7 @@ function Minimap({
         const tx = toMap(target[0]),
           tz = toMap(target[1]);
         const pulse = 5 + Math.sin(time / 220) * 2;
-        context.strokeStyle = dropoff ? "#65f578" : "#ff7a00";
+        context.strokeStyle = checkpoint ? "#00dcff" : dropoff ? "#65f578" : "#ff7a00";
         context.lineWidth = 2.5;
         context.beginPath();
         context.arc(tx, tz, pulse, 0, Math.PI * 2);
@@ -207,7 +211,7 @@ function Minimap({
     };
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [city, target, dropoff, players, selfId]);
+  }, [city, target, dropoff, checkpoint, players, selfId]);
 
   return <canvas className="minimap" ref={canvas} aria-hidden="true" />;
 }
@@ -221,7 +225,7 @@ export function Countdown() {
   const phase = useGameStore((state) => state.phase);
   const ends = useGameStore((state) => state.countdownEndsAt);
   const started = useGameStore((state) => state.raceStartedAt);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 50);
     return () => window.clearInterval(timer);
@@ -244,30 +248,38 @@ export function HUD() {
   const self = useGameStore(ownPlayer);
   const connected = useGameStore((state) => state.connected);
   const raceStartedAt = useGameStore((state) => state.raceStartedAt);
+  const raceEndsAt = useGameStore((state) => state.raceEndsAt);
+  const mode = useGameStore((state) => state.mode);
   const city = useMemo(() => (seed === undefined ? undefined : generateCity(seed)), [seed]);
   const orders = useMemo(() => (seed === undefined ? [] : generateOrders(seed)), [seed]);
-  const [, tick] = useReducer((value: number) => value + 1, 0);
+  const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
     if (phase !== "racing") return;
-    const timer = window.setInterval(tick, 50);
+    const timer = window.setInterval(() => setNow(Date.now()), 50);
     return () => window.clearInterval(timer);
   }, [phase]);
 
   if (phase !== "racing" || !city || !self) return connected ? null : <Reconnect />;
-  const order = orders[self.orderIndex];
-  const target =
-    order &&
-    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
+  const target = getObjective(mode, city, orders, self);
+  const checkpoint = mode === "checkpoint";
+  const free = mode === "free";
+  const timed = mode === "rush";
+  const total = checkpoint ? CHECKPOINT_COUNT : DELIVERIES_TO_WIN;
+  const completed = checkpoint ? self.checkpointIndex : self.deliveries;
   const distance = target ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z) : 0;
   const arrowAngle = target
     ? relativeBearing(ownPose.x, ownPose.z, cameraPose.yaw, target.stop[0], target.stop[1])
     : 0;
   const speed = Math.round(ownPose.speed * 3.6);
   const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);
-  const elapsed = raceStartedAt ? (Date.now() - raceStartedAt) / 1000 : 0;
-  const sortedPlayers = [...players].sort(
-    (a, b) => b.deliveries - a.deliveries || b.orderIndex - a.orderIndex,
+  const elapsed = raceStartedAt ? (now - raceStartedAt) / 1000 : 0;
+  const remaining = raceEndsAt ? Math.max(0, Math.ceil((raceEndsAt - now) / 1000)) : 0;
+  const district = CITY_ZONES.find(
+    (zone) => Math.hypot(ownPose.x - zone.x, ownPose.z - zone.z) < 85,
+  );
+  const sortedPlayers = [...players].sort((a, b) =>
+    checkpoint ? b.checkpointIndex - a.checkpointIndex : b.deliveries - a.deliveries,
   );
   const fast = ownPose.speed > 26 || drivingTelemetry.boosting || drivingTelemetry.rushTier > 0;
   const hasDriftCharge = drivingTelemetry.driftCharge > 1;
@@ -280,56 +292,91 @@ export function HUD() {
       <div className="hud-speed-lines" aria-hidden="true" />
 
       <section className="order-progress hud-panel">
-        <span>ORDER</span>
+        <span>{checkpoint ? "GATES" : free ? "FREE DRIVE" : timed ? "DELIVERED" : "ORDER"}</span>
         <strong>
-          {Math.min(DELIVERIES_TO_WIN, self.deliveries + 1)} / {DELIVERIES_TO_WIN}
+          {free ? "∞" : timed ? completed : `${Math.min(total, completed + 1)} / ${total}`}
         </strong>
-        <div
-          className="delivery-boxes"
-          aria-label={`${self.deliveries} of ${DELIVERIES_TO_WIN} deliveries`}
-        >
-          {Array.from({ length: DELIVERIES_TO_WIN }, (_, index) => (
-            <i
-              key={index}
-              className={
-                index < self.deliveries
-                  ? "is-complete"
-                  : index === self.deliveries
-                    ? "is-current"
-                    : ""
-              }
-            />
-          ))}
-        </div>
+        {free || timed ? (
+          <small className="mode-progress-hint">
+            {free ? "EXPLORE · DRIFT · JUMP" : "EVERY DELIVERY COUNTS"}
+          </small>
+        ) : (
+          <div
+            className="delivery-boxes"
+            aria-label={`${completed} of ${total} ${checkpoint ? "checkpoints" : "deliveries"}`}
+          >
+            {Array.from({ length: total }, (_, index) => (
+              <i
+                key={index}
+                className={
+                  index < completed ? "is-complete" : index === completed ? "is-current" : ""
+                }
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className={`destination-banner ${self.leg === "dropoff" ? "is-dropoff" : ""}`}>
+      <button className="hud-leave" onClick={leaveRoom}>
+        ← CHANGE MODE / LEAVE
+      </button>
+
+      <section
+        className={`destination-banner ${checkpoint ? "is-checkpoint" : self.leg === "dropoff" ? "is-dropoff" : ""} ${free ? "is-exploring" : ""}`}
+      >
         <div>
-          {self.leg === "pickup" ? "PICK UP" : "DROP OFF"} <i /> <strong>{target?.name}</strong>
+          {free
+            ? "EXPLORING"
+            : checkpoint
+              ? completed + 1 === CHECKPOINT_COUNT
+                ? "FINISH"
+                : "NEXT GATE"
+              : self.leg === "pickup"
+                ? "PICK UP"
+                : "DROP OFF"}{" "}
+          <i /> <strong>{free ? (district?.name ?? "CITY STREETS") : target?.name}</strong>
         </div>
-        <b>
-          {Math.round(distance)}
-          <small>m</small>
-        </b>
-        <span
-          className="destination-arrow"
-          style={{ transform: `rotate(${arrowAngle}rad)` }}
-          aria-hidden="true"
-        />
+        {target && (
+          <>
+            <b>
+              {Math.round(distance)}
+              <small>m</small>
+            </b>
+            <span
+              className="destination-arrow"
+              style={{ transform: `rotate(${arrowAngle}rad)` }}
+              aria-hidden="true"
+            />
+          </>
+        )}
       </section>
 
-      <section className="race-panel hud-panel">
+      <section
+        className={`race-panel hud-panel ${timed && remaining <= 30 ? "time-running-out" : ""}`}
+      >
         <header>
-          <strong>RACE</strong>
-          <span>{formatTime(elapsed)}</span>
+          <strong>{free ? "CREW" : timed ? "TIME LEFT" : checkpoint ? "SPRINT" : "RACE"}</strong>
+          <span aria-label={free ? "City open" : timed ? "Time remaining" : "Time elapsed"}>
+            {free ? "OPEN" : formatTime(timed ? remaining : elapsed)}
+          </span>
         </header>
         {sortedPlayers.slice(0, 5).map((player, index) => (
           <div className={player.id === self.id ? "is-self" : ""} key={player.id}>
-            <b>{index + 1}</b>
+            <b>
+              {free
+                ? "•"
+                : timed
+                  ? sortedPlayers.findIndex((entry) => entry.deliveries === player.deliveries) + 1
+                  : index + 1}
+            </b>
             <i style={{ background: player.color }} />
             <span>{player.name}</span>
             <em>
-              {player.deliveries}/{DELIVERIES_TO_WIN}
+              {free
+                ? "DRIVING"
+                : timed
+                  ? player.deliveries
+                  : `${checkpoint ? player.checkpointIndex : player.deliveries}/${total}`}
             </em>
           </div>
         ))}
@@ -355,7 +402,12 @@ export function HUD() {
         </div>
       </section>
 
-      <Minimap city={city} target={target?.stop} dropoff={self.leg === "dropoff"} />
+      <Minimap
+        city={city}
+        target={target?.stop}
+        dropoff={self.leg === "dropoff"}
+        checkpoint={checkpoint}
+      />
 
       <div className={`air-gauge ${drivingTelemetry.airborne ? "is-visible" : ""}`}>
         <b>AIR</b>
@@ -411,6 +463,9 @@ function Reconnect() {
         <button className="arcade-button arcade-button-primary" onClick={rejoin}>
           REJOIN RACE
         </button>
+        <button className="leave-room" onClick={leaveRoom}>
+          RETURN TO MODES
+        </button>
       </section>
     </div>
   );
@@ -418,19 +473,43 @@ function Reconnect() {
 
 export function WinnerScreen() {
   const standings = useGameStore((state) => state.standings) ?? [];
+  const mode = useGameStore((state) => state.mode);
+  const tied =
+    mode === "rush" &&
+    standings.length > 1 &&
+    standings[0]?.deliveries === standings[1]?.deliveries;
   return (
     <div className="modal-backdrop winner-backdrop">
       <section className="arcade-panel winner-panel">
-        <div className="panel-kicker">CHECKERED FLAG</div>
-        <h1>RACE COMPLETE!</h1>
+        <div className="panel-kicker">{GAME_MODES[mode].name.toUpperCase()}</div>
+        <h1>{mode === "rush" ? "TIME'S UP!" : "RACE COMPLETE!"}</h1>
+        {tied && <p className="result-tie">A SHARED FIRST PLACE!</p>}
         {standings.map((player, index) => (
-          <div className={index === 0 ? "winner-row is-first" : "winner-row"} key={player.id}>
-            <b>{index + 1}</b>
+          <div
+            className={
+              index === 0 || (tied && player.deliveries === standings[0]?.deliveries)
+                ? "winner-row is-first"
+                : "winner-row"
+            }
+            key={player.id}
+          >
+            <b>
+              {mode === "rush"
+                ? standings.findIndex((entry) => entry.deliveries === player.deliveries) + 1
+                : index + 1}
+            </b>
             <span>{player.name}</span>
-            <em>{player.deliveries} DELIVERIES</em>
+            <em>
+              {mode === "checkpoint"
+                ? `${player.checkpointIndex} / ${CHECKPOINT_COUNT} GATES`
+                : `${player.deliveries} DELIVERIES`}
+            </em>
           </div>
         ))}
         <small>RETURNING TO THE GRID…</small>
+        <button className="leave-room" onClick={leaveRoom}>
+          CHOOSE ANOTHER MODE
+        </button>
       </section>
     </div>
   );
