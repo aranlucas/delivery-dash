@@ -3,11 +3,12 @@ import { Sky } from "@react-three/drei";
 import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { generateCity, generateOrders } from "../../shared/city";
+import { getObjective } from "../../shared/gameModes";
 import { useGameStore, ownPlayer } from "../store";
 import { City } from "./City";
 import { OwnCar } from "./Car";
 import { RemoteCar } from "./RemoteCar";
-import { TargetBeacon, TargetPointer } from "./TargetBeacon";
+import { CheckpointGate, TargetBeacon, TargetPointer } from "./TargetBeacon";
 import { ChaseCamera } from "./ChaseCamera";
 import { ownPose } from "./drivingState";
 import { PerfProbe } from "../ui/PerfOverlay";
@@ -62,14 +63,12 @@ function Scene({ seed }: { seed: number }) {
   const players = useGameStore((s) => s.players),
     selfId = useGameStore((s) => s.selfId),
     phase = useGameStore((s) => s.phase);
+  const mode = useGameStore((s) => s.mode);
   const city = useMemo(() => generateCity(seed), [seed]);
   const orders = useMemo(() => generateOrders(seed), [seed]);
   const self = ownPlayer({ players, selfId });
   if (!self) return null;
-  const order = orders[self.orderIndex];
-  const target =
-    order &&
-    (self.leg === "pickup" ? city.restaurants[order.restaurantId] : city.houses[order.houseId]);
+  const target = getObjective(mode, city, orders, self);
   return (
     <Suspense
       fallback={
@@ -113,8 +112,16 @@ function Scene({ seed }: { seed: number }) {
       )}
       {target && phase === "racing" && (
         <>
-          <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
-          <TargetPointer target={target.stop} dropoff={self.leg === "dropoff"} />
+          {mode === "checkpoint" ? (
+            <CheckpointGate place={target} number={self.checkpointIndex + 1} />
+          ) : (
+            <TargetBeacon pos={target.stop} dropoff={self.leg === "dropoff"} />
+          )}
+          <TargetPointer
+            target={target.stop}
+            dropoff={self.leg === "dropoff"}
+            checkpoint={mode === "checkpoint"}
+          />
         </>
       )}
       <ChaseCamera grid={city.collisionGrid} />

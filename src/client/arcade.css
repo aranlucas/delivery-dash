@@ -98,6 +98,7 @@ button {
   grid-template-columns: 1.08fr 0.92fr;
   gap: clamp(28px, 6vw, 88px);
   align-items: center;
+  padding-block: 32px;
 }
 
 .game-loading {
@@ -211,6 +212,145 @@ button {
 .start-panel input:focus {
   border-color: var(--cyan);
   box-shadow: 0 0 0 3px rgba(0, 220, 255, 0.18);
+}
+
+.mode-picker {
+  min-width: 0;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+.mode-picker legend {
+  margin-bottom: 10px;
+  color: var(--yellow);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.start-panel .mode-option {
+  position: relative;
+  display: flex;
+  min-height: 86px;
+  flex-direction: column;
+  justify-content: end;
+  margin: 0;
+  padding: 12px;
+  overflow: hidden;
+  border: 2px solid #465260;
+  background: #1b242e;
+  color: #d6e0e9;
+  font-style: normal;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+.mode-option:hover,
+.mode-option.is-selected {
+  border-color: var(--mode-color);
+  background: color-mix(in srgb, var(--mode-color) 13%, #121b24);
+}
+.mode-option:focus-within {
+  outline: 3px solid white;
+  outline-offset: 2px;
+}
+.mode-option input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.mode-option strong {
+  position: relative;
+  font-size: 15px;
+  font-style: italic;
+  text-transform: uppercase;
+}
+.mode-option small {
+  margin-top: 5px;
+  color: #a8b9c7;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.mode-number {
+  position: absolute;
+  top: -7px;
+  right: 7px;
+  color: #ffffff0d;
+  font:
+    italic 60px Impact,
+    sans-serif;
+}
+.mode-option.is-selected strong,
+.mode-option.is-selected small {
+  color: var(--mode-color);
+}
+.mode-option.is-selected::after {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  width: 18px;
+  height: 3px;
+  background: var(--mode-color);
+  content: "";
+}
+.mode-description {
+  min-height: 35px;
+  margin: 12px 0 0;
+  color: #b8c5d1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mode-picker:disabled {
+  opacity: 0.6;
+}
+.lobby-mode-description {
+  margin: 0 0 18px;
+  color: #b8c5d1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mode-progress-hint {
+  display: block;
+  clear: both;
+  padding-top: 12px;
+  color: #a8b9c7;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+}
+.hud-leave {
+  position: absolute;
+  top: 124px;
+  left: 22px;
+  padding: 8px 11px;
+  border: 1px solid #ffffff45;
+  color: #d5e4e9;
+  background: #111921dd;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.hud-leave:focus-visible,
+.leave-room:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+.result-tie {
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .arcade-button {
@@ -471,6 +611,8 @@ kbd {
 .delivery-boxes i {
   position: relative;
   width: 51px;
+  min-width: 0;
+  flex: 1;
   height: 21px;
   border: 2px solid #5f6975;
   transform: skewX(-9deg);
@@ -552,6 +694,21 @@ kbd {
 .destination-banner.is-dropoff > b {
   color: var(--green);
 }
+.destination-banner.is-checkpoint > div {
+  border-color: var(--cyan);
+}
+.destination-banner.is-checkpoint > div i,
+.destination-banner.is-checkpoint .destination-arrow {
+  background: var(--cyan);
+}
+.destination-banner.is-checkpoint > div strong,
+.destination-banner.is-checkpoint > b {
+  color: var(--cyan);
+}
+.destination-banner.is-exploring > div {
+  border-color: #ffffff50;
+  font-size: 14px;
+}
 .destination-arrow {
   display: block;
   width: 46px;
@@ -587,6 +744,12 @@ kbd {
   color: var(--cyan);
   font-size: 15px;
   font-weight: 1000;
+}
+.race-panel.time-running-out header {
+  border-color: var(--red);
+}
+.race-panel.time-running-out header span {
+  color: #ff8e7a;
 }
 .race-panel > div {
   display: grid;
@@ -1082,6 +1245,15 @@ kbd {
   }
   .start-panel {
     padding: 20px;
+  }
+  .mode-option strong {
+    font-size: 13px;
+  }
+  .hud-leave {
+    top: 130px;
+    left: 12px;
+    max-width: 140px;
+    font-size: 8px;
   }
   .control-strip {
     font-size: 9px;
