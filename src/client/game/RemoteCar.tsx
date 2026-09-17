@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useReducer, useRef } from "react";
 import * as THREE from "three";
 import type { Pos2 } from "../../shared/city";
-import { CarVisual } from "./Car";
+import { CarVisual } from "./CarVisual";
 import type { CarKind } from "./carGeometry";
 import type { CarLod } from "./CarModel";
 import { ownPose } from "./drivingState";
