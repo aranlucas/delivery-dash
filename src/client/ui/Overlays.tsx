@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DELIVERIES_TO_WIN } from "../../shared/protocol";
-import { CHECKPOINT_COUNT, GAME_MODES, getObjective } from "../../shared/gameModes";
+import { CHECKPOINT_COUNT, GAME_MODES, comparePlayers, getObjective } from "../../shared/gameModes";
 import {
   BLOCK_SIZE,
   CITY_ZONES,
   GRID_SIZE,
   ROAD_WIDTH,
   WORLD_HALF,
-  generateCity,
-  generateOrders,
   roadCenter,
   type City,
+  type Order,
 } from "../../shared/city";
 import { relativeBearing } from "../../shared/nav";
 import { MAX_DRIFT_CHARGE } from "../game/arcadeRewards";
@@ -241,8 +240,7 @@ export function Countdown() {
   );
 }
 
-export function HUD() {
-  const seed = useGameStore((state) => state.seed);
+export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
   const phase = useGameStore((state) => state.phase);
   const players = useGameStore((state) => state.players);
   const self = useGameStore(ownPlayer);
@@ -250,8 +248,6 @@ export function HUD() {
   const raceStartedAt = useGameStore((state) => state.raceStartedAt);
   const raceEndsAt = useGameStore((state) => state.raceEndsAt);
   const mode = useGameStore((state) => state.mode);
-  const city = useMemo(() => (seed === undefined ? undefined : generateCity(seed)), [seed]);
-  const orders = useMemo(() => (seed === undefined ? [] : generateOrders(seed)), [seed]);
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
@@ -278,9 +274,7 @@ export function HUD() {
   const district = CITY_ZONES.find(
     (zone) => Math.hypot(ownPose.x - zone.x, ownPose.z - zone.z) < 85,
   );
-  const sortedPlayers = [...players].sort((a, b) =>
-    checkpoint ? b.checkpointIndex - a.checkpointIndex : b.deliveries - a.deliveries,
-  );
+  const sortedPlayers = [...players].sort((a, b) => comparePlayers(mode, a, b));
   const fast = ownPose.speed > 26 || drivingTelemetry.boosting || drivingTelemetry.rushTier > 0;
   const hasDriftCharge = drivingTelemetry.driftCharge > 1;
   const rushLabel = ["BUILDING", "LOCAL", "EXPRESS", "OVERNIGHT"][drivingTelemetry.driftTier];
