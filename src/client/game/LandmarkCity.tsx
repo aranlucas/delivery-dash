@@ -4,7 +4,7 @@ import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { CITY_ZONES, WORLD_HALF, type CityZone } from "../../shared/city";
 
-import { StaticInstances, type StaticInstance } from "./StaticInstances";
+import { GltfInstances, StaticInstances, type StaticInstance } from "./StaticInstances";
 import { WorldDetails } from "./WorldDetails";
 
 const assetUrl = (name: string) => `/models/landmarks/${name}.glb?v=coast-1`;
@@ -61,28 +61,8 @@ const PORTALS: StaticInstance[] = CITY_ZONES.map((zone) => ({
 
 function Portals() {
   const { scene } = useGLTF(assetUrl("portal"));
-  const parts = useMemo(() => {
-    scene.updateMatrixWorld(true);
-    const meshes: THREE.Mesh[] = [];
-    scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) meshes.push(object);
-    });
-    return meshes;
-  }, [scene]);
   // Share the cached model's buffers. Only the instance matrices belong to these batches.
-  return (
-    <>
-      {parts.map((part) => (
-        <StaticInstances
-          key={part.uuid}
-          items={PORTALS}
-          geometry={part.geometry}
-          material={part.material}
-          localMatrix={part.matrixWorld}
-        />
-      ))}
-    </>
-  );
+  return <GltfInstances scene={scene} items={PORTALS} />;
 }
 
 function Plaza({ zone }: { zone: CityZone }) {
