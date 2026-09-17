@@ -1,9 +1,8 @@
 import { useGLTF } from "@react-three/drei";
-import { Suspense, useMemo } from "react";
-import * as THREE from "three";
+import { Suspense } from "react";
 
 import { CITY_ZONES } from "../../shared/city";
-import { StaticInstances, type StaticInstance } from "./StaticInstances";
+import { GltfInstances, type StaticInstance } from "./StaticInstances";
 
 type WorldModel = "market" | "harbor" | "plaza";
 
@@ -61,31 +60,7 @@ for (const zone of CITY_ZONES)
 
 function ModelBatch({ name, items }: { name: WorldModel; items: StaticInstance[] }) {
   const { scene } = useGLTF(assetUrl(name));
-  const parts = useMemo(() => {
-    scene.updateMatrixWorld(true);
-    const meshes: THREE.Mesh[] = [];
-    scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.castShadow = true;
-        object.receiveShadow = true;
-        meshes.push(object);
-      }
-    });
-    return meshes;
-  }, [scene]);
-  return (
-    <>
-      {parts.map((part) => (
-        <StaticInstances
-          key={`${name}-${part.uuid}`}
-          items={items}
-          geometry={part.geometry}
-          material={part.material}
-          localMatrix={part.matrixWorld}
-        />
-      ))}
-    </>
-  );
+  return <GltfInstances scene={scene} items={items} shadows batchKey={name} />;
 }
 
 /** Large, authored silhouettes for the festival, harbor, and public-plaza edges. */

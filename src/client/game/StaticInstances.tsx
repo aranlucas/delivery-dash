@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 
 export type StaticInstance = {
@@ -46,5 +46,45 @@ export function StaticInstances({
     <instancedMesh ref={ref} args={[geometry, material, items.length]}>
       {children}
     </instancedMesh>
+  );
+}
+
+/** Walk a GLB scene into instanced parts, sharing the cached model's buffers. */
+export function GltfInstances({
+  scene,
+  items,
+  shadows,
+  batchKey,
+}: {
+  scene: THREE.Object3D;
+  items: StaticInstance[];
+  shadows?: boolean;
+  batchKey?: string;
+}) {
+  const parts = useMemo(() => {
+    scene.updateMatrixWorld(true);
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      if (shadows) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+      meshes.push(object);
+    });
+    return meshes;
+  }, [scene, shadows]);
+  return (
+    <>
+      {parts.map((part) => (
+        <StaticInstances
+          key={batchKey ? `${batchKey}-${part.uuid}` : part.uuid}
+          items={items}
+          geometry={part.geometry}
+          material={part.material}
+          localMatrix={part.matrixWorld}
+        />
+      ))}
+    </>
   );
 }
