@@ -17,7 +17,7 @@ import {
   type NearMissTracker,
   type RushTier,
 } from "./arcadeRewards";
-import { drivingTelemetry, ownPose, wheelDrive, type CarPose } from "./drivingState";
+import { drivingTelemetry, ownPose, wheelDrive } from "./drivingState";
 import { CarModel, type CarLod } from "./CarModel";
 import type { CarKind } from "./carGeometry";
 import { trafficCars } from "./traffic";
@@ -654,7 +654,6 @@ const TAXI_YELLOW = "#ffd400";
  * Remote cars choose a silhouette and LOD; the player's taxi always stays full.
  */
 export const CarVisual = ({
-  pose,
   color,
   carrying,
   name,
@@ -662,7 +661,6 @@ export const CarVisual = ({
   kind = "taxi",
   lod = "full",
 }: {
-  pose?: CarPose;
   color: string;
   carrying: boolean;
   name?: string;
@@ -672,7 +670,7 @@ export const CarVisual = ({
 }) => {
   const modelKind = own ? "taxi" : kind;
   return (
-    <group position={pose ? [pose.x, pose.y, pose.z] : undefined} rotation-y={pose?.yaw}>
+    <group>
       <CarModel
         kind={modelKind}
         color={own ? TAXI_YELLOW : color}

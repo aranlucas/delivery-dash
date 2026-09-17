@@ -66,5 +66,5 @@ export type ServerMessage =
       deliveries: number;
       checkpointIndex: number;
     }
-  | { t: "win"; id?: string; standings: Standing[] }
+  | { t: "win"; standings: Standing[] }
   | { t: "error"; message: string };
