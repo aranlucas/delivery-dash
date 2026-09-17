@@ -53,7 +53,6 @@ const PALETTE = [
 
 export class RaceRoom extends DurableObject<Env> {
   private state?: RoomState;
-  private positions = new Map<string, { x: number; z: number }>();
   private world?: { seed: number; city: City; orders: Order[] };
 
   /** The city is large enough that regenerating it per position update would dominate the tick. */
@@ -216,10 +215,7 @@ export class RaceRoom extends DurableObject<Env> {
       // Prune players whose sockets are gone (dev reload, crashed connections) so rooms don't fill with ghosts.
       const alive = new Set(this.sockets().map((s) => this.playerId(s)));
       for (const id of Object.keys(state.players))
-        if (!alive.has(id)) {
-          delete state.players[id];
-          this.positions.delete(id);
-        }
+        if (!alive.has(id)) delete state.players[id];
       if (!Object.keys(state.players).length && state.phase !== "lobby") {
         state.phase = "lobby";
         state.countdownEndsAt = undefined;
@@ -299,7 +295,6 @@ export class RaceRoom extends DurableObject<Env> {
       await this.finish();
       return;
     }
-    this.positions.set(id, { x: update.x, z: update.z });
     this.broadcast(
       {
         t: "pos",
@@ -344,10 +339,10 @@ export class RaceRoom extends DurableObject<Env> {
       (state.mode === "delivery" && player.deliveries >= DELIVERIES_TO_WIN) ||
       (state.mode === "checkpoint" && player.checkpointIndex >= CHECKPOINT_COUNT)
     )
-      await this.finish(id);
+      await this.finish();
   }
 
-  private async finish(winnerId?: string) {
+  private async finish() {
     const state = this.state!;
     if (state.phase === "finished") return;
     state.phase = "finished";
@@ -355,10 +350,7 @@ export class RaceRoom extends DurableObject<Env> {
     state.standings = this.standings();
     await this.save();
     this.broadcast(this.phaseMessage());
-    const win: ServerMessage = winnerId
-      ? { t: "win", id: winnerId, standings: state.standings }
-      : { t: "win", standings: state.standings };
-    this.broadcast(win);
+    this.broadcast({ t: "win", standings: state.standings });
     await this.ctx.storage.setAlarm(Date.now() + FINISH_LINGER_MS);
   }
 
@@ -372,7 +364,6 @@ export class RaceRoom extends DurableObject<Env> {
     const state = await this.load();
     if (!state || !id || !state.players[id]) return;
     delete state.players[id];
-    this.positions.delete(id);
     if (!Object.keys(state.players).length) {
       this.state = undefined;
       await this.ctx.storage.deleteAlarm();

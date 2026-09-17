@@ -70,14 +70,7 @@ function Scene({ seed }: { seed: number }) {
   if (!self) return null;
   const target = getObjective(mode, city, orders, self);
   return (
-    <Suspense
-      fallback={
-        <mesh position={[0, 5, -20]}>
-          <boxGeometry args={[8, 8, 8]} />
-          <meshBasicMaterial color="red" />
-        </mesh>
-      }
-    >
+    <Suspense fallback={null}>
       <Sky
         distance={3000}
         sunPosition={[100, 22, -70]}

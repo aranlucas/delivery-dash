@@ -1,11 +1,32 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useSyncExternalStore } from "react";
 import { trafficCars } from "../game/traffic";
 
 /** Written by the render loop and sampled by the DOM overlay at 4Hz. */
 const perfStats = { fps: 0, frameMs: 0, calls: 0, triangles: 0, traffic: 0 };
 
-export function PerfProbe() {
+let overlayVisible = false;
+const overlayListeners = new Set<() => void>();
+
+function subscribeOverlay(listener: () => void) {
+  overlayListeners.add(listener);
+  return () => overlayListeners.delete(listener);
+}
+
+function getOverlayVisible() {
+  return overlayVisible;
+}
+
+function toggleOverlay() {
+  overlayVisible = !overlayVisible;
+  for (const listener of overlayListeners) listener();
+}
+
+function usePerfOverlayVisible() {
+  return useSyncExternalStore(subscribeOverlay, getOverlayVisible, getOverlayVisible);
+}
+
+function PerfSampler() {
   const gl = useThree((state) => state.gl);
   const frames = useRef(0);
   const elapsed = useRef(0);
@@ -26,15 +47,21 @@ export function PerfProbe() {
   return null;
 }
 
+/** Canvas probe. Mounts the frame sampler only while the F3 overlay is visible. */
+export function PerfProbe() {
+  const visible = usePerfOverlayVisible();
+  return visible ? <PerfSampler /> : null;
+}
+
 export function PerfOverlay() {
-  const [visible, toggle] = useReducer((value: boolean) => !value, false);
+  const visible = usePerfOverlayVisible();
   const [, tick] = useReducer((value: number) => value + 1, 0);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "F3") return;
       event.preventDefault();
-      toggle();
+      toggleOverlay();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
