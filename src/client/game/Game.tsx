@@ -2,7 +2,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Sky } from "@react-three/drei";
 import { Suspense, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { generateCity, generateOrders } from "../../shared/city";
+import type { City as CityData, Order } from "../../shared/city";
 import { getObjective } from "../../shared/gameModes";
 import { useGameStore, ownPlayer } from "../store";
 import { City } from "./City";
@@ -13,16 +13,14 @@ import { ChaseCamera } from "./ChaseCamera";
 import { ownPose } from "./drivingState";
 import { PerfProbe } from "../ui/PerfOverlay";
 
-export function Game() {
-  const seed = useGameStore((s) => s.seed);
-  if (seed === undefined) return null;
+export function Game({ seed, city, orders }: { seed: number; city: CityData; orders: Order[] }) {
   return (
     <Canvas
       shadows="basic"
       camera={{ position: [0, 5.4, -10], fov: 62, near: 0.35, far: 6000 }}
       dpr={[1, 1.25]}
     >
-      <Scene seed={seed} />
+      <Scene seed={seed} city={city} orders={orders} />
     </Canvas>
   );
 }
@@ -59,13 +57,11 @@ function Sun() {
   );
 }
 
-function Scene({ seed }: { seed: number }) {
+function Scene({ seed, city, orders }: { seed: number; city: CityData; orders: Order[] }) {
   const players = useGameStore((s) => s.players),
     selfId = useGameStore((s) => s.selfId),
     phase = useGameStore((s) => s.phase);
   const mode = useGameStore((s) => s.mode);
-  const city = useMemo(() => generateCity(seed), [seed]);
-  const orders = useMemo(() => generateOrders(seed), [seed]);
   const self = ownPlayer({ players, selfId });
   if (!self) return null;
   const target = getObjective(mode, city, orders, self);

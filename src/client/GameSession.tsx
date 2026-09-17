@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { generateCity, generateOrders } from "../shared/city";
 import { ArcadeAudio } from "./game/ArcadeAudio";
 import { Game } from "./game/Game";
 import { useGameStore } from "./store";
@@ -6,6 +8,15 @@ import { PerfOverlay } from "./ui/PerfOverlay";
 
 export default function GameSession() {
   const phase = useGameStore((state) => state.phase);
+  const seed = useGameStore((state) => state.seed);
+  // Same per-seed cache idea as RaceRoom.route(): generate the city once for this session.
+  const world = useMemo(
+    () =>
+      seed === undefined
+        ? undefined
+        : { seed, city: generateCity(seed), orders: generateOrders(seed) },
+    [seed],
+  );
   return (
     <div
       style={{
@@ -16,9 +27,9 @@ export default function GameSession() {
       }}
     >
       <ArcadeAudio />
-      <Game />
+      {world ? <Game seed={world.seed} city={world.city} orders={world.orders} /> : null}
       <Lobby />
-      <HUD />
+      <HUD city={world?.city} orders={world?.orders} />
       {phase === "countdown" || phase === "racing" ? <Countdown /> : null}
       {phase === "finished" ? <WinnerScreen /> : null}
       <PerfOverlay />
