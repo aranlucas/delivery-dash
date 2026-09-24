@@ -130,10 +130,10 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.54.2
-        version: 1.54.2(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.1))(wrangler@4.127.1)
+        version: 1.54.2(vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.1))(wrangler@4.127.1)
       '@types/node':
-        specifier: ^26.5.1
-        version: 26.5.1
+        specifier: ^26.6.2
+        version: 26.6.2
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
@@ -145,7 +145,7 @@ importers:
         version: 0.186.0
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.1))
+        version: 6.1.1(vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.1))
       oxfmt:
         specifier: ^0.68.0
         version: 0.68.0
@@ -157,7 +157,7 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.1)
+        version: 8.3.0(@types/node@26.6.2)(esbuild@0.28.1)
       wrangler:
         specifier: ^4.127.1
         version: 4.127.1
@@ -968,8 +968,8 @@ packages:
   '@types/draco3d@1.4.10':
     resolution: {integrity: sha512-AX22jp8Y7wwaBgAixaSvkoG4M/+PlAcm3Qs4OW8yT9DM4xUpWKeFhLueTAyZF39pviAdcDdeJoACapiAceqNcw==}
 
-  '@types/node@26.5.1':
-    resolution: {integrity: sha512-CzNm2FezW4VR/LjG6yUdiEgLE/rAQ9Slj5gCu/C2VrdcW7I0ahNZ8DRbHT7zOZ6r3ONgd/bsQIeSaoDGrd1C6g==}
+  '@types/node@26.6.2':
+    resolution: {integrity: sha512-X1P21scMv4zGKLYqjdGjaKa7COa0RKVYYZZN/NfvLQ1JegxFhdhpZG/Lyn8AXx6CDUavKAd11v6BvfpkDByK8g==}
 
   '@types/offscreencanvas@2019.7.3':
     resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
@@ -1657,12 +1657,12 @@ snapshots:
     optionalDependencies:
       workerd: 1.20260828.1
 
-  '@cloudflare/vite-plugin@1.54.2(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.1))(wrangler@4.127.1)':
+  '@cloudflare/vite-plugin@1.54.2(vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.1))(wrangler@4.127.1)':
     dependencies:
       '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260828.1)
       miniflare: 5.20260828.0-alpha
       unenv: 2.0.0-rc.24
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.1)
+      vite: 8.3.0(@types/node@26.6.2)(esbuild@0.28.1)
       workerd: 1.20260828.1
       wrangler: 4.127.1
       ws: 8.21.0
@@ -2132,7 +2132,7 @@ snapshots:
 
   '@types/draco3d@1.4.10': {}
 
-  '@types/node@26.5.1':
+  '@types/node@26.6.2':
     dependencies:
       undici-types: 8.9.0
 
@@ -2230,10 +2230,10 @@ snapshots:
       '@use-gesture/core': 10.3.1
       react: 19.2.8
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.1))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.1)
+      vite: 8.3.0(@types/node@26.6.2)(esbuild@0.28.1)
 
   base64-js@1.5.1: {}
 
@@ -2662,7 +2662,7 @@ snapshots:
 
   utility-types@3.11.0: {}
 
-  vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.1):
+  vite@8.3.0(@types/node@26.6.2)(esbuild@0.28.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -2670,7 +2670,7 @@ snapshots:
       rolldown: 1.2.6
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.5.1
+      '@types/node': 26.6.2
       esbuild: 0.28.1
       fsevents: 2.3.3
 
