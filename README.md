@@ -1,6 +1,17 @@
 # Delivery Dash
 
-Delivery Dash is a multiplayer 3D arcade racing game set in a coastal city. Pick a mode, invite up to seven other drivers with your room code, and explore the streets, expressways, and stunt districts.
+[![CI](https://github.com/aranlucas/delivery-dash/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/aranlucas/delivery-dash/actions/workflows/ci.yml)
+[![MIT License](https://img.shields.io/github/license/aranlucas/delivery-dash)](LICENSE)
+![Three.js](https://img.shields.io/badge/Three.js-3D_world-000000?logo=threedotjs&logoColor=white)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Durable_Objects-F38020?logo=cloudflare&logoColor=white)
+
+**Your order is up. The harbor is your racetrack.**
+
+Delivery Dash is a browser-based multiplayer 3D racing game for up to eight friends. Race the clock, chase the next drop-off, or leave the finish line behind and cruise the coastal city together.
+
+![Illustrated cover art showing a coastal delivery race](docs/images/delivery-dash-cover.png)
+
+*Illustrated cover art; see the game modes below for implemented gameplay.*
 
 ## Game modes
 
