@@ -214,8 +214,7 @@ export class RaceRoom extends DurableObject<Env> {
     if (state) {
       // Prune players whose sockets are gone (dev reload, crashed connections) so rooms don't fill with ghosts.
       const alive = new Set(this.sockets().map((s) => this.playerId(s)));
-      for (const id of Object.keys(state.players))
-        if (!alive.has(id)) delete state.players[id];
+      for (const id of Object.keys(state.players)) if (!alive.has(id)) delete state.players[id];
       if (!Object.keys(state.players).length && state.phase !== "lobby") {
         state.phase = "lobby";
         state.countdownEndsAt = undefined;

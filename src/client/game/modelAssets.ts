@@ -5,7 +5,7 @@ import { CAR_ORIGIN_HEIGHT, type CarKind } from "./carGeometry";
 
 // Public assets keep readable filenames, so bump this when Blender output changes. This also
 // invalidates drei's in-memory GLTF cache during development instead of showing stale geometry.
-const ASSET_REVISION = "2026-08-17-car-shape-5";
+const ASSET_REVISION = "2026-09-28-car-arches-1";
 const versioned = (path: string) => `${path}?v=${ASSET_REVISION}`;
 
 const VEHICLE_URLS: Record<CarKind, string> = {
@@ -29,11 +29,7 @@ function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
 }
 
 /** Bake a Blender node into the asset root; repeated callers share the resulting buffer. */
-function geometry(
-  nodes: Record<string, THREE.Object3D>,
-  name: string,
-  keepTranslation = true,
-) {
+function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTranslation = true) {
   const object = mesh(nodes, name);
   const cache = keepTranslation ? bakedGeometry : localGeometry;
   const cached = cache.get(object);

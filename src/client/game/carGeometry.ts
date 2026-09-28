@@ -24,7 +24,7 @@ export const TAXI_SPEC: CarSpec = {
   length: 5.2,
   width: 2.5,
   profile: SEDAN_PROFILE,
-  wheelRadius: 0.54,
+  wheelRadius: 0.46,
   wheelWidth: 0.42,
   axleInset: 0.24,
   arch: 0.1,
@@ -41,6 +41,7 @@ export const VAN_SPEC: CarSpec = {
     [0.08, 0.98],
     [0.3, 1],
     [0.62, 1],
+    [0.66, 1],
     [0.84, 0.98],
     [0.94, 0.92],
     [1, 0.82],
@@ -65,7 +66,6 @@ export const SPORTS_SPEC: CarSpec = {
   ...TAXI_SPEC,
   length: 5,
   width: 2.62,
-  wheelRadius: 0.56,
   arch: 0.14,
   profile: [
     [0, 0.84],
@@ -103,9 +103,7 @@ export function bodyHalfWidth(spec: CarSpec, position: number) {
     break;
   }
   const flare =
-    spec.arch *
-    (bump(position, spec.axleInset, 0.15) +
-      bump(position, 1 - spec.axleInset, 0.15));
+    spec.arch * (bump(position, spec.axleInset, 0.15) + bump(position, 1 - spec.axleInset, 0.15));
   return (spec.width / 2) * widthScale + flare;
 }
 
