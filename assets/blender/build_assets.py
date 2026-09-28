@@ -23,7 +23,7 @@ VEHICLES = {
         "width": 2.5,
         "sill": -0.5,
         "chamfer": 0.16,
-        "wheel_radius": 0.54,
+        "wheel_radius": 0.46,
         "wheel_width": 0.42,
         "axle_inset": 0.24,
         "arch": 0.1,
@@ -55,16 +55,20 @@ VEHICLES = {
             (0.0, 0.86, 0.1, 1.5),
             (0.08, 0.98, 0.04, 1.56),
             (0.3, 1.0, 0.02, 1.58),
-            (0.62, 1.0, 0.02, 1.56),
-            (0.84, 0.98, 0.04, 1.2),
-            (0.94, 0.92, 0.08, 0.78),
+            (0.62, 1.0, 0.02, 1.58),
+            (0.66, 1.0, 0.02, 1.0),
+            (0.84, 0.98, 0.04, 0.9),
+            (0.94, 0.92, 0.08, 0.76),
             (1.0, 0.82, 0.16, 0.6),
         ],
         "cabin": [
-            (0.06, 0.82, 0.94, 1.64),
-            (0.16, 0.94, 0.94, 1.72),
-            (0.7, 0.94, 0.94, 1.72),
-            (0.82, 0.82, 0.84, 1.62),
+            # Windowless cargo box: the fifth value tucks the glass inside the roof.
+            (0.06, 0.82, 1.56, 1.72, False),
+            (0.16, 0.86, 1.56, 1.72, False),
+            (0.6, 0.86, 1.56, 1.72, False),
+            (0.65, 0.94, 0.98, 1.72),
+            (0.74, 0.92, 0.92, 1.7),
+            (0.86, 0.8, 0.86, 1.46),
         ],
     },
     "hatch": {
@@ -91,22 +95,21 @@ VEHICLES = {
         "width": 2.62,
         "sill": -0.6,
         "chamfer": 0.2,
-        "wheel_radius": 0.56,
         "arch": 0.14,
         "checkers": False,
         "profile": [
-            (0.0, 0.84, 0.1, 0.5),
-            (0.08, 0.96, 0.04, 0.58),
-            (0.26, 1.0, 0.02, 0.6),
-            (0.55, 1.0, 0.02, 0.58),
-            (0.82, 0.98, 0.02, 0.46),
-            (1.0, 0.82, 0.1, 0.34),
+            (0.0, 0.84, 0.12, 0.56),
+            (0.08, 0.96, 0.04, 0.7),
+            (0.26, 1.0, 0.02, 0.8),
+            (0.55, 1.0, 0.02, 0.7),
+            (0.82, 0.98, 0.02, 0.78),
+            (1.0, 0.82, 0.1, 0.44),
         ],
         "cabin": [
-            (0.24, 0.7, 0.5, 0.84),
-            (0.36, 0.84, 0.58, 0.98),
-            (0.5, 0.84, 0.58, 1.0),
-            (0.72, 0.68, 0.44, 0.78),
+            (0.24, 0.7, 0.68, 0.96),
+            (0.36, 0.84, 0.7, 1.12),
+            (0.52, 0.84, 0.7, 1.14),
+            (0.72, 0.66, 0.66, 0.9),
         ],
     },
 }
@@ -194,31 +197,95 @@ def body_half_width(spec, position):
     return spec["width"] * 0.5 * width_scale + flare
 
 
-def profile_top(spec, position):
-    """Interpolate the body shoulder height at a normalized length position."""
-    top = spec["profile"][-1][3]
-    for start, end in zip(spec["profile"], spec["profile"][1:]):
+def interpolate_station(stations, position):
+    """Return (width scale, bottom, top) of a station list at a normalized length position."""
+    for start, end in zip(stations, stations[1:]):
         if start[0] <= position <= end[0]:
             progress = 0.0 if start[0] == end[0] else (position - start[0]) / (end[0] - start[0])
-            top = start[3] + (end[3] - start[3]) * progress
-            break
-    return top
+            return tuple(a + (b - a) * progress for a, b in zip(start[1:], end[1:]))
+    return tuple(stations[-1][1:] if position > stations[-1][0] else stations[0][1:])
+
+
+def profile_top(spec, position):
+    """Interpolate the body shoulder height at a normalized length position."""
+    return interpolate_station(spec["profile"], position)[2]
+
+
+def arch_radius(spec):
+    return spec["wheel_radius"] * 1.08
+
+
+def body_stations(spec):
+    """Resample the body profile densely and cut round wheel arches into it.
+
+    The authored profile only has a handful of stations, which is too coarse for a
+    circular opening. Extra stations are added only across each arch (plus its exact
+    edges) so the loft follows the arch without bloating the instanced fleet body, and
+    the shoulder is lifted just enough to keep a fender lip over each tyre.
+    """
+    length = spec["length"]
+    radius = arch_radius(spec)
+    axles = (spec["axle_inset"], 1.0 - spec["axle_inset"])
+    positions = {station[0] for station in spec["profile"]}
+    for axle in axles:
+        span = radius / length
+        positions.update(axle + span * (index / 4 - 1) for index in range(1, 8))
+        for side in (-1, 1):
+            edge = axle + side * span
+            positions.update((edge - side * 0.0006, edge + side * 0.0006))
+    axle_height = spec["wheel_radius"] - 0.8 - spec["sill"]
+    stations = []
+    for position in sorted(p for p in positions if 0.0 <= p <= 1.0):
+        width_scale, bottom, top = interpolate_station(spec["profile"], position)
+        for axle in axles:
+            distance = abs(position - axle) * length
+            if distance < radius:
+                arch_top = axle_height + math.sqrt(radius * radius - distance * distance)
+                bottom = max(bottom, arch_top)
+                top = max(top, arch_top + 0.06)
+        stations.append((position, width_scale, bottom, top))
+    return stations
+
+
+def end_layout(spec, rear):
+    """Bumper and lamp placement (relative to the sill) for one end of the body."""
+    station = spec["profile"][0] if rear else spec["profile"][-1]
+    bottom, top = station[2], station[3]
+    bumper_top = bottom + 0.12
+    room = top - bumper_top
+    lamp_height = min(0.16, max(0.06, room * 0.5))
+    half_width = body_half_width(spec, 0.0 if rear else 1.0)
+    return {
+        "bumper_y": bumper_top - 0.11,
+        "bumper_width": half_width * 2 * 0.96,
+        "lamp_y": bumper_top + room * 0.5,
+        "lamp_height": lamp_height,
+        "lamp_x": half_width * 0.6,
+        "lamp_width": min(spec["width"] * 0.24, half_width * 0.62),
+        "z": (-1 if rear else 1) * spec["length"] * 0.5,
+    }
 
 
 def loft(name, spec, profile, collection, mat, roof=False, glass=False, flare=False):
     vertices = []
     faces = []
-    for station_index, (position, width_scale, bottom, top) in enumerate(profile):
+    for station_index, station in enumerate(profile):
+        position, width_scale, bottom, top = station[:4]
+        glazed = station[4] if len(station) > 4 else True
         if flare:
             half_width = body_half_width(spec, position)
-            arch_lift = spec["wheel_radius"] * 0.82 * max(
-                bump(position, spec["axle_inset"], 0.11),
-                bump(position, 1.0 - spec["axle_inset"], 0.11),
-            )
         else:
             half_width = spec["width"] * 0.5 * width_scale
-            arch_lift = 0.0
-        if glass:
+        if glass and not glazed:
+            # Unglazed stations (cargo boxes) keep the glass fully inside the roof slab.
+            half_width *= 0.97
+            bottom = top - 0.1
+            top -= 0.03
+            if station_index == 0:
+                position += 0.004
+            elif station_index == len(profile) - 1:
+                position -= 0.004
+        elif glass:
             # The cabin roof is a closed shell. Put the glass skin just outside
             # it (including the end caps) so the opaque side faces cannot clip
             # the windows down to a narrow slit in Blender or the exported GLB.
@@ -236,7 +303,7 @@ def loft(name, spec, profile, collection, mat, roof=False, glass=False, flare=Fa
             top += 0.02
         cross_section = ring(
             half_width,
-            spec["sill"] + bottom + arch_lift,
+            spec["sill"] + bottom,
             spec["sill"] + top,
             spec["chamfer"] * (0.5 if roof else 0.6 if glass else 1.0),
         )
@@ -312,6 +379,68 @@ def sphere(name, location, radius, collection, mat, segments=10, rings=5, scale=
     return obj
 
 
+def tyre(name, location, radius, width, collection, mat, segments=18):
+    """Revolve an open-centre tyre so the recessed rim shows through the sidewall."""
+    # (radius scale, axle offset scale) around the cross-section, ending on the inner lip.
+    section = [(0.66, -0.46), (0.9, -0.5), (1.0, -0.38), (1.0, 0.38), (0.9, 0.5), (0.66, 0.46)]
+    smooth_edges = {1, 2, 3, 5}  # shoulders, tread and inner lip; sidewalls stay flat
+    count = len(section)
+    vertices = []
+    for step in range(segments):
+        angle = 2 * math.pi * step / segments
+        for radial, axial in section:
+            vertices.append(
+                game_to_blender(
+                    (axial * width, radial * radius * math.cos(angle), radial * radius * math.sin(angle))
+                )
+            )
+    faces = []
+    smooth = []
+    for step in range(segments):
+        following = (step + 1) % segments
+        for edge in range(count):
+            nxt = (edge + 1) % count
+            faces.append(
+                (step * count + edge, following * count + edge, following * count + nxt, step * count + nxt)
+            )
+            smooth.append(edge in smooth_edges)
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.polygons.foreach_set("use_smooth", smooth)
+    mesh.materials.append(mat)
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = game_to_blender(location)
+    collection.objects.link(obj)
+    return obj
+
+
+def rim(name, location, radius, width, collection, mat):
+    """Recessed five-spoke rim, symmetric across the axle so one mesh serves all four corners."""
+    disc = cylinder(name, location, radius * 0.66, width * 0.62, collection, mat, 12, "x")
+    parts = [
+        disc,
+        cylinder(f"{name}_hub", location, radius * 0.2, width * 0.84, collection, mat, 8, "x"),
+    ]
+    for index in range(5):
+        spoke = cube(
+            f"{name}_spoke",
+            location,
+            (width * 0.72, radius * 0.44, radius * 0.1),
+            collection,
+            mat,
+        )
+        # Push the spoke out along the wheel radius, then spin it about the axle.
+        for vertex in spoke.data.vertices:
+            vertex.co.z += radius * 0.4
+        spoke.rotation_euler[0] = index * 2 * math.pi / 5
+        bpy.context.view_layer.objects.active = spoke
+        spoke.select_set(True)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+        spoke.select_set(False)
+        parts.append(spoke)
+    return join(name, parts, mat)
+
+
 def apply_modifiers(obj):
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
@@ -373,7 +502,7 @@ def build_vehicle(kind, spec, mats, display_x):
     body = join(
         f"{kind}_body",
         [
-            loft(f"{kind}_body_shell", spec, spec["profile"], collection, mats["paint"], flare=True),
+            loft(f"{kind}_body_shell", spec, body_stations(spec), collection, mats["paint"], flare=True),
             loft(f"{kind}_roof", spec, spec["cabin"], collection, mats["paint"], roof=True),
         ],
         mats["paint"],
@@ -385,24 +514,39 @@ def build_vehicle(kind, spec, mats, display_x):
     glass = loft(f"{kind}_glass", spec, spec["cabin"], collection, mats["glass"], glass=True)
 
     trim_parts = []
-    top = max(station[3] for station in spec["profile"])
-    for end in (-1, 1):
+    for rear in (True, False):
+        layout = end_layout(spec, rear)
+        direction = -1 if rear else 1
         trim_parts.append(
             cube(
                 f"{kind}_bumper",
-                (0, spec["sill"] + 0.24, end * spec["length"] * 0.5 - end * 0.05),
-                (spec["width"] * 0.9, 0.3, 0.24),
+                (0, spec["sill"] + layout["bumper_y"], layout["z"] - direction * 0.06),
+                (layout["bumper_width"], 0.22, 0.22),
                 collection,
                 mats["trim"],
                 0.025,
             )
         )
+    mirror_position = spec["cabin"][-1][0] - 0.03
+    mirror_z = -spec["length"] * 0.5 + mirror_position * spec["length"]
+    mirror_base = spec["sill"] + max(profile_top(spec, mirror_position), spec["cabin"][-1][2])
+    mirror_x = body_half_width(spec, mirror_position)
+    rocker_length = (1.0 - 2 * spec["axle_inset"]) * spec["length"] - 2 * arch_radius(spec) - 0.12
     for side in (-1, 1):
         trim_parts.append(
             cube(
+                f"{kind}_mirror_arm",
+                (side * (mirror_x - 0.12), mirror_base + 0.04, mirror_z),
+                (0.3, 0.05, 0.1),
+                collection,
+                mats["trim"],
+            )
+        )
+        trim_parts.append(
+            cube(
                 f"{kind}_mirror",
-                (side * (spec["width"] * 0.5 + 0.12), spec["sill"] + top * 0.95, spec["length"] * 0.14),
-                (0.3, 0.12, 0.26),
+                (side * (mirror_x + 0.05), mirror_base + 0.1, mirror_z),
+                (0.12, 0.15, 0.24),
                 collection,
                 mats["trim"],
                 0.02,
@@ -411,8 +555,8 @@ def build_vehicle(kind, spec, mats, display_x):
         trim_parts.append(
             cube(
                 f"{kind}_rocker",
-                (side * (spec["width"] * 0.5 + 0.01), spec["sill"] + 0.16, 0),
-                (0.12, 0.18, spec["length"] * 0.54),
+                (side * (spec["width"] * 0.5 + 0.01), spec["sill"] + 0.14, 0),
+                (0.12, 0.16, rocker_length),
                 collection,
                 mats["trim"],
                 0.018,
@@ -484,20 +628,26 @@ def build_vehicle(kind, spec, mats, display_x):
                     "x",
                 )
             )
+    front = end_layout(spec, False)
+    back = end_layout(spec, True)
     trim_parts.extend(
         [
             cube(
                 f"{kind}_grille",
-                (0, spec["sill"] + 0.35, spec["length"] * 0.5 + 0.01),
-                (spec["width"] * 0.46, 0.24, 0.08),
+                (0, spec["sill"] + front["lamp_y"], front["z"] - 0.02),
+                (
+                    max(0.3, 2 * (front["lamp_x"] - front["lamp_width"] * 0.5) - 0.12),
+                    front["lamp_height"] * 0.85,
+                    0.08,
+                ),
                 collection,
                 mats["trim"],
-                0.02,
+                0.015,
             ),
             cube(
                 f"{kind}_diffuser",
-                (0, spec["sill"] + 0.19, -spec["length"] * 0.5 - 0.015),
-                (spec["width"] * 0.5, 0.18, 0.11),
+                (0, spec["sill"] + back["bumper_y"] - 0.06, back["z"] + 0.02),
+                (spec["width"] * 0.5, 0.12, 0.2),
                 collection,
                 mats["trim"],
                 0.016,
@@ -521,45 +671,47 @@ def build_vehicle(kind, spec, mats, display_x):
         )
     if spec["checkers"]:
         cells = 8
-        span = 0.56
-        start = 0.22
+        start = spec["axle_inset"] + (arch_radius(spec) + 0.08) / spec["length"]
+        span = 1.0 - 2 * start
         cell_length = spec["length"] * span / cells
-        for index in range(cells):
-            if index % 2:
-                continue
-            position = start + (index + 0.5) / cells * span
-            for side in (-1, 1):
-                trim_parts.append(
-                    cube(
-                        f"{kind}_checker",
-                        (
-                            side * (body_half_width(spec, position) + 0.015),
-                            spec["sill"] + 0.46,
-                            -spec["length"] * 0.5 + position * spec["length"],
-                        ),
-                        (0.05, 0.26, cell_length),
-                        collection,
-                        mats["trim"],
+        for row, row_height in enumerate((0.3, 0.42)):
+            for index in range(cells):
+                if (index + row) % 2:
+                    continue
+                position = start + (index + 0.5) / cells * span
+                for side in (-1, 1):
+                    trim_parts.append(
+                        cube(
+                            f"{kind}_checker",
+                            (
+                                side * (body_half_width(spec, position) + 0.012),
+                                spec["sill"] + row_height,
+                                -spec["length"] * 0.5 + position * spec["length"],
+                            ),
+                            (0.04, 0.12, cell_length),
+                            collection,
+                            mats["trim"],
+                        )
                     )
-                )
     trim = join(f"{kind}_trim", trim_parts, mats["trim"])
 
     def lights(rear):
-        position = 0.02 if rear else 0.98
+        layout = end_layout(spec, rear)
+        direction = -1 if rear else 1
         output = []
         for side in (-1, 1):
             output.append(
                 cube(
                     f"{kind}_{'tail' if rear else 'head'}light_part",
                     (
-                        side * body_half_width(spec, position) * 0.62,
-                        spec["sill"] + (0.44 if rear else 0.38),
-                        -spec["length"] * 0.5 + 0.05 if rear else spec["length"] * 0.5 - 0.05,
+                        side * layout["lamp_x"],
+                        spec["sill"] + layout["lamp_y"],
+                        layout["z"] - direction * 0.03,
                     ),
-                    (spec["width"] * 0.24, 0.17, 0.14),
+                    (layout["lamp_width"], layout["lamp_height"], 0.1),
                     collection,
                     mats["tail" if rear else "head"],
-                    0.02,
+                    0.015,
                 )
             )
         return join(
@@ -572,30 +724,26 @@ def build_vehicle(kind, spec, mats, display_x):
     taillights = lights(True)
     wheels = []
     for position_name, x, y, z in wheel_positions(spec):
-        tyre = cylinder(
-            f"{kind}_{position_name}_tyre",
-            (x, y, z),
-            spec["wheel_radius"],
-            spec["wheel_width"],
-            collection,
-            mats["tyre"],
-            16,
-            "x",
+        wheels.append(
+            tyre(
+                f"{kind}_{position_name}_tyre",
+                (x, y, z),
+                spec["wheel_radius"],
+                spec["wheel_width"],
+                collection,
+                mats["tyre"],
+            )
         )
-        rim = cylinder(
-            f"{kind}_{position_name}_rim",
-            (x, y, z),
-            spec["wheel_radius"] * 0.6,
-            spec["wheel_width"] * 1.02,
-            collection,
-            mats["rim"],
-            12,
-            "x",
+        wheels.append(
+            rim(
+                f"{kind}_{position_name}_rim",
+                (x, y, z),
+                spec["wheel_radius"],
+                spec["wheel_width"],
+                collection,
+                mats["rim"],
+            )
         )
-        for wheel_part in (tyre, rim):
-            for polygon in wheel_part.data.polygons:
-                polygon.use_smooth = True
-        wheels.extend([tyre, rim])
 
     peak = spec["sill"] + max(station[3] for station in spec["cabin"])
     topper = cube(
@@ -607,12 +755,28 @@ def build_vehicle(kind, spec, mats, display_x):
         0.08,
     )
 
-    fleet_parts = [
-        cube(f"{kind}_fleet_bumper_front", (0, -0.27, 2.54), (2.34, 0.25, 0.2), collection, mats["trim"]),
-        cube(f"{kind}_fleet_bumper_rear", (0, -0.27, -2.54), (2.34, 0.25, 0.2), collection, mats["trim"]),
-        cube(f"{kind}_fleet_grille", (0, -0.18, 2.65), (1.16, 0.24, 0.08), collection, mats["trim"]),
-        cube(f"{kind}_fleet_diffuser", (0, -0.37, -2.65), (1.24, 0.18, 0.1), collection, mats["trim"]),
-    ]
+    # Coarse instancing LOD: same footprint as the full trim, without bevels or small details.
+    fleet_parts = []
+    for rear, layout in ((False, front), (True, back)):
+        direction = -1 if rear else 1
+        fleet_parts.append(
+            cube(
+                f"{kind}_fleet_bumper_{'rear' if rear else 'front'}",
+                (0, spec["sill"] + layout["bumper_y"], layout["z"] - direction * 0.06),
+                (layout["bumper_width"], 0.22, 0.22),
+                collection,
+                mats["trim"],
+            )
+        )
+    fleet_parts.append(
+        cube(
+            f"{kind}_fleet_grille",
+            (0, spec["sill"] + front["lamp_y"], front["z"] - 0.02),
+            (max(0.3, 2 * (front["lamp_x"] - front["lamp_width"] * 0.5) - 0.12), front["lamp_height"] * 0.85, 0.08),
+            collection,
+            mats["trim"],
+        )
+    )
     for _, x, _, z in wheel_positions(spec):
         fleet_parts.append(
             cylinder(

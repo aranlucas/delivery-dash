@@ -11,7 +11,7 @@ Delivery Dash is a browser-based multiplayer 3D racing game for up to eight frie
 
 ![Illustrated cover art showing a coastal delivery race](docs/images/delivery-dash-cover.png)
 
-*Illustrated cover art; see the game modes below for implemented gameplay.*
+_Illustrated cover art; see the game modes below for implemented gameplay._
 
 ## Game modes
 

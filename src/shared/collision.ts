@@ -52,25 +52,15 @@ export function buildGrid(boxes: AABB[], cell = 50): SpatialGrid {
 
   for (let index = 0; index < boxes.length; index++) {
     const box = boxes[index]!;
-    const colStart = clampInt(
-      Math.floor((box.minX - minX) / cell),
-      0,
-      cols - 1,
-    );
+    const colStart = clampInt(Math.floor((box.minX - minX) / cell), 0, cols - 1);
     const colEnd = clampInt(Math.floor((box.maxX - minX) / cell), 0, cols - 1);
-    const rowStart = clampInt(
-      Math.floor((box.minZ - minZ) / cell),
-      0,
-      rows - 1,
-    );
+    const rowStart = clampInt(Math.floor((box.minZ - minZ) / cell), 0, rows - 1);
     const rowEnd = clampInt(Math.floor((box.maxZ - minZ) / cell), 0, rows - 1);
     spans.set([colStart, colEnd, rowStart, rowEnd], index * 4);
     for (let row = rowStart; row <= rowEnd; row++)
-      for (let col = colStart; col <= colEnd; col++)
-        bucketStart[row * cols + col + 1]!++;
+      for (let col = colStart; col <= colEnd; col++) bucketStart[row * cols + col + 1]!++;
   }
-  for (let index = 0; index < cellCount; index++)
-    bucketStart[index + 1]! += bucketStart[index]!;
+  for (let index = 0; index < cellCount; index++) bucketStart[index + 1]! += bucketStart[index]!;
 
   const bucketItems = new Int32Array(bucketStart[cellCount]!);
   const cursor = Int32Array.from(bucketStart.subarray(0, cellCount));
@@ -112,13 +102,7 @@ export function queryRange(
       for (let cursor = grid.bucketStart[bucket]!; cursor < end; cursor++) {
         const boxIndex = grid.bucketItems[cursor]!;
         const box = grid.boxes[boxIndex]!;
-        if (
-          box.maxX < minX ||
-          box.minX > maxX ||
-          box.maxZ < minZ ||
-          box.minZ > maxZ
-        )
-          continue;
+        if (box.maxX < minX || box.minX > maxX || box.maxZ < minZ || box.minZ > maxZ) continue;
         let duplicate = false;
         for (let index = 0; index < count; index++)
           if (out[index] === boxIndex) {

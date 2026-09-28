@@ -9,5 +9,4 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-export const randomInt = (random: () => number, max: number) =>
-  Math.floor(random() * max);
+export const randomInt = (random: () => number, max: number) => Math.floor(random() * max);

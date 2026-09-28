@@ -4,7 +4,7 @@
 street props. The runtime-ready GLBs live under `public/models/`.
 
 To rebuild them, open Blender's Scripting workspace and run `build_assets.py`, or execute it through
-the configured `ahujasid/blender-mcp` server. The script deliberately keeps wheel, glass, trim, lamp,
+the Blender Lab MCP server configured in `.mcp.json` (requires the Blender Lab `mcp` extension). The script deliberately keeps wheel, glass, trim, lamp,
 and body meshes named separately so the game can recolor and animate them while sharing geometry.
 
 ## Coastal map landmarks
