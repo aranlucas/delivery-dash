@@ -62,4 +62,4 @@ The second command also waits for Rush Hour's actual three-minute server deadlin
 pnpm deploy
 ```
 
-The Cloudflare Worker, Durable Object, and client configuration live in [`wrangler.jsonc`](wrangler.jsonc). Keep local secrets in ignored `.dev.vars` files.
+The Cloudflare Worker, Durable Object, and client configuration live in [`cloudflare.config.ts`](cloudflare.config.ts). Keep local secrets in ignored `.dev.vars` files.
