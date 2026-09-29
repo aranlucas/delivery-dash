@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "pnpm typecheck && vite build",
     "preview": "pnpm build && vite preview",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm build && cf deploy --prebuilt",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "format": "oxfmt .",
@@ -26,17 +26,18 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.54.2",
+    "@cloudflare/vite-plugin": "^2.0.0-beta.sha-ad79608dd",
     "@types/node": "^26.6.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "cf": "1.0.0-beta.5",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
-    "wrangler": "^4.135.0"
+    "wrangler": "^4.143.0"
   },
   "engines": {
     "node": ">=24 <27",
