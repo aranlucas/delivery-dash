@@ -3,8 +3,8 @@ import { test } from "node:test";
 import * as THREE from "three";
 import { generateCity, groundHeightAt, safeTravel, STEP_UP, type City, type Ramp } from "./city.ts";
 import { buildGrid } from "./collision.ts";
-import { rampSurface, rampBlocks, crossesLanding } from "./ramps.ts";
-import { makeRampGeometry } from "../client/game/rampGeometry.ts";
+import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "./ramps.ts";
+import { makeRampGeometry } from "../client/game/ramp-geometry.ts";
 
 const point = (ramp: Ramp, across: number, along: number): [number, number] => [
   ramp.x + Math.cos(ramp.yaw) * across + Math.sin(ramp.yaw) * along,
@@ -94,6 +94,64 @@ test("boost-speed approach can climb and leave the lip without a collision", () 
       height = groundHeightAt(city, 0, z + step, height);
     }
   }
+});
+
+test("raised approaches have a visible underside and allow cars through with roof clearance", () => {
+  const grade: Ramp = { ...ramp, length: 70, width: 13, height: 11, kind: "grade" };
+  const geometry = makeRampGeometry(grade);
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.Mesh(geometry, material);
+  const ray = new THREE.Raycaster(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+  const hit = ray.intersectObject(mesh)[0];
+  assert.ok(hit, "approach has no visible soffit");
+  assert.ok(Math.abs(hit.point.y - rampUnderside(grade, 0.5)) < 1e-5);
+  for (const yaw of [0, Math.PI / 2, Math.PI, -0.63]) {
+    const r = { ...grade, yaw };
+    assert.equal(rampBlocks(r, ...point(r, 0, 0), 0, STEP_UP), false, "centre underpass blocked");
+    assert.equal(rampBlocks(r, ...point(r, 7, 0), 0, STEP_UP), false, "side underpass blocked");
+    assert.equal(rampBlocks(r, ...point(r, 0, 0), 4, STEP_UP), true, "roof penetrates slab");
+    assert.equal(rampBlocks(r, ...point(r, 0, -25), 0, STEP_UP), true, "low soffit admits a car");
+    assert.equal(rampBlocks(r, ...point(r, 0, 0), 5.5, STEP_UP), false, "road surface blocked");
+    assert.equal(rampBlocks(r, ...point(r, 5, 0), 5.5, STEP_UP), true, "barrier permits side exit");
+    assert.equal(
+      rampBlocks(r, ...point(r, 5, 0), 6.5, STEP_UP),
+      false,
+      "jump above barrier blocked",
+    );
+  }
+  geometry.dispose();
+  material.dispose();
+});
+
+test("expressway approaches remain clear to climb, descend and merge with their decks", () => {
+  const city = generateCity(2026);
+  for (const r of city.ramps.filter((r) => r.kind === "grade")) {
+    let height = 0;
+    for (let along = -r.length / 2; along < r.length / 2 + 3; along += 0.7) {
+      const [x, z] = point(r, 0, along);
+      assert.equal(
+        safeTravel(city, x, z, Math.sin(r.yaw) * 0.7, Math.cos(r.yaw) * 0.7, height),
+        1,
+        `grade ascent or merge blocked at ${x},${z}`,
+      );
+      height = groundHeightAt(city, ...point(r, 0, along + 0.7), height);
+    }
+    height = r.height;
+    for (let along = r.length / 2 - 0.1; along > -r.length / 2; along -= 0.7) {
+      const [x, z] = point(r, 0, along);
+      assert.equal(
+        safeTravel(city, x, z, -Math.sin(r.yaw) * 0.7, -Math.cos(r.yaw) * 0.7, height),
+        1,
+        `grade descent blocked at ${x},${z} height=${height}`,
+      );
+      height = groundHeightAt(city, ...point(r, 0, along - 0.7), height);
+    }
+  }
+});
+
+test("a sweep along a ramp cannot lift an airborne car into its side", () => {
+  const city = emptyCity([ramp]);
+  assert.ok(safeTravel(city, 8, 3, -8, 0, 0.5) < 1);
 });
 
 test("airborne height queries and landings do not snap up to a ramp or deck", () => {

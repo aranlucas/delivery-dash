@@ -12,7 +12,7 @@ import {
   type City as CityData,
   type Pos2,
 } from "../../../shared/city";
-import { storefrontModel, storefrontYaw } from "../../../shared/deliveryAssets";
+import { storefrontModel, storefrontYaw } from "../../../shared/delivery-assets";
 import { useInstances, type Instance } from "./instances";
 
 const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];

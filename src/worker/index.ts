@@ -19,7 +19,7 @@ import {
   getObjective,
   isGameMode,
   type GameMode,
-} from "../shared/gameModes.ts";
+} from "../shared/game-modes.ts";
 import {
   generateCity,
   generateOrders,

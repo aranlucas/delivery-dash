@@ -2,8 +2,8 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import type { City as CityData } from "../../../shared/city";
-import type { CarKind } from "../carGeometry";
-import { makeFleetGeometry, useVehicleAsset } from "../modelAssets";
+import type { CarKind } from "../car-geometry";
+import { makeFleetGeometry, useVehicleAsset } from "../model-assets";
 import { trafficCars, updateTraffic } from "../traffic";
 
 const matrix = new THREE.Matrix4();
@@ -18,6 +18,16 @@ type CarFleet = {
   flush: (count?: number) => void;
   meshes: ReactNode;
 };
+
+/** Update mutable GPU buffers without changing React's memoized fleet descriptions. */
+function queueMatrixUpload(mesh: THREE.InstancedMesh, count: number) {
+  const attribute = mesh.instanceMatrix;
+  // Preserve a full initialization upload if the frame loop runs before the next draw.
+  const pendingCount = attribute.updateRanges[0]?.count ?? 0;
+  attribute.clearUpdateRanges();
+  attribute.addUpdateRange(0, Math.max(pendingCount, count * 16));
+  attribute.needsUpdate = true;
+}
 
 /** One instanced vehicle shape: painted bodywork plus glass, trim and lamp passes. */
 function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
@@ -61,12 +71,7 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
       if (!count) return;
       for (const ref of fleet) {
         if (!ref.current) continue;
-        const attribute = ref.current.instanceMatrix;
-        // Preserve a full initialization upload if the frame loop runs before the next draw.
-        const pendingCount = attribute.updateRanges[0]?.count ?? 0;
-        attribute.clearUpdateRanges();
-        attribute.addUpdateRange(0, Math.max(pendingCount, count * 16));
-        attribute.needsUpdate = true;
+        queueMatrixUpload(ref.current, count);
       }
     },
     [fleet, colors.length],

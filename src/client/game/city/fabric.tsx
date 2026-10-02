@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
   BLOCK_SIZE,
+  DECK_HALF,
   GRID_SIZE,
   ROAD_WIDTH,
   WORLD_HALF,
@@ -11,18 +12,15 @@ import {
   roadCenter,
   type City as CityData,
 } from "../../../shared/city";
-import { makeRampGeometry } from "../rampGeometry";
-import { rampHeight } from "../../../shared/ramps";
 import {
   FACADE_STYLES,
   FACADE_TILE_X,
   FACADE_TILE_Y,
-  makeBoostPadTexture,
+  makeAsphaltTexture,
   makeConcreteTexture,
   makeFacade,
   makeGrassTexture,
   makePavingTexture,
-  makeRampHazardTexture,
 } from "../textures";
 import { boxInstance, useInstances, type Instance } from "./instances";
 
@@ -167,8 +165,8 @@ export function Blocks({ city }: { city: CityData }) {
     () => new RoundedBoxGeometry(BLOCK_SIZE - 1, 0.16, BLOCK_SIZE - 1, 2, 0.07),
     [],
   );
-  const paving = useMemo(makePavingTexture, []);
-  const grass = useMemo(makeGrassTexture, []);
+  const paving = useMemo(() => makePavingTexture(), []);
+  const grass = useMemo(() => makeGrassTexture(), []);
   useEffect(
     () => () => {
       slabGeometry.dispose();
@@ -326,149 +324,143 @@ export function Crosswalks() {
   );
 }
 
-export function Ramps({ city }: { city: CityData }) {
-  const grades = useMemo(() => city.ramps.filter((r) => r.kind === "grade"), [city]);
-  const kickers = useMemo(() => city.ramps.filter((r) => r.kind === "kicker"), [city]);
-  const gradeGeometries = useMemo(() => grades.map(makeRampGeometry), [grades]);
-  const kickerGeometry = useMemo(
-    () => makeRampGeometry({ kind: "kicker", length: 1, width: 1, height: 1 }),
-    [],
-  );
-  const kickerItems = useMemo<Instance[]>(
-    () =>
-      kickers.map((r) => ({
-        pos: [r.x, 0, r.z],
-        rotY: r.yaw,
-        scale: [r.width, r.height, r.length],
-      })),
-    [kickers],
-  );
-  // Glowing lip along the launch edge of every kicker.
-  const lips = useMemo<Instance[]>(
-    () =>
-      kickers.map((r) => ({
-        pos: [
-          r.x + Math.sin(r.yaw) * (r.length / 2 - 0.2),
-          rampHeight(r, 1 - 0.2 / r.length) + 0.06,
-          r.z + Math.cos(r.yaw) * (r.length / 2 - 0.2),
-        ],
-        scale: [r.width, 0.12, 0.35],
-        rotY: r.yaw,
-      })),
-    [kickers],
-  );
-  const concrete = useMemo(makeConcreteTexture, []);
-  const hazard = useMemo(makeRampHazardTexture, []);
-  useEffect(
-    () => () => {
-      for (const geometry of gradeGeometries) geometry.dispose();
-      kickerGeometry.dispose();
-      concrete.dispose();
-      hazard.dispose();
-    },
-    [concrete, gradeGeometries, hazard, kickerGeometry],
-  );
-  const kickerMesh = useRef<THREE.InstancedMesh>(null),
-    lipMesh = useRef<THREE.InstancedMesh>(null);
-  useInstances(kickerMesh, kickerItems);
-  useInstances(lipMesh, lips);
-  return (
-    <>
-      {grades.map((ramp, i) => (
-        <mesh
-          key={`${ramp.x}:${ramp.z}:${ramp.yaw}`}
-          geometry={gradeGeometries[i]}
-          position={[ramp.x, 0, ramp.z]}
-          rotation-y={ramp.yaw}
-          castShadow
-          receiveShadow
-        >
-          <meshStandardMaterial map={concrete} roughness={0.94} />
-        </mesh>
-      ))}
-      <instancedMesh
-        ref={kickerMesh}
-        args={[kickerGeometry, undefined, Math.max(1, kickers.length)]}
-        castShadow
-        receiveShadow
-      >
-        <meshStandardMaterial map={hazard} roughness={0.72} />
-      </instancedMesh>
-      <instancedMesh ref={lipMesh} args={[undefined, undefined, Math.max(1, lips.length)]}>
-        <boxGeometry />
-        <meshStandardMaterial color="#ffe89a" emissive="#ffd400" emissiveIntensity={1.6} />
-      </instancedMesh>
-    </>
-  );
-}
+export { Ramps } from "../ramp-structures";
 
 export function Expressway({ city }: { city: CityData }) {
-  const concrete = useMemo(makeConcreteTexture, []);
-  useEffect(() => () => concrete.dispose(), [concrete]);
+  const concrete = useMemo(() => makeConcreteTexture(), []);
+  const asphalt = useMemo(() => {
+    const texture = makeAsphaltTexture();
+    texture.repeat.set(1, 1);
+    return texture;
+  }, []);
+  const decks = useMemo(
+    () =>
+      city.decks.map((deck) => {
+        const width = deck.maxX - deck.minX,
+          depth = deck.maxZ - deck.minZ;
+        const geometry = new THREE.PlaneGeometry(width, depth);
+        const uv = geometry.attributes.uv!;
+        for (let i = 0; i < uv.count; i++)
+          uv.setXY(i, (uv.getX(i) * width) / 4, (uv.getY(i) * depth) / 4);
+        return { deck, geometry };
+      }),
+    [city],
+  );
+  useEffect(
+    () => () => {
+      concrete.dispose();
+      asphalt.dispose();
+    },
+    [concrete, asphalt],
+  );
+  useEffect(
+    () => () => {
+      for (const { geometry } of decks) geometry.dispose();
+    },
+    [decks],
+  );
   const pillars = useMemo(() => city.pillars.map(boxInstance), [city]);
   const rails = useMemo(() => city.rails.map(boxInstance), [city]);
-  const pillarMesh = useRef<THREE.InstancedMesh>(null),
-    railMesh = useRef<THREE.InstancedMesh>(null);
-  useInstances(pillarMesh, pillars);
-  useInstances(railMesh, rails);
-  return (
-    <>
-      {city.decks.map((deck) => (
-        <mesh
-          key={`${deck.minX}:${deck.minZ}`}
-          position={[(deck.minX + deck.maxX) / 2, deck.height - 0.45, (deck.minZ + deck.maxZ) / 2]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[deck.maxX - deck.minX, 0.9, deck.maxZ - deck.minZ]} />
-          <meshStandardMaterial color="#4a525b" roughness={0.95} />
-        </mesh>
-      ))}
-      <instancedMesh
-        ref={pillarMesh}
-        args={[undefined, undefined, Math.max(1, pillars.length)]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry />
-        <meshStandardMaterial map={concrete} roughness={0.95} />
-      </instancedMesh>
-      <instancedMesh ref={railMesh} args={[undefined, undefined, Math.max(1, rails.length)]}>
-        <boxGeometry />
-        <meshStandardMaterial
-          color="#ffd400"
-          emissive="#a35c00"
-          emissiveIntensity={0.35}
-          roughness={0.6}
-        />
-      </instancedMesh>
-    </>
-  );
-}
-
-export function BoostPads({ city }: { city: CityData }) {
-  const texture = useMemo(makeBoostPadTexture, []);
-  useEffect(() => () => texture.dispose(), [texture]);
-  const pads = useMemo<Instance[]>(
+  const caps = useMemo<Instance[]>(
     () =>
-      city.boostPads.map((p) => ({
-        pos: [p.x, p.y + 0.09, p.z],
-        scale: [3.4, 0.1, 8],
-        rotY: p.yaw,
+      city.rails.map((box) => ({
+        pos: [(box.minX + box.maxX) / 2, box.top + 0.015, (box.minZ + box.maxZ) / 2],
+        scale: [box.maxX - box.minX, 0.03, box.maxZ - box.minZ],
       })),
     [city],
   );
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  useInstances(mesh, pads);
+  const markings = useMemo<Instance[]>(() => {
+    const items: Instance[] = [];
+    for (const deck of city.decks) {
+      const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
+      const start = alongX ? deck.minX : deck.minZ;
+      const end = alongX ? deck.maxX : deck.maxZ;
+      const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
+      for (let u = start + 1; u + 3 < end; u += 7)
+        items.push({
+          pos: alongX
+            ? [u + 1.5, deck.height + 0.025, cross]
+            : [cross, deck.height + 0.025, u + 1.5],
+          scale: alongX ? [3, 0.025, 0.14] : [0.14, 0.025, 3],
+        });
+      for (const side of [-1, 1]) {
+        const edge = cross + side * (DECK_HALF - 0.75);
+        items.push({
+          pos: alongX
+            ? [(start + end) / 2, deck.height + 0.025, edge]
+            : [edge, deck.height + 0.025, (start + end) / 2],
+          scale: alongX ? [end - start, 0.025, 0.16] : [0.16, 0.025, end - start],
+        });
+      }
+    }
+    return items;
+  }, [city]);
+  const pillarMesh = useRef<THREE.InstancedMesh>(null),
+    railMesh = useRef<THREE.InstancedMesh>(null),
+    capMesh = useRef<THREE.InstancedMesh>(null),
+    paintMesh = useRef<THREE.InstancedMesh>(null);
+  useInstances(pillarMesh, pillars);
+  useInstances(railMesh, rails);
+  useInstances(capMesh, caps);
+  useInstances(paintMesh, markings);
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, Math.max(1, pads.length)]}>
-      <boxGeometry />
-      <meshStandardMaterial
-        map={texture}
-        emissiveMap={texture}
-        emissive="#3ad9ff"
-        emissiveIntensity={1.5}
-      />
-    </instancedMesh>
+    <>
+      {decks.map(({ deck, geometry }) => (
+        <group key={`${deck.minX}:${deck.minZ}`}>
+          <mesh
+            position={[
+              (deck.minX + deck.maxX) / 2,
+              deck.height - 0.45,
+              (deck.minZ + deck.maxZ) / 2,
+            ]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[deck.maxX - deck.minX, 0.9, deck.maxZ - deck.minZ]} />
+            <meshStandardMaterial map={concrete} color="#dad3c2" roughness={0.93} />
+          </mesh>
+          <mesh
+            geometry={geometry}
+            position={[
+              (deck.minX + deck.maxX) / 2,
+              deck.height + 0.008,
+              (deck.minZ + deck.maxZ) / 2,
+            ]}
+            rotation-x={-Math.PI / 2}
+            receiveShadow
+          >
+            <meshStandardMaterial map={asphalt} roughness={0.97} />
+          </mesh>
+        </group>
+      ))}
+      <instancedMesh
+        ref={pillarMesh}
+        args={[undefined, undefined, pillars.length]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry />
+        <meshStandardMaterial map={concrete} color="#d0c9b9" roughness={0.95} />
+      </instancedMesh>
+      <instancedMesh
+        ref={railMesh}
+        args={[undefined, undefined, rails.length]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry />
+        <meshStandardMaterial map={concrete} color="#eee3cc" roughness={0.9} />
+      </instancedMesh>
+      <instancedMesh ref={capMesh} args={[undefined, undefined, caps.length]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#e8ba53" roughness={0.76} />
+      </instancedMesh>
+      <instancedMesh ref={paintMesh} args={[undefined, undefined, markings.length]}>
+        <boxGeometry />
+        <meshStandardMaterial color="#ffedc4" roughness={0.88} />
+      </instancedMesh>
+    </>
   );
 }
+
+export { BoostPads } from "../boost-pads";
