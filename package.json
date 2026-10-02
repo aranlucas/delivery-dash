@@ -32,7 +32,7 @@
     "@types/react-dom": "^19.2.5",
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "cf": "1.0.0-beta.5",
+    "cf": "1.0.0-beta.10",
     "oxfmt": "^0.71.0",
     "oxlint": "^1.86.0",
     "typescript": "^7.0.2",
