@@ -10,7 +10,7 @@ import {
   type PlayerPub,
   type ServerMessage,
   type Standing,
-} from "../shared/protocol";
+} from "../shared/protocol.ts";
 import {
   CHECKPOINT_COUNT,
   DEFAULT_MODE,
@@ -19,14 +19,14 @@ import {
   getObjective,
   isGameMode,
   type GameMode,
-} from "../shared/gameModes";
+} from "../shared/gameModes.ts";
 import {
   generateCity,
   generateOrders,
   groundHeightAt,
   type City,
   type Order,
-} from "../shared/city";
+} from "../shared/city.ts";
 
 type Player = Omit<PlayerPub, "id">;
 type RoomState = {
@@ -37,6 +37,7 @@ type RoomState = {
   countdownEndsAt?: number;
   raceStartedAt?: number;
   raceEndsAt?: number;
+  rematchAt?: number;
   standings?: Standing[];
 };
 type Attachment = { playerId: string };
@@ -88,6 +89,23 @@ export class RaceRoom extends DurableObject<Env> {
   private async save() {
     if (this.state) await this.ctx.storage.put("state", this.state);
   }
+  private alarmAt(state: RoomState): number | undefined {
+    if (state.phase === "countdown") return state.countdownEndsAt;
+    if (state.phase === "racing") return state.raceEndsAt;
+    if (state.phase === "finished") return state.rematchAt;
+    return undefined;
+  }
+  /** Publish a phase only after its state and wake-up schedule commit together. */
+  private async transition(next: RoomState) {
+    const alarmAt = this.alarmAt(next);
+    await this.ctx.storage.transaction(async (txn) => {
+      await txn.put("state", next);
+      if (alarmAt !== undefined) await txn.setAlarm(alarmAt);
+      else await txn.deleteAlarm();
+    });
+    // Callers build a new state so a failed transaction cannot change the live phase.
+    this.state = next;
+  }
   private playerId(socket: WebSocket): string | undefined {
     return (socket.deserializeAttachment() as Attachment | null)?.playerId;
   }
@@ -105,8 +123,8 @@ export class RaceRoom extends DurableObject<Env> {
     for (const socket of this.sockets())
       if (this.playerId(socket) !== exceptId) this.send(socket, message);
   }
-  private roster(): PlayerPub[] {
-    return Object.entries(this.state?.players ?? {}).map(([id, player]) => ({
+  private roster(state = this.state): PlayerPub[] {
+    return Object.entries(state?.players ?? {}).map(([id, player]) => ({
       id,
       ...player,
     }));
@@ -123,9 +141,9 @@ export class RaceRoom extends DurableObject<Env> {
       standings: s.standings,
     };
   }
-  private standings(): Standing[] {
-    return this.roster()
-      .sort((a, b) => comparePlayers(this.state!.mode, a, b))
+  private standings(state = this.state!): Standing[] {
+    return this.roster(state)
+      .sort((a, b) => comparePlayers(state.mode, a, b))
       .map(({ id, name, deliveries, checkpointIndex }) => ({
         id,
         name,
@@ -216,12 +234,17 @@ export class RaceRoom extends DurableObject<Env> {
       const alive = new Set(this.sockets().map((s) => this.playerId(s)));
       for (const id of Object.keys(state.players)) if (!alive.has(id)) delete state.players[id];
       if (!Object.keys(state.players).length && state.phase !== "lobby") {
-        state.phase = "lobby";
-        state.countdownEndsAt = undefined;
-        state.raceStartedAt = undefined;
-        state.raceEndsAt = undefined;
-        state.standings = undefined;
-        await this.ctx.storage.deleteAlarm();
+        const next: RoomState = {
+          ...state,
+          phase: "lobby",
+          countdownEndsAt: undefined,
+          raceStartedAt: undefined,
+          raceEndsAt: undefined,
+          rematchAt: undefined,
+          standings: undefined,
+        };
+        await this.transition(next);
+        state = next;
       }
     }
     if (!state) {
@@ -271,10 +294,11 @@ export class RaceRoom extends DurableObject<Env> {
     const state = this.state!;
     const players = Object.values(state.players);
     if (state.phase !== "lobby" || !players.length || !players.every((p) => p.ready)) return;
-    state.phase = "countdown";
-    state.countdownEndsAt = Date.now() + COUNTDOWN_MS;
-    await this.save();
-    await this.ctx.storage.setAlarm(state.countdownEndsAt);
+    await this.transition({
+      ...state,
+      phase: "countdown",
+      countdownEndsAt: Date.now() + COUNTDOWN_MS,
+    });
     this.broadcast(this.phaseMessage());
   }
 
@@ -307,7 +331,7 @@ export class RaceRoom extends DurableObject<Env> {
       id,
     );
     if (state.phase !== "racing") return; // lobby/countdown: free-roam relay only, no delivery progress
-    const player = state.players[id]!;
+    const player = { ...state.players[id]! };
     const { city, orders } = this.route(state.seed);
     const target = getObjective(state.mode, city, orders, player);
     if (!target) return; // Free Drive intentionally has no objective or progress.
@@ -325,32 +349,40 @@ export class RaceRoom extends DurableObject<Env> {
       player.orderIndex++;
       player.leg = "pickup";
     }
-    await this.save();
-    this.broadcast({
+    const next = { ...state, players: { ...state.players, [id]: player } };
+    const progress: Extract<ServerMessage, { t: "progress" }> = {
       t: "progress",
       id,
       orderIndex: player.orderIndex,
       leg: player.leg,
       deliveries: player.deliveries,
       checkpointIndex: player.checkpointIndex,
-    });
+    };
     if (
       (state.mode === "delivery" && player.deliveries >= DELIVERIES_TO_WIN) ||
       (state.mode === "checkpoint" && player.checkpointIndex >= CHECKPOINT_COUNT)
-    )
-      await this.finish();
+    ) {
+      await this.finish(next, progress);
+    } else {
+      await this.ctx.storage.put("state", next);
+      this.state = next;
+      this.broadcast(progress);
+    }
   }
 
-  private async finish() {
-    const state = this.state!;
+  private async finish(state = this.state!, progress?: Extract<ServerMessage, { t: "progress" }>) {
     if (state.phase === "finished") return;
-    state.phase = "finished";
-    state.raceEndsAt = undefined;
-    state.standings = this.standings();
-    await this.save();
+    const standings = this.standings(state);
+    await this.transition({
+      ...state,
+      phase: "finished",
+      raceEndsAt: undefined,
+      rematchAt: Date.now() + FINISH_LINGER_MS,
+      standings,
+    });
+    if (progress) this.broadcast(progress);
     this.broadcast(this.phaseMessage());
-    this.broadcast({ t: "win", standings: state.standings });
-    await this.ctx.storage.setAlarm(Date.now() + FINISH_LINGER_MS);
+    this.broadcast({ t: "win", standings });
   }
 
   async webSocketClose(socket: WebSocket): Promise<void> {
@@ -364,9 +396,9 @@ export class RaceRoom extends DurableObject<Env> {
     if (!state || !id || !state.players[id]) return;
     delete state.players[id];
     if (!Object.keys(state.players).length) {
-      this.state = undefined;
-      await this.ctx.storage.deleteAlarm();
+      // With our compatibility date, deleteAll atomically clears data and the alarm.
       await this.ctx.storage.deleteAll();
+      this.state = undefined;
       return;
     }
     await this.save();
@@ -377,30 +409,36 @@ export class RaceRoom extends DurableObject<Env> {
   async alarm(): Promise<void> {
     const state = await this.load();
     if (!state) return;
+    const now = Date.now();
+    const alarmAt = this.alarmAt(state);
+    // An old/retried delivery must not advance a newer phase before its deadline.
+    if (alarmAt !== undefined && now < alarmAt) {
+      await this.ctx.storage.setAlarm(alarmAt);
+      return;
+    }
     if (state.phase === "countdown") {
-      state.phase = "racing";
-      state.raceStartedAt = Date.now();
-      state.countdownEndsAt = undefined;
-      state.raceEndsAt = state.mode === "rush" ? state.raceStartedAt + RUSH_DURATION_MS : undefined;
-      await this.save();
-      if (state.raceEndsAt) await this.ctx.storage.setAlarm(state.raceEndsAt);
+      await this.transition({
+        ...state,
+        phase: "racing",
+        raceStartedAt: now,
+        countdownEndsAt: undefined,
+        raceEndsAt: state.mode === "rush" ? now + RUSH_DURATION_MS : undefined,
+      });
       this.broadcast(this.phaseMessage());
       return;
     }
     if (state.phase === "racing" && state.mode === "rush" && state.raceEndsAt) {
-      if (Date.now() < state.raceEndsAt) {
-        await this.ctx.storage.setAlarm(state.raceEndsAt);
-        return;
-      }
       await this.finish();
       return;
     }
     if (state.phase === "finished") {
-      state.phase = "lobby";
-      state.standings = undefined;
-      state.raceStartedAt = undefined;
-      state.raceEndsAt = undefined;
-      for (const player of Object.values(state.players))
+      const next = structuredClone(state);
+      next.phase = "lobby";
+      next.standings = undefined;
+      next.raceStartedAt = undefined;
+      next.raceEndsAt = undefined;
+      next.rematchAt = undefined;
+      for (const player of Object.values(next.players))
         Object.assign(player, {
           ready: false,
           deliveries: 0,
@@ -408,7 +446,7 @@ export class RaceRoom extends DurableObject<Env> {
           leg: "pickup",
           checkpointIndex: 0,
         });
-      await this.save();
+      await this.transition(next);
       this.broadcast(this.phaseMessage());
       this.broadcast({ t: "roster", players: this.roster() });
     }

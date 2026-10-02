@@ -19,5 +19,6 @@
     "src/shared",
     "src/client/game/arcadeRewards.ts",
     "src/client/game/rampGeometry.ts"
-  ]
+  ],
+  "exclude": ["src/worker"]
 }
