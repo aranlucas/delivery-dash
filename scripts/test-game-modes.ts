@@ -20,7 +20,7 @@ import {
   RUSH_DURATION_MS,
   getCheckpoints,
   type GameMode,
-} from "../src/shared/gameModes.ts";
+} from "../src/shared/game-modes.ts";
 
 type WireMessage = Record<string, unknown> & { t: string };
 type WireMode = GameMode | string;

@@ -7,7 +7,7 @@ import {
   RUSH_DURATION_MS,
   getObjective,
   type GameMode,
-} from "../shared/gameModes.ts";
+} from "../shared/game-modes.ts";
 import {
   COUNTDOWN_MS,
   DELIVERIES_TO_WIN,

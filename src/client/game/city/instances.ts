@@ -29,8 +29,11 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
       mesh.setMatrixAt(i, matrix);
       if (it.color) mesh.setColorAt(i, color.set(it.color));
     });
+    mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingBox();
+    mesh.computeBoundingSphere();
   }, [ref, items]);
 }
 

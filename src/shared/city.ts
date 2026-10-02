@@ -3,8 +3,14 @@ import {
   storefrontYaw,
   modelColliders,
   jumpGatePosition,
-} from "./deliveryAssets.ts";
-import { rampSurface, rampBlocks } from "./ramps.ts";
+} from "./delivery-assets.ts";
+import {
+  RAMP_BARRIER_WIDTH,
+  RAMP_BARRIER_HEIGHT,
+  rampSurface,
+  rampBlocks,
+  rampUnderside,
+} from "./ramps.ts";
 export { rampSurface } from "./ramps.ts";
 
 import { mulberry32, randomInt } from "./rng.ts";
@@ -142,6 +148,33 @@ const districtColors = [
 export const blockCenter = (index: number) =>
   -WORLD_HALF + ROAD_WIDTH + BLOCK_SIZE / 2 + index * PITCH;
 export const roadCenter = (index: number) => -WORLD_HALF + index * PITCH + ROAD_WIDTH / 2;
+
+/** Short waterfront rails close each street; the stretches between streets stay landscaped. */
+export const COAST_ROAD_ENDS: AABB[] = Array.from({ length: GRID_SIZE }, (_, index) =>
+  [-1, 1].flatMap((side) => {
+    const edge = side * (WORLD_HALF - 2.75);
+    const cross = roadCenter(index);
+    const half = ROAD_WIDTH / 2 - 0.3;
+    return [
+      {
+        minX: edge - 0.22,
+        maxX: edge + 0.22,
+        minZ: cross - half,
+        maxZ: cross + half,
+        base: 0,
+        top: 1.25,
+      },
+      {
+        minX: cross - half,
+        maxX: cross + half,
+        minZ: edge - 0.22,
+        maxZ: edge + 0.22,
+        base: 0,
+        top: 1.25,
+      },
+    ];
+  }),
+).flat();
 
 /** Authored superblocks break up the grid; their interiors are reserved before any scattering. */
 export const CITY_ZONES = [
@@ -301,11 +334,20 @@ export function safeTravel(
   dx: number,
   dz: number,
   height: number,
+  followsGround?: boolean,
 ): number {
   const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.75);
+  const grounded = followsGround ?? Math.abs(groundHeightAt(city, x, z, height, 0) - height) < 0.05;
+  let sweepHeight = height;
   for (let step = 1; step <= steps; step++) {
     const t = step / steps;
-    if (blocked(city, x + dx * t, z + dz * t, height)) return (step - 1) / steps;
+    const nextX = x + dx * t,
+      nextZ = z + dz * t;
+    if (blocked(city, nextX, nextZ, sweepHeight)) return (step - 1) / steps;
+    // Grounded uphill motion follows the visible slope during the sweep. Hold
+    // the lip height after leaving it; airborne motion keeps its own altitude.
+    if (grounded)
+      sweepHeight = Math.max(sweepHeight, groundHeightAt(city, nextX, nextZ, sweepHeight));
   }
   return 1;
 }
@@ -443,24 +485,24 @@ function buildExpressways() {
       if (Math.abs(mid - junction) < DECK_HALF + 9) continue;
       if (Math.abs(((mid - deckStart) % 160) - 80) < 14) continue;
       for (const side of [-1, 1] as const) {
-        const edge = cross + side * DECK_HALF;
+        const edge = cross + side * (DECK_HALF - RAMP_BARRIER_WIDTH / 2);
         rails.push(
           spec.axis === "x"
             ? {
                 minX: u,
                 maxX: segmentEnd,
-                minZ: edge - 0.35,
-                maxZ: edge + 0.35,
+                minZ: edge - RAMP_BARRIER_WIDTH / 2,
+                maxZ: edge + RAMP_BARRIER_WIDTH / 2,
                 base: spec.height,
-                top: spec.height + 1.6,
+                top: spec.height + RAMP_BARRIER_HEIGHT,
               }
             : {
-                minX: edge - 0.35,
-                maxX: edge + 0.35,
+                minX: edge - RAMP_BARRIER_WIDTH / 2,
+                maxX: edge + RAMP_BARRIER_WIDTH / 2,
                 minZ: u,
                 maxZ: segmentEnd,
                 base: spec.height,
-                top: spec.height + 1.6,
+                top: spec.height + RAMP_BARRIER_HEIGHT,
               },
         );
       }
@@ -469,6 +511,38 @@ function buildExpressways() {
     for (let u = deckStart + 45; u < deckEnd; u += 135) {
       const [px, pz] = at(u);
       boostPads.push({ x: px, z: pz, y: spec.height, yaw: alongYaw });
+    }
+  }
+  // Paired columns leave a lane beneath each raised approach. Avoid cross streets
+  // and let the same boxes drive both their rendering and their collision.
+  for (const ramp of ramps) {
+    const alongX = Math.abs(Math.sin(ramp.yaw)) > 0.5;
+    for (let along = -ramp.length / 2 + 14; along < ramp.length / 2 - 5; along += 18) {
+      const t = along / ramp.length + 0.5;
+      const top = rampUnderside(ramp, t);
+      if (top < 2.8) continue;
+      const x = ramp.x + Math.sin(ramp.yaw) * along;
+      const z = ramp.z + Math.cos(ramp.yaw) * along;
+      const roadAlong = alongX ? x : z;
+      if (
+        Array.from({ length: GRID_SIZE }, (_, i) => roadCenter(i)).some(
+          (centre) => Math.abs(roadAlong - centre) < ROAD_WIDTH / 2 + 3,
+        )
+      )
+        continue;
+      for (const side of [-1, 1]) {
+        const across = side * (ramp.width / 2 - 0.7);
+        const px = x + Math.cos(ramp.yaw) * across;
+        const pz = z - Math.sin(ramp.yaw) * across;
+        pillars.push({
+          minX: px - 0.45,
+          maxX: px + 0.45,
+          minZ: pz - 0.45,
+          maxZ: pz + 0.45,
+          base: 0,
+          top,
+        });
+      }
     }
   }
   // Drop any pillar that would spear a deck or ramp running below it.
@@ -836,7 +910,7 @@ export function generateCity(seed: number): City {
       base: 0,
       top: 5.1,
     });
-  buildingAABBs.push(...structures.pillars, ...structures.rails);
+  buildingAABBs.push(...structures.pillars, ...structures.rails, ...COAST_ROAD_ENDS);
   for (const zone of CITY_ZONES) {
     for (const offset of [-43])
       for (const side of [-1, 1])

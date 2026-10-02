@@ -1,4 +1,4 @@
-import type { GameMode } from "./gameModes.ts";
+import type { GameMode } from "./game-modes.ts";
 
 export const DELIVERIES_TO_WIN = 3;
 export const TARGET_RADIUS = 10;

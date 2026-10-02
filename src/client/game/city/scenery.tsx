@@ -13,7 +13,7 @@ import {
   type Pos2,
 } from "../../../shared/city";
 import { mulberry32 } from "../../../shared/rng";
-import { useStreetPropAssets } from "../modelAssets";
+import { useStreetPropAssets } from "../model-assets";
 import { useInstances, type Instance } from "./instances";
 
 export function PalmTrees({ city, seed }: { city: CityData; seed: number }) {

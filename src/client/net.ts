@@ -1,5 +1,5 @@
 import type { ClientMessage, ServerMessage } from "../shared/protocol";
-import { DEFAULT_MODE, type GameMode } from "../shared/gameModes";
+import { DEFAULT_MODE, type GameMode } from "../shared/game-modes";
 import { remotePositions, useGameStore } from "./store";
 
 let socket: WebSocket | undefined;
@@ -72,6 +72,7 @@ function handle(message: ServerMessage) {
       break;
     case "phase":
       store.set({
+        cameraMode: message.phase === "racing" ? store.cameraMode : "drive",
         mode: message.mode,
         phase: message.phase,
         countdownEndsAt: message.countdownEndsAt,

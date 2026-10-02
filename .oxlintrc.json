@@ -1,10 +1,21 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["jsx-a11y", "react", "typescript", "unicorn"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "react/react-in-jsx-scope": "off"
+  },
   "env": {
     "browser": true,
     "node": true,
     "es2026": true
   },
-  "ignorePatterns": ["dist/**", "node_modules/**", "worker-configuration.d.ts"]
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    ".cloudflare/**",
+    ".wrangler/**",
+    "output/playwright/**",
+    "worker-configuration.d.ts"
+  ]
 }

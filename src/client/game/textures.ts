@@ -211,26 +211,53 @@ export function makeGrassTexture() {
   return finish(element, 4);
 }
 
-/** Yellow launch chevrons and edge stripes on dark ramp asphalt. */
+/** One graphic per jump: warm hazard shoulders, grippy deck panels and clear launch arrows. */
 export function makeRampHazardTexture() {
-  const size = 256;
+  const size = 512;
   const [element, ctx] = canvas(size);
-  ctx.fillStyle = "#233844";
+  const rng = mulberry32(31);
+  ctx.fillStyle = "#253740";
   ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = "#ffcd48";
-  ctx.fillRect(8, 12, 9, size - 24);
-  ctx.fillRect(size - 17, 12, 9, size - 24);
-  for (const y of [56, 126, 196]) {
+  grain(ctx, rng, size, 6200, 0.065);
+  ctx.fillStyle = "#d7a440";
+  for (const x of [12, size - 34]) {
+    ctx.fillRect(x, 0, 22, size);
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(48, y + 18);
-    ctx.lineTo(128, y - 18);
-    ctx.lineTo(208, y + 18);
-    ctx.lineTo(208, y + 32);
-    ctx.lineTo(128, y - 4);
-    ctx.lineTo(48, y + 32);
+    ctx.rect(x, 0, 22, size);
+    ctx.clip();
+    ctx.strokeStyle = "#273941";
+    ctx.lineWidth = 11;
+    for (let y = -24; y < size + 24; y += 34) {
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y);
+      ctx.lineTo(x + 32, y + 30);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.strokeStyle = "rgba(150,174,178,0.24)";
+  ctx.lineWidth = 2;
+  for (const y of [96, 208, 320, 432]) {
+    ctx.beginPath();
+    ctx.moveTo(44, y);
+    ctx.lineTo(size - 44, y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#f6d879";
+  for (const y of [94, 226, 358]) {
+    ctx.beginPath();
+    ctx.moveTo(128, y + 40);
+    ctx.lineTo(256, y - 12);
+    ctx.lineTo(384, y + 40);
+    ctx.lineTo(384, y + 61);
+    ctx.lineTo(256, y + 9);
+    ctx.lineTo(128, y + 61);
     ctx.closePath();
     ctx.fill();
   }
+  ctx.fillStyle = "#a9b9ba";
+  ctx.fillRect(44, size - 10, size - 88, 8);
   return finish(element);
 }
 
@@ -259,6 +286,8 @@ export function makeConcreteTexture() {
 export function makeBoostPadTexture() {
   const size = 128;
   const [element, ctx] = canvas(size);
+  ctx.translate(0, size);
+  ctx.scale(1, -1);
   ctx.fillStyle = "#04222c";
   ctx.fillRect(0, 0, size, size);
   for (let i = 0; i < 3; i++) {

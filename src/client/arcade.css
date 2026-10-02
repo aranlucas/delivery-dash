@@ -781,8 +781,8 @@ kbd {
   position: absolute;
   bottom: 24px;
   left: 24px;
-  width: 258px;
-  height: 258px;
+  width: 190px;
+  height: 190px;
   filter: drop-shadow(8px 10px 0 #0008);
 }
 .speed-dial {
@@ -815,7 +815,7 @@ kbd {
   position: relative;
   z-index: 1;
   font-family: Impact, sans-serif;
-  font-size: 78px;
+  font-size: 62px;
   font-style: italic;
   letter-spacing: -0.03em;
   line-height: 0.9;
@@ -854,6 +854,153 @@ kbd {
   font-style: italic;
   letter-spacing: 0.08em;
   text-align: right;
+}
+.arcade-hud.is-pad-boost .boost-meter {
+  box-shadow: 0 0 22px #54e6f288;
+}
+.arcade-hud.is-pad-boost .boost-meter i {
+  background: linear-gradient(90deg, var(--cyan), #c1ffff);
+}
+.recovery-button,
+.city-view-button {
+  position: absolute;
+  right: 22px;
+  bottom: 222px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 190px;
+  min-height: 34px;
+  border: 1px solid #ffffff38;
+  background: #101820ed;
+  color: #d5e4ee;
+  font: 800 10px / 1 sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.recovery-button kbd,
+.city-view-button kbd {
+  min-width: 20px;
+  padding: 3px 5px;
+  border: 1px solid #ffffff66;
+  border-radius: 3px;
+  font: inherit;
+  box-shadow: none;
+}
+.recovery-button:hover,
+.recovery-button:focus-visible,
+.city-view-button:hover,
+.city-view-button:focus-visible {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.recovery-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.city-view-button {
+  bottom: 266px;
+}
+.city-view-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  color: #dbe6eb;
+  pointer-events: none;
+}
+.city-view-header {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+.city-view-header > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px 16px;
+  background: #101820ed;
+  border-left: 3px solid var(--cyan);
+}
+.city-view-header strong {
+  color: var(--cyan);
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: 0.06em;
+}
+.city-view-header span {
+  color: #aabdc8;
+  font-size: 10px;
+}
+.city-view-overlay button {
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid #ffffff38;
+  background: #101820ed;
+  color: #dbe6eb;
+  font: 800 10px / 1.3 sans-serif;
+  letter-spacing: 0.035em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.city-view-overlay button:hover,
+.city-view-overlay button:focus-visible,
+.city-view-overlay button[aria-pressed="true"] {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: #12343de8;
+}
+.city-view-overlay kbd {
+  margin-right: 5px;
+  padding: 2px 4px;
+  border: 1px solid #ffffff40;
+  font: inherit;
+}
+.city-view-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 12px;
+  background: #101820ed;
+  transform: translateX(-50%);
+}
+.city-view-presets,
+.city-view-landmarks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.city-view-landmarks {
+  margin-top: 8px;
+}
+.city-view-controls p {
+  margin: 10px 0 0;
+  color: #aabdc8;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+}
+.recovery-toast {
+  position: absolute;
+  right: 22px;
+  bottom: 310px;
+  width: 190px;
+  padding: 10px 8px;
+  border: 2px solid var(--cyan);
+  background: #101820ed;
+  color: #baffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-align: center;
 }
 
 .stunt-callout {
@@ -967,6 +1114,14 @@ kbd {
   font-style: italic;
   font-weight: 1000;
   letter-spacing: 0.1em;
+}
+.rush-native-meter {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .rush-meter header span {
   color: var(--rush-accent);
@@ -1230,6 +1385,21 @@ kbd {
     width: 138px;
     height: 138px;
   }
+  .recovery-button {
+    width: 138px;
+    bottom: 170px;
+    font-size: 9px;
+  }
+  .city-view-button {
+    width: 138px;
+    bottom: 214px;
+    font-size: 9px;
+  }
+  .recovery-toast {
+    width: 138px;
+    bottom: 258px;
+    font-size: 8px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1382,6 +1552,47 @@ kbd {
   /* the speed cluster claims the bottom-right corner on phones */
   .minimap {
     display: none;
+  }
+  .recovery-button {
+    right: auto;
+    bottom: 116px;
+    left: 12px;
+  }
+  .city-view-button {
+    right: auto;
+    top: 168px;
+    bottom: auto;
+    left: 12px;
+  }
+  .city-view-header {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+  }
+  .city-view-header > div {
+    padding: 9px 10px;
+  }
+  .city-view-header span {
+    max-width: 150px;
+    font-size: 9px;
+    line-height: 1.5;
+  }
+  .city-view-header > button {
+    max-width: 128px;
+  }
+  .city-view-controls {
+    bottom: 12px;
+    max-width: calc(100% - 24px);
+    padding: 8px;
+  }
+  .city-view-overlay button {
+    padding: 7px 9px;
+    font-size: 9px;
+  }
+  .recovery-toast {
+    right: auto;
+    bottom: 160px;
+    left: 12px;
   }
   .air-gauge {
     bottom: 138px;
