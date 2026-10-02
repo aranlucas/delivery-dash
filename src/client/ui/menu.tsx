@@ -25,11 +25,31 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
       <div className="menu-speed-lines" aria-hidden="true" />
       <div className="menu-road" aria-hidden="true" />
       <section className="menu-shell">
-        <header className="arcade-logo" aria-label="Dash Rush">
+        <h1 className="arcade-logo" aria-label="Dash Rush">
           <span>DASH</span>
           <strong>RUSH</strong>
           <small>ONE CITY. FOUR WAYS TO PLAY.</small>
-        </header>
+        </h1>
+
+        <section className="control-strip" aria-label="Keyboard driving controls">
+          <p id="driving-requirements" className="keyboard-note">
+            Keyboard required · WASD or arrows to drive
+          </p>
+          <ul className="control-keys">
+            <li>
+              <kbd>WASD</kbd> DRIVE
+            </li>
+            <li>
+              <kbd>SPACE</kbd> DRIFT · RELEASE TO RUSH
+            </li>
+            <li>
+              <kbd>SHIFT</kbd> BOOST
+            </li>
+            <li>
+              <kbd>R</kbd> RESET CAR
+            </li>
+          </ul>
+        </section>
 
         <form
           className="start-panel arcade-panel"
@@ -44,6 +64,7 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
           <input
             id="driver-name"
             name="driver_name"
+            aria-describedby="driving-requirements"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Enter your name"
@@ -121,21 +142,6 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
             </p>
           ) : null}
         </form>
-
-        <div className="control-strip" aria-label="Driving controls">
-          <span>
-            <kbd>WASD</kbd> DRIVE
-          </span>
-          <span>
-            <kbd>SPACE</kbd> DRIFT · RELEASE TO RUSH
-          </span>
-          <span>
-            <kbd>SHIFT</kbd> BOOST
-          </span>
-          <span>
-            <kbd>R</kbd> RESET CAR
-          </span>
-        </div>
       </section>
     </main>
   );
