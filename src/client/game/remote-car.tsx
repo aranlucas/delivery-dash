@@ -8,9 +8,12 @@ import type { CarLod } from "./car-model";
 import { remotePositions } from "../store";
 
 const RIVAL_KINDS: CarKind[] = ["sedan", "hatch", "sports", "van"];
+
 const kindFor = (id: string) => {
   let hash = 0;
+
   for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) | 0;
+
   return RIVAL_KINDS[Math.abs(hash) % RIVAL_KINDS.length]!;
 };
 
@@ -40,7 +43,9 @@ export function RemoteCar({
   useFrame(({ camera }, dt) => {
     const target = remotePositions.get(id),
       node = root.current;
+
     if (!node) return;
+
     if (!target) {
       node.position.set(spawn[0], 0.8, spawn[1]);
     } else {
@@ -50,13 +55,16 @@ export function RemoteCar({
         Math.min(1, dt * 10);
       node.rotation.y = yaw.current;
     }
+
     // City View can inspect a rival far from our parked car; detail follows the viewer.
     const nextLod = lodFor(node.position.distanceToSquared(camera.position));
+
     if (nextLod !== currentLod.current) {
       currentLod.current = nextLod;
       setLod(nextLod);
     }
   });
+
   return (
     <group ref={root} position={[spawn[0], 0.8, spawn[1]]}>
       <CarVisual color={color} carrying={carrying} name={name} kind={kind} lod={lod} />

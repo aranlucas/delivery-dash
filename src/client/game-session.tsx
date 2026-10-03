@@ -10,6 +10,7 @@ import { CityViewOverlay } from "./ui/city-view";
 export default function GameSession() {
   const phase = useGameStore((state) => state.phase);
   const seed = useGameStore((state) => state.seed);
+
   // Same per-seed cache idea as RaceRoom.route(): generate the city once for this session.
   const world = useMemo(
     () =>
@@ -18,6 +19,7 @@ export default function GameSession() {
         : { seed, city: generateCity(seed), orders: generateOrders(seed) },
     [seed],
   );
+
   return (
     <div
       style={{

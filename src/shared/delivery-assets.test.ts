@@ -14,6 +14,7 @@ test("authored storefronts keep pickup stops and their approach clear across see
     const city = generateCity(seed);
     const shops = city.restaurants.filter((p) => storefrontModel(p.name));
     assert.equal(shops.length, 3);
+
     for (const p of shops) {
       assert.equal(blocked(city, ...p.stop, 0), false, `${seed}: ${p.name} pickup blocked`);
       const boxes = modelColliders(storefrontModel(p.name)!, ...p.pos, storefrontYaw(p));
@@ -26,13 +27,16 @@ test("authored storefronts keep pickup stops and their approach clear across see
     }
   }
 });
+
 test("jump gate posts and overhead beam are solid while the whole jump lane stays open", () => {
   const city = generateCity(2026);
+
   for (const zone of CITY_ZONES.filter((z) => z.id === "stunt" || z.id === "freight")) {
     const [x, z] = jumpGatePosition(zone);
     assert.equal(blocked(city, x + 10, z, 0), true);
     assert.equal(blocked(city, x - 10, z, 0), true);
     assert.equal(blocked(city, x, z, 15), true, "header missing collision");
+
     for (const height of [0, 4, 9, 12]) {
       assert.equal(safeTravel(city, x, z - 3, 0, 6, height), 1, `gate blocked at height ${height}`);
       assert.equal(blocked(city, x - 6, z, height), false, "left lane obstructed");
@@ -40,12 +44,15 @@ test("jump gate posts and overhead beam are solid while the whole jump lane stay
     }
   }
 });
+
 test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
   let totalBytes = 0;
+
   for (const name of ["sushi", "pizza", "depot", "jump-gate", "landing-target"]) {
     const bytes = await readFile(
       new URL(`../../public/models/delivery/${name}.glb`, import.meta.url),
     );
+
     totalBytes += bytes.length;
     assert.equal(bytes.toString("utf8", 0, 4), "glTF");
     const json = JSON.parse(bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12)));
@@ -53,10 +60,12 @@ test("shipping Blender kit stays within its geometry, material and texture budge
     assert.equal(json.textures?.length ?? 0, 0, `${name} unexpectedly downloads textures`);
     const primitives = json.meshes.flatMap((m: { primitives: unknown[] }) => m.primitives);
     assert.equal(primitives.length, 1, `${name} needs more than one draw call`);
+
     const triangles = primitives.reduce(
       (sum: number, p: { indices: number }) => sum + json.accessors[p.indices].count / 3,
       0,
     );
+
     assert.ok(triangles < 3000, `${name} has ${triangles} triangles`);
     assert.ok(
       primitives.every(
@@ -65,5 +74,6 @@ test("shipping Blender kit stays within its geometry, material and texture budge
       "missing vertex palette",
     );
   }
+
   assert.ok(totalBytes < 450_000, `kit is ${totalBytes} bytes`);
 });

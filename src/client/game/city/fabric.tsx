@@ -25,9 +25,13 @@ import {
 import { boxInstance, useInstances, type Instance } from "./instances";
 
 const matrix = new THREE.Matrix4();
+
 const position = new THREE.Vector3();
+
 const quaternion = new THREE.Quaternion();
+
 const scale = new THREE.Vector3();
+
 const tint = new THREE.Color();
 
 /**
@@ -43,6 +47,7 @@ function facadeMaterial(map: THREE.Texture, emissiveMap: THREE.Texture) {
     emissiveIntensity: 0.3,
     roughness: 0.82,
   });
+
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nattribute vec3 facadeSize;")
@@ -62,6 +67,7 @@ function facadeMaterial(map: THREE.Texture, emissiveMap: THREE.Texture) {
         #endif`,
       );
   };
+
   return material;
 }
 
@@ -73,13 +79,16 @@ function BuildingDistrict({
   style: (typeof FACADE_STYLES)[number];
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
+
   const material = useMemo(() => {
     const { mapTexture, glowTexture } = makeFacade(style);
+
     return facadeMaterial(mapTexture, glowTexture);
   }, [style]);
+
   const geometry = useMemo(() => {
-    const shape = new RoundedBoxGeometry(1, 1, 1, 2, 0.035);
-    shape.setAttribute(
+    const outline = new RoundedBoxGeometry(1, 1, 1, 2, 0.035);
+    outline.setAttribute(
       "facadeSize",
       new THREE.InstancedBufferAttribute(
         new Float32Array(
@@ -88,8 +97,10 @@ function BuildingDistrict({
         3,
       ),
     );
-    return shape;
+
+    return outline;
   }, [buildings]);
+
   useEffect(
     () => () => {
       material.map?.dispose();
@@ -101,6 +112,7 @@ function BuildingDistrict({
   );
   useLayoutEffect(() => {
     const instanced = mesh.current;
+
     if (!instanced) return;
     buildings.forEach((b, i) => {
       instanced.setMatrixAt(
@@ -114,8 +126,10 @@ function BuildingDistrict({
       instanced.setColorAt(i, tint.set(b.color).multiplyScalar(1.22));
     });
     instanced.instanceMatrix.needsUpdate = true;
+
     if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
   }, [buildings]);
+
   return (
     <instancedMesh
       ref={mesh}
@@ -131,6 +145,7 @@ export function Buildings({ city }: { city: CityData }) {
     () => FACADE_STYLES.map((_, index) => city.buildings.filter((b) => b.district === index)),
     [city],
   );
+
   return (
     <>
       {FACADE_STYLES.map((style, index) => (
@@ -146,25 +161,31 @@ export function Blocks({ city }: { city: CityData }) {
     const slabs: Instance[] = [],
       parkTops: Instance[] = [],
       cityTops: Instance[] = [];
+
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = blockCenter(gx),
           z = blockCenter(gz);
+
         if (zoneAt(x, z)) continue;
         slabs.push({ pos: [x, 0.06, z] });
         const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
         (park ? parkTops : cityTops).push({ pos: [x, 0.2, z] });
       }
+
     return { slabs, parkTops, cityTops };
   }, [city]);
+
   const slabGeometry = useMemo(
     () => new RoundedBoxGeometry(BLOCK_SIZE + 3, 0.24, BLOCK_SIZE + 3, 2, 0.1),
     [],
   );
+
   const topGeometry = useMemo(
     () => new RoundedBoxGeometry(BLOCK_SIZE - 1, 0.16, BLOCK_SIZE - 1, 2, 0.07),
     [],
   );
+
   const paving = useMemo(() => makePavingTexture(), []);
   const grass = useMemo(() => makeGrassTexture(), []);
   useEffect(
@@ -176,12 +197,15 @@ export function Blocks({ city }: { city: CityData }) {
     },
     [grass, paving, slabGeometry, topGeometry],
   );
+
   const slabMesh = useRef<THREE.InstancedMesh>(null),
     parkMesh = useRef<THREE.InstancedMesh>(null),
     cityMesh = useRef<THREE.InstancedMesh>(null);
+
   useInstances(slabMesh, slabs);
   useInstances(parkMesh, parkTops);
   useInstances(cityMesh, cityTops);
+
   return (
     <>
       <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabs.length]} receiveShadow>
@@ -208,19 +232,26 @@ export function Blocks({ city }: { city: CityData }) {
 export function RoadMarkings({ city }: { city: CityData }) {
   const dashes = useMemo(() => {
     const items: Instance[] = [];
+
     for (let i = 0; i < GRID_SIZE; i++) {
       const c = roadCenter(i);
+
       for (let d = -WORLD_HALF + 4; d < WORLD_HALF - 4; d += 7) {
         if (!zoneAt(c, d + 1.5)) items.push({ pos: [c, 0.03, d + 1.5], scale: [0.35, 1, 3] });
+
         if (!zoneAt(d + 1.5, c)) items.push({ pos: [d + 1.5, 0.03, c], scale: [3, 1, 0.35] });
       }
     }
+
     // Lane dashes carry on across the elevated decks.
     for (const deck of city.decks) {
       const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
+
       const from = alongX ? deck.minX : deck.minZ,
         to = alongX ? deck.maxX : deck.maxZ;
+
       const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
+
       for (let d = from + 3; d < to - 3; d += 7)
         items.push(
           alongX
@@ -231,10 +262,13 @@ export function RoadMarkings({ city }: { city: CityData }) {
               },
         );
     }
+
     return items;
   }, [city]);
+
   const mesh = useRef<THREE.InstancedMesh>(null);
   useInstances(mesh, dashes);
+
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, dashes.length]}>
       <boxGeometry args={[1, 0.02, 1]} />
@@ -248,11 +282,14 @@ export function ArcadeCurbs() {
     const yellow: Instance[] = [];
     const black: Instance[] = [];
     const edge = BLOCK_SIZE / 2 + 1.62;
+
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++) {
         const cx = blockCenter(gx),
           cz = blockCenter(gz);
+
         if (zoneAt(cx, cz)) continue;
+
         for (let n = -BLOCK_SIZE / 2 + 2; n < BLOCK_SIZE / 2; n += 4) {
           const target = (Math.floor((n + BLOCK_SIZE / 2) / 4) + gx + gz) % 2 ? black : yellow;
           target.push({
@@ -273,12 +310,16 @@ export function ArcadeCurbs() {
           });
         }
       }
+
     return { yellow, black };
   }, []);
+
   const yellowMesh = useRef<THREE.InstancedMesh>(null),
     blackMesh = useRef<THREE.InstancedMesh>(null);
+
   useInstances(yellowMesh, yellow);
   useInstances(blackMesh, black);
+
   return (
     <>
       <instancedMesh ref={yellowMesh} args={[undefined, undefined, yellow.length]}>
@@ -296,11 +337,14 @@ export function ArcadeCurbs() {
 export function Crosswalks() {
   const stripes = useMemo(() => {
     const items: Instance[] = [];
+
     for (let gx = 0; gx < GRID_SIZE; gx++)
       for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = roadCenter(gx),
           z = roadCenter(gz);
+
         if (zoneAt(x, z, 8)) continue;
+
         for (let s = -2; s <= 2; s++) {
           items.push({
             pos: [x + s * 1.65, 0.05, z + ROAD_WIDTH / 2 - 1.2],
@@ -312,10 +356,13 @@ export function Crosswalks() {
           });
         }
       }
+
     return items;
   }, []);
+
   const mesh = useRef<THREE.InstancedMesh>(null);
   useInstances(mesh, stripes);
+
   return (
     <instancedMesh ref={mesh} args={[undefined, undefined, stripes.length]}>
       <boxGeometry />
@@ -328,24 +375,31 @@ export { Ramps } from "../ramp-structures";
 
 export function Expressway({ city }: { city: CityData }) {
   const concrete = useMemo(() => makeConcreteTexture(), []);
+
   const asphalt = useMemo(() => {
     const texture = makeAsphaltTexture();
     texture.repeat.set(1, 1);
+
     return texture;
   }, []);
+
   const decks = useMemo(
     () =>
       city.decks.map((deck) => {
         const width = deck.maxX - deck.minX,
           depth = deck.maxZ - deck.minZ;
+
         const geometry = new THREE.PlaneGeometry(width, depth);
         const uv = geometry.attributes.uv!;
+
         for (let i = 0; i < uv.count; i++)
           uv.setXY(i, (uv.getX(i) * width) / 4, (uv.getY(i) * depth) / 4);
+
         return { deck, geometry };
       }),
     [city],
   );
+
   useEffect(
     () => () => {
       concrete.dispose();
@@ -361,6 +415,7 @@ export function Expressway({ city }: { city: CityData }) {
   );
   const pillars = useMemo(() => city.pillars.map(boxInstance), [city]);
   const rails = useMemo(() => city.rails.map(boxInstance), [city]);
+
   const caps = useMemo<Instance[]>(
     () =>
       city.rails.map((box) => ({
@@ -369,13 +424,16 @@ export function Expressway({ city }: { city: CityData }) {
       })),
     [city],
   );
+
   const markings = useMemo<Instance[]>(() => {
     const items: Instance[] = [];
+
     for (const deck of city.decks) {
       const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
       const start = alongX ? deck.minX : deck.minZ;
       const end = alongX ? deck.maxX : deck.maxZ;
       const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
+
       for (let u = start + 1; u + 3 < end; u += 7)
         items.push({
           pos: alongX
@@ -383,6 +441,7 @@ export function Expressway({ city }: { city: CityData }) {
             : [cross, deck.height + 0.025, u + 1.5],
           scale: alongX ? [3, 0.025, 0.14] : [0.14, 0.025, 3],
         });
+
       for (const side of [-1, 1]) {
         const edge = cross + side * (DECK_HALF - 0.75);
         items.push({
@@ -393,16 +452,20 @@ export function Expressway({ city }: { city: CityData }) {
         });
       }
     }
+
     return items;
   }, [city]);
+
   const pillarMesh = useRef<THREE.InstancedMesh>(null),
     railMesh = useRef<THREE.InstancedMesh>(null),
     capMesh = useRef<THREE.InstancedMesh>(null),
     paintMesh = useRef<THREE.InstancedMesh>(null);
+
   useInstances(pillarMesh, pillars);
   useInstances(railMesh, rails);
   useInstances(capMesh, caps);
   useInstances(paintMesh, markings);
+
   return (
     <>
       {decks.map(({ deck, geometry }) => (

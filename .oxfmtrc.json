@@ -6,6 +6,7 @@
     ".cloudflare/**",
     ".wrangler/**",
     "output/playwright/**",
-    "worker-configuration.d.ts"
+    "worker-configuration.d.ts",
+    "tools/oxlint/anti-slop/**"
   ]
 }

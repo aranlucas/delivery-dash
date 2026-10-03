@@ -16,6 +16,7 @@ export const wheelDrive = { speed: 0 };
 
 /** UI and keyboard share one request; the frame loop owns the actual recovery. */
 export const drivingRequests = { recovery: 0 };
+
 export const requestCarRecovery = () => {
   drivingRequests.recovery++;
 };

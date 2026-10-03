@@ -11,6 +11,7 @@ import { CHECKPOINT_COUNT } from "../../shared/game-modes";
 export function CheckpointGate({ place, number }: { place: Place; number: number }) {
   const acrossX = Math.abs(place.stop[0] - place.pos[0]) < Math.abs(place.stop[1] - place.pos[1]);
   const color = number === CHECKPOINT_COUNT ? "#ffd400" : "#00dcff";
+
   return (
     <group position={[place.stop[0], 0, place.stop[1]]} rotation-y={acrossX ? Math.PI / 2 : 0}>
       {[-7, 7].map((x) => (
@@ -61,8 +62,10 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
   useFrame(({ clock }) => {
     const s = 1 + Math.sin(clock.elapsedTime * 2.5) * 0.1;
     ring.current?.scale.set(s, s, 1);
+
     if (ring.current) ring.current.rotation.z = clock.elapsedTime * 0.32;
   });
+
   return (
     <group position={[pos[0], 0, pos[1]]}>
       <mesh ref={ring} rotation-x={-Math.PI / 2} position={[0, 0.34, 0]}>
@@ -103,19 +106,26 @@ export function TargetPointer({
   const chevrons = useRef<Array<THREE.Mesh | null>>([]);
   useFrame(({ clock }) => {
     const g = group.current;
+
     if (!g) return;
     // ownPose.y includes the 0.8m ride height, so this hugs flat roads, ramps,
     // and elevated decks while still following the car through a jump.
     g.position.set(ownPose.x, ownPose.y - 0.65, ownPose.z);
     g.rotation.y = worldBearing(ownPose.x, ownPose.z, target[0], target[1]);
+
     for (let index = 0; index < chevrons.current.length; index++) {
       const chevron = chevrons.current[index];
+
       if (!chevron) continue;
       const phase = (clock.elapsedTime * 0.85 + index / CHEVRON_COUNT) % 1;
       chevron.position.z = 4 + phase * 7;
-      (chevron.material as THREE.MeshBasicMaterial).opacity = Math.sin(phase * Math.PI) * 0.75;
+
+      if (chevron.material instanceof THREE.MeshBasicMaterial) {
+        chevron.material.opacity = Math.sin(phase * Math.PI) * 0.75;
+      }
     }
   });
+
   return (
     <group ref={group}>
       {Array.from({ length: CHEVRON_COUNT }, (_, index) => (

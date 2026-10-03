@@ -27,6 +27,7 @@ import {
 export function City({ city, seed }: { city: CityData; seed: number }) {
   const asphalt = useMemo(() => makeAsphaltTexture(), []);
   useEffect(() => () => asphalt.dispose(), [asphalt]);
+
   return (
     <group>
       {/* asphalt ground */}

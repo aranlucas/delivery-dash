@@ -16,6 +16,7 @@ import { storefrontModel, storefrontYaw } from "../../../shared/delivery-assets"
 import { useInstances, type Instance } from "./instances";
 
 const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];
+
 const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
 
 /** Yaw that turns a place's +z front toward the street corner it sits in. */
@@ -27,6 +28,7 @@ function outwardYaw([x, z]: Pos2) {
         Math.min(GRID_SIZE - 1, Math.round((v + WORLD_HALF - ROAD_WIDTH - BLOCK_SIZE / 2) / PITCH)),
       ),
     );
+
   return Math.atan2(Math.sign(x - grid(x)) || 1, Math.sign(z - grid(z)) || 1);
 }
 
@@ -40,6 +42,7 @@ function placeOffset(
 ): [number, number, number] {
   const cosine = Math.cos(yaw);
   const sine = Math.sin(yaw);
+
   return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
 }
 
@@ -124,6 +127,7 @@ function PlaceProps({ city }: { city: CityData }) {
     }),
     [],
   );
+
   const restaurantMesh = useRef<THREE.InstancedMesh>(null);
   const houseMesh = useRef<THREE.InstancedMesh>(null);
   const roofMesh = useRef<THREE.InstancedMesh>(null);

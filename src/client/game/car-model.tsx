@@ -12,30 +12,36 @@ const glassMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.5,
   roughness: 0.08,
 });
+
 const trimMaterial = new THREE.MeshStandardMaterial({
   color: "#1b1f25",
   metalness: 0.35,
   roughness: 0.55,
 });
+
 const headlightMaterial = new THREE.MeshStandardMaterial({
   color: "#fff6da",
   emissive: "#ffedb8",
   emissiveIntensity: 2.2,
 });
+
 const taillightMaterial = new THREE.MeshStandardMaterial({
   color: "#7a1212",
   emissive: "#ff2b1e",
   emissiveIntensity: 1.7,
 });
+
 const tyreMaterial = new THREE.MeshStandardMaterial({
   color: "#111317",
   roughness: 0.95,
 });
+
 const rimMaterial = new THREE.MeshStandardMaterial({
   color: "#d7dce3",
   metalness: 0.75,
   roughness: 0.28,
 });
+
 const boxGeometry = new THREE.BoxGeometry(2.5, 1.5, 5.2);
 
 type WheelProps = {
@@ -60,6 +66,7 @@ function AnimatedWheel({ position, tyre, rim, radius, steerable }: WheelProps) {
   const spin = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
     if (spin.current) spin.current.rotation.x -= (wheelDrive.speed / radius) * dt;
+
     if (steerable && steering.current)
       steering.current.rotation.y = THREE.MathUtils.lerp(
         steering.current.rotation.y,
@@ -67,6 +74,7 @@ function AnimatedWheel({ position, tyre, rim, radius, steerable }: WheelProps) {
         Math.min(1, dt * 14),
       );
   });
+
   return (
     <group ref={steering} position={position}>
       <group ref={spin}>
@@ -110,6 +118,7 @@ export function CarModel({
       }),
     [color],
   );
+
   const topperMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -120,6 +129,7 @@ export function CarModel({
       }),
     [topperColor, topperEmissive, topperEmissiveIntensity],
   );
+
   useEffect(
     () => () => {
       bodyMaterial.dispose();
@@ -155,7 +165,9 @@ export function CarModel({
               radius: spec.wheelRadius,
               steerable: index < 2,
             };
+
             const wheelKey = `${position[0]}:${position[2]}`;
+
             return animateWheels ? (
               <AnimatedWheel key={wheelKey} {...props} />
             ) : (

@@ -40,12 +40,15 @@ export const GAME_MODE_IDS = [
   "checkpoint",
   "free",
 ] as const satisfies readonly GameMode[];
+
 export const DEFAULT_MODE: GameMode = "delivery";
+
 export const RUSH_DURATION_MS = 180_000;
+
 export const CHECKPOINT_COUNT = 8;
 
 export function isGameMode(value: unknown): value is GameMode {
-  return typeof value === "string" && (GAME_MODE_IDS as readonly string[]).includes(value);
+  return value === "delivery" || value === "rush" || value === "checkpoint" || value === "free";
 }
 
 const checkpointCache = new WeakMap<City, Place[]>();
@@ -56,9 +59,11 @@ const checkpointCache = new WeakMap<City, Place[]>();
  */
 export function getCheckpoints(city: City): Place[] {
   const cached = checkpointCache.get(city);
+
   if (cached) return cached;
   const candidates = [...city.restaurants, ...city.houses];
   const checkpoints: Place[] = [];
+
   for (const place of candidates) {
     if (
       checkpoints.every(
@@ -68,9 +73,12 @@ export function getCheckpoints(city: City): Place[] {
       )
     )
       checkpoints.push(place);
+
     if (checkpoints.length === CHECKPOINT_COUNT) break;
   }
+
   checkpointCache.set(city, checkpoints);
+
   return checkpoints;
 }
 
@@ -81,10 +89,14 @@ export function getObjective(
   player: Pick<PlayerPub, "orderIndex" | "leg" | "checkpointIndex">,
 ): Place | undefined {
   if (mode === "free") return undefined;
+
   if (mode === "checkpoint") return getCheckpoints(city)[player.checkpointIndex];
+
   if (orders.length === 0) return undefined;
   const order = orders[mode === "rush" ? player.orderIndex % orders.length : player.orderIndex];
+
   if (!order) return undefined;
+
   return player.leg === "pickup"
     ? city.restaurants[order.restaurantId]
     : city.houses[order.houseId];
@@ -98,5 +110,6 @@ export function comparePlayers(mode: GameMode, a: StandingPlayer, b: StandingPla
     mode === "checkpoint"
       ? b.checkpointIndex - a.checkpointIndex
       : b.deliveries - a.deliveries || b.orderIndex - a.orderIndex;
+
   return progress || a.id.localeCompare(b.id);
 }

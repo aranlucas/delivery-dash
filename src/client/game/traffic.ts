@@ -13,10 +13,12 @@ const SPAN = WORLD_HALF * 2;
 
 export function updateTraffic(city: City, time: number) {
   trafficCars.length = city.trafficRoutes.length;
+
   for (let index = 0; index < city.trafficRoutes.length; index++) {
     const route = city.trafficRoutes[index]!;
     const travelled = route.offset + route.direction * route.speed * time;
     const along = ((((travelled + WORLD_HALF) % SPAN) + SPAN) % SPAN) - WORLD_HALF;
+
     const yaw =
       route.axis === "x"
         ? route.direction > 0
@@ -25,6 +27,7 @@ export function updateTraffic(city: City, time: number) {
         : route.direction > 0
           ? 0
           : Math.PI;
+
     const car = (trafficCars[index] ??= { x: 0, z: 0, yaw: 0 });
     car.x = route.axis === "x" ? along : route.cross;
     car.z = route.axis === "x" ? route.cross : along;

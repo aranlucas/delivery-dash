@@ -26,6 +26,7 @@ export const CarVisual = ({
   lod?: CarLod;
 }) => {
   const modelKind = own ? "taxi" : kind;
+
   return (
     <group>
       <CarModel

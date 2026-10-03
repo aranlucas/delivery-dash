@@ -8,8 +8,10 @@ import {
   rampUnderside,
 } from "../../shared/ramps.ts";
 
-type RampShape = Pick<Ramp, "kind" | "length" | "width" | "height">;
+type RampProfile = Pick<Ramp, "kind" | "length" | "width" | "height">;
+
 type Vertex = [number, number, number];
+
 type UV = [number, number];
 
 /** Indexed ribbons keep the curved riding surface smooth and the structural edges crisp. */
@@ -20,9 +22,11 @@ class RampMesh {
 
   ribbon(rows: [Vertex, Vertex][], uvRows: [UV, UV][]) {
     const start = this.positions.length / 3;
+
     for (let i = 0; i < rows.length; i++) {
       this.positions.push(...rows[i]![0], ...rows[i]![1]);
       this.uvs.push(...uvRows[i]![0], ...uvRows[i]![1]);
+
       if (i === rows.length - 1) continue;
       const a = start + i * 2;
       this.indices.push(a, a + 2, a + 3, a, a + 3, a + 1);
@@ -53,23 +57,27 @@ class RampMesh {
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(this.uvs, 2));
     geometry.setIndex(this.indices);
+
     if (surfaceIndices) {
       geometry.addGroup(0, surfaceIndices, 0);
       geometry.addGroup(surfaceIndices, this.indices.length - surfaceIndices, 1);
     }
+
     geometry.computeVertexNormals();
+
     return geometry;
   }
 }
 
 /** Asphalt top and separate structural shell, both following the collision profile. */
-export function makeRampGeometry(ramp: RampShape) {
+export function makeRampGeometry(ramp: RampProfile) {
   const mesh = new RampMesh();
   const segments = rampSegments(ramp.kind);
   const halfW = ramp.width / 2;
   const halfL = ramp.length / 2;
   const rows: [Vertex, Vertex][] = [];
   const uvs: [UV, UV][] = [];
+
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const z = -halfL + t * ramp.length;
@@ -87,11 +95,14 @@ export function makeRampGeometry(ramp: RampShape) {
       ],
     ]);
   }
+
   mesh.ribbon(rows, uvs);
   const surfaceIndices = mesh.indices.length;
+
   for (const side of [-1, 1]) {
     const edgeRows: [Vertex, Vertex][] = [];
     const edgeUvs: [UV, UV][] = [];
+
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
       const z = -halfL + t * ramp.length;
@@ -102,10 +113,13 @@ export function makeRampGeometry(ramp: RampShape) {
       const b: UV = [(t * ramp.length) / 4, top[1] / 4];
       edgeUvs.push(side < 0 ? [a, b] : [b, a]);
     }
+
     mesh.ribbon(edgeRows, edgeUvs);
   }
+
   const bottomRows: [Vertex, Vertex][] = [];
   const bottomUvs: [UV, UV][] = [];
+
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const z = -halfL + t * ramp.length;
@@ -119,6 +133,7 @@ export function makeRampGeometry(ramp: RampShape) {
       [0, (t * ramp.length) / 4],
     ]);
   }
+
   mesh.ribbon(bottomRows, bottomUvs);
   const base = rampUnderside(ramp, 1);
   mesh.quad(
@@ -129,12 +144,13 @@ export function makeRampGeometry(ramp: RampShape) {
     ramp.width / 4,
     (ramp.height - base) / 4,
   );
+
   return mesh.finish(surfaceIndices);
 }
 
 /** A flush paint ribbon or tapered concrete barrier that follows every profile segment. */
 export function makeRampRibbonGeometry(
-  ramp: RampShape,
+  ramp: RampProfile,
   across: number,
   width: number,
   from = 0,
@@ -147,6 +163,7 @@ export function makeRampRibbonGeometry(
   const uvs: [UV, UV][] = [];
   const left = across - width / 2;
   const right = across + width / 2;
+
   for (let i = 0; i <= segments; i++) {
     const t = from + ((to - from) * i) / segments;
     const y = rampHeight(ramp, t) + (barrier ? rampBarrierHeight(ramp, t) : 0.025);
@@ -161,23 +178,30 @@ export function makeRampRibbonGeometry(
       [1, t],
     ]);
   }
+
   mesh.ribbon(rows, uvs);
+
   if (barrier) {
     for (const side of [-1, 1]) {
       const edgeRows: [Vertex, Vertex][] = [];
+
       for (let i = 0; i <= segments; i++) {
         const t = from + ((to - from) * i) / segments;
         const z = (t - 0.5) * ramp.length;
         const bottom: Vertex = [side < 0 ? left : right, rampHeight(ramp, t), z];
+
         const top: Vertex = [
           bottom[0] - side * RAMP_BARRIER_WIDTH * 0.22,
           bottom[1] + rampBarrierHeight(ramp, t),
           z,
         ];
+
         edgeRows.push(side < 0 ? [bottom, top] : [top, bottom]);
       }
+
       mesh.ribbon(edgeRows, uvs);
     }
+
     const y = rampHeight(ramp, to);
     const z = (to - 0.5) * ramp.length;
     mesh.quad(
@@ -189,5 +213,6 @@ export function makeRampRibbonGeometry(
       1,
     );
   }
+
   return mesh.finish();
 }

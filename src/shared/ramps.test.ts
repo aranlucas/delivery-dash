@@ -10,9 +10,12 @@ const point = (ramp: Ramp, across: number, along: number): [number, number] => [
   ramp.x + Math.cos(ramp.yaw) * across + Math.sin(ramp.yaw) * along,
   ramp.z - Math.sin(ramp.yaw) * across + Math.cos(ramp.yaw) * along,
 ];
+
 const ramp: Ramp = { x: 0, z: 0, yaw: 0, length: 14, width: 11, height: 3.8, kind: "kicker" };
+
 function emptyCity(ramps: Ramp[]): City {
   const city = generateCity(1);
+
   return { ...city, ramps, decks: [], buildingAABBs: [], collisionGrid: buildGrid([]) };
 }
 
@@ -48,13 +51,16 @@ test("both ramp sizes and expressway grades render exactly where their collision
   const material = new THREE.MeshBasicMaterial();
   const ray = new THREE.Raycaster();
   const down = new THREE.Vector3(0, -1, 0);
+
   for (const r of generateCity(2026).ramps) {
     const geometry = r.kind === "kicker" ? unit : makeRampGeometry(r);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(r.x, 0, r.z);
     mesh.rotation.y = r.yaw;
+
     if (r.kind === "kicker") mesh.scale.set(r.width, r.height, r.length);
     mesh.updateMatrixWorld(true);
+
     for (const t of [0.02, 0.13, 0.31, 0.58, 0.79, 0.99]) {
       const [x, z] = point(r, r.width * 0.2, (t - 0.5) * r.length);
       ray.set(new THREE.Vector3(x, r.height + 10, z), down);
@@ -66,8 +72,10 @@ test("both ramp sizes and expressway grades render exactly where their collision
         `${r.kind} mesh=${hit.point.y} physics=${physics}`,
       );
     }
+
     if (geometry !== unit) geometry.dispose();
   }
+
   unit.dispose();
   material.dispose();
 });
@@ -87,8 +95,10 @@ test("swept collision cannot skip a ramp side or a thin elevated guardrail", () 
 
 test("boost-speed approach can climb and leave the lip without a collision", () => {
   const city = emptyCity([ramp]);
+
   for (const step of [0.4, 1.6, 3.2]) {
     let height = 0;
+
     for (let z = -10; z < 7; z += step) {
       assert.equal(safeTravel(city, 0, z, 0, step, height), 1, `approach blocked at ${z}`);
       height = groundHeightAt(city, 0, z + step, height);
@@ -105,6 +115,7 @@ test("raised approaches have a visible underside and allow cars through with roo
   const hit = ray.intersectObject(mesh)[0];
   assert.ok(hit, "approach has no visible soffit");
   assert.ok(Math.abs(hit.point.y - rampUnderside(grade, 0.5)) < 1e-5);
+
   for (const yaw of [0, Math.PI / 2, Math.PI, -0.63]) {
     const r = { ...grade, yaw };
     assert.equal(rampBlocks(r, ...point(r, 0, 0), 0, STEP_UP), false, "centre underpass blocked");
@@ -119,14 +130,17 @@ test("raised approaches have a visible underside and allow cars through with roo
       "jump above barrier blocked",
     );
   }
+
   geometry.dispose();
   material.dispose();
 });
 
 test("expressway approaches remain clear to climb, descend and merge with their decks", () => {
   const city = generateCity(2026);
+
   for (const r of city.ramps.filter((r) => r.kind === "grade")) {
     let height = 0;
+
     for (let along = -r.length / 2; along < r.length / 2 + 3; along += 0.7) {
       const [x, z] = point(r, 0, along);
       assert.equal(
@@ -136,7 +150,9 @@ test("expressway approaches remain clear to climb, descend and merge with their 
       );
       height = groundHeightAt(city, ...point(r, 0, along + 0.7), height);
     }
+
     height = r.height;
+
     for (let along = r.length / 2 - 0.1; along > -r.length / 2; along -= 0.7) {
       const [x, z] = point(r, 0, along);
       assert.equal(
@@ -182,6 +198,7 @@ test("airborne height queries and landings do not snap up to a ramp or deck", ()
 test("seeded stunts never overlap any starting-grid slot", () => {
   for (let seed = 1; seed <= 32; seed++) {
     const city = generateCity(seed);
+
     for (const spawn of city.spawns) {
       assert.equal(groundHeightAt(city, ...spawn.pos, 0), 0, `seed ${seed} spawns on a slope`);
       assert.equal(safeTravel(city, ...spawn.pos, 0, 1, 0), 1, `seed ${seed} spawn is obstructed`);

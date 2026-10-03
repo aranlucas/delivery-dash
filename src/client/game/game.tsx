@@ -31,13 +31,19 @@ function Sun({ inspecting }: { inspecting: boolean }) {
   const light = useRef<THREE.DirectionalLight>(null);
   const target = useMemo(() => new THREE.Object3D(), []);
   useFrame(({ controls }) => {
-    const focus = inspecting ? (controls as { target?: THREE.Vector3 } | null)?.target : undefined;
+    const focus =
+      inspecting && controls && "target" in controls && controls.target instanceof THREE.Vector3
+        ? controls.target
+        : undefined;
+
     const x = focus?.x ?? ownPose.x,
       z = focus?.z ?? ownPose.z;
+
     target.position.set(x, 0, z);
     target.updateMatrixWorld();
     light.current?.position.set(x + 72, 128, z - 60);
   });
+
   return (
     <>
       <primitive object={target} />
@@ -65,12 +71,15 @@ function Scene({ seed, city, orders }: { seed: number; city: CityData; orders: O
   const players = useGameStore((s) => s.players),
     selfId = useGameStore((s) => s.selfId),
     phase = useGameStore((s) => s.phase);
+
   const mode = useGameStore((s) => s.mode);
   const cameraMode = useGameStore((s) => s.cameraMode);
   const inspecting = cameraMode === "city" && phase === "racing";
   const self = ownPlayer({ players, selfId });
+
   if (!self) return null;
   const target = getObjective(mode, city, orders, self);
+
   return (
     <Suspense fallback={null}>
       <Sky

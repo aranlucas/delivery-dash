@@ -11,6 +11,7 @@ import { makeBoostPadTexture } from "./textures";
 export function BoostPads({ city }: { city: City }) {
   const texture = useMemo(() => makeBoostPadTexture(), []);
   useEffect(() => () => texture.dispose(), [texture]);
+
   const strips = useMemo(
     () =>
       city.boostPads.map((pad): StaticInstance => ({
@@ -20,10 +21,12 @@ export function BoostPads({ city }: { city: City }) {
       })),
     [city],
   );
+
   const details = useMemo(() => {
     const housings: StaticInstance[] = [],
       lights: StaticInstance[] = [],
       bolts: StaticInstance[] = [];
+
     for (const pad of city.boostPads) {
       const at = (
         across: number,
@@ -39,33 +42,44 @@ export function BoostPads({ city }: { city: City }) {
         rotation: [0, pad.yaw, 0],
         scale,
       });
+
       housings.push(at(0, 0.045, 0, [BOOST_PAD_WIDTH + 0.65, 0.09, BOOST_PAD_LENGTH + 0.5]));
+
       for (const side of [-1, 1]) {
         for (const along of [-2.7, 0, 2.7]) {
           lights.push(at(side * (BOOST_PAD_WIDTH / 2 + 0.16), 0.11, along, [0.1, 0.07, 1.8]));
         }
+
         for (const along of [-3.8, -1.4, 1.4, 3.8]) {
           bolts.push(at(side * (BOOST_PAD_WIDTH / 2 + 0.28), 0.1, along, [0.09, 0.055, 0.13]));
         }
       }
     }
+
     return { housings, lights, bolts };
   }, [city]);
+
   const lightMaterial = useRef<THREE.MeshStandardMaterial>(null);
   const pulse = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (lightMaterial.current)
       lightMaterial.current.emissiveIntensity = 0.85 + Math.sin(clock.elapsedTime * 3) * 0.15;
     const ring = pulse.current;
+
     if (!ring) return;
     const pad = city.boostPads[drivingTelemetry.boostPadIndex];
     ring.visible = !!pad && drivingTelemetry.padPulse > 0;
+
     if (!pad || !ring.visible) return;
     ring.position.set(pad.x, pad.y + 0.16, pad.z);
     const progress = 1 - drivingTelemetry.padPulse / 0.9;
     ring.scale.setScalar(2.3 + progress * 5);
-    (ring.material as THREE.MeshBasicMaterial).opacity = (1 - progress) * 0.65;
+
+    if (ring.material instanceof THREE.MeshBasicMaterial) {
+      ring.material.opacity = (1 - progress) * 0.65;
+    }
   });
+
   return (
     <group name="boost-pad-strips">
       <StaticInstances items={details.housings}>

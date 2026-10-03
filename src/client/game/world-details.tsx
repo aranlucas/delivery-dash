@@ -46,6 +46,7 @@ const WORLD_PLACEMENTS: Record<WorldModel, StaticInstance[]> = {
   harbor: [],
   plaza: [],
 };
+
 for (const zone of CITY_ZONES)
   for (const placement of RELATIVE_PLACEMENTS[zone.id])
     WORLD_PLACEMENTS[placement.model].push({
@@ -60,13 +61,16 @@ for (const zone of CITY_ZONES)
 
 function ModelBatch({ name, items }: { name: WorldModel; items: StaticInstance[] }) {
   const { scene } = useGLTF(assetUrl(name));
+
   return <GltfInstances scene={scene} items={items} shadows batchKey={name} />;
 }
 
 const HARBOR = CITY_ZONES.find((zone) => zone.id === "harbor")!;
+
 const GANGWAY_POSTS: StaticInstance[] = [-14, -5, 5, 14].flatMap((x) =>
   [-1.15, 1.15].map((z) => ({ position: [x, 0.45, z], scale: [0.18, 1.35, 0.18] })),
 );
+
 const GANGWAY_PLANKS: StaticInstance[] = Array.from({ length: 32 }, (_, x) => ({
   position: [-15.5 + x, 0.11, 0],
   scale: [0.94, 0.06, 2.2],
@@ -98,13 +102,19 @@ function HarborGangway() {
 }
 
 /** Large, authored silhouettes for the festival, harbor, and public-plaza edges. */
+function isWorldModel(name: string): name is WorldModel {
+  return Object.hasOwn(WORLD_PLACEMENTS, name);
+}
+
 export function WorldDetails() {
   return (
     <Suspense fallback={null}>
       <HarborGangway />
-      {(Object.keys(WORLD_PLACEMENTS) as WorldModel[]).map((name) => (
-        <ModelBatch key={name} name={name} items={WORLD_PLACEMENTS[name]} />
-      ))}
+      {Object.keys(WORLD_PLACEMENTS).flatMap((name) =>
+        isWorldModel(name)
+          ? [<ModelBatch key={name} name={name} items={WORLD_PLACEMENTS[name]} />]
+          : [],
+      )}
     </Suspense>
   );
 }

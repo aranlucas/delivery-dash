@@ -8,12 +8,14 @@ test("recovery from buildings, ramps, roofs and map edges finds a flat clear nea
     const city = generateCity(seed);
     const spawn = city.spawns[0]!;
     const fallback = { x: spawn.pos[0], z: spawn.pos[1], yaw: spawn.yaw };
+
     const positions = [
       ...city.buildings.filter((_, index) => index % 20 === 0),
       ...city.ramps,
       { x: 298, z: 298 },
       { x: -298, z: -298 },
     ];
+
     for (const pose of positions) {
       const recovered = findCarRecovery(city, { ...pose, yaw: Math.PI / 4 }, fallback);
       assert.equal(blocked(city, recovered.x, recovered.z, 0), false, `seed ${seed}`);
@@ -30,10 +32,12 @@ test("a clear street preserves the driving direction and avoids nearby traffic",
   const recovered = findCarRecovery(city, pose, pose);
   assert.equal(recovered.yaw, Math.PI / 2);
   assert.equal(Math.hypot(recovered.x - pose.x, recovered.z - pose.z), 0);
+
   const traffic = [
     { x: pose.x, z: pose.z },
     { x: pose.x + 6, z: pose.z },
   ];
+
   const away = findCarRecovery(city, pose, pose, traffic);
   assert.ok(isRecoverySpotClear(city, away.x, away.z, traffic));
   assert.ok(Math.hypot(away.x - pose.x, away.z - pose.z) >= 7);

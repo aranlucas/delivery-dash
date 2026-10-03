@@ -28,11 +28,14 @@ test("delivery rush tiers reward longer controlled drifts", () => {
 function samplePass(distances: number[], speed: number) {
   let tracker: NearMissTracker | undefined;
   let awards = 0;
+
   for (const distance of distances) {
     const update = updateNearMissPass(tracker, distance, 0, speed);
     tracker = update.tracker;
+
     if (update.awarded) awards++;
   }
+
   return { tracker, awards };
 }
 
@@ -51,6 +54,7 @@ test("a collision and a slow pass never count as near misses", () => {
 test("accelerating only after leaving the close zone does not retroactively score", () => {
   let tracker: NearMissTracker | undefined;
   let awards = 0;
+
   for (const [distance, speed] of [
     [5.2, 10],
     [3.4, 10],
@@ -59,8 +63,10 @@ test("accelerating only after leaving the close zone does not retroactively scor
   ] as const) {
     const update = updateNearMissPass(tracker, distance, 0, speed);
     tracker = update.tracker;
+
     if (update.awarded) awards++;
   }
+
   assert.equal(awards, 0);
 });
 
@@ -68,12 +74,15 @@ test("a frame-spanning swept collision cannot become a near-miss reward", () => 
   let tracker: NearMissTracker | undefined;
   let contacted = false;
   let awards = 0;
+
   for (const relativeX of [5.4, -5.4, -8]) {
     const update = updateNearMissPass(tracker, relativeX, 0, 32);
     tracker = update.tracker;
     contacted ||= update.contacted;
+
     if (update.awarded) awards++;
   }
+
   assert.equal(contacted, true);
   assert.equal(awards, 0);
 });
