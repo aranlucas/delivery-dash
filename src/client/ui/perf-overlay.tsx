@@ -6,10 +6,12 @@ import { trafficCars } from "../game/traffic";
 const perfStats = { fps: 0, frameMs: 0, calls: 0, triangles: 0, traffic: 0 };
 
 let overlayVisible = false;
+
 const overlayListeners = new Set<() => void>();
 
 function subscribeOverlay(listener: () => void) {
   overlayListeners.add(listener);
+
   return () => overlayListeners.delete(listener);
 }
 
@@ -19,6 +21,7 @@ function getOverlayVisible() {
 
 function toggleOverlay() {
   overlayVisible = !overlayVisible;
+
   for (const listener of overlayListeners) listener();
 }
 
@@ -33,23 +36,27 @@ function PerfSampler() {
   useFrame((_, dt) => {
     frames.current++;
     elapsed.current += dt;
+
     if (elapsed.current >= 0.25) {
       perfStats.fps = frames.current / elapsed.current;
       perfStats.frameMs = (elapsed.current / frames.current) * 1000;
       frames.current = 0;
       elapsed.current = 0;
     }
+
     // R3F resets renderer.info after a render, so this is the previous frame.
     perfStats.calls = gl.info.render.calls;
     perfStats.triangles = gl.info.render.triangles;
     perfStats.traffic = trafficCars.length;
   });
+
   return null;
 }
 
 /** Canvas probe. Mounts the frame sampler only while the F3 overlay is visible. */
 export function PerfProbe() {
   const visible = usePerfOverlayVisible();
+
   return visible ? <PerfSampler /> : null;
 }
 
@@ -63,18 +70,22 @@ export function PerfOverlay() {
       event.preventDefault();
       toggleOverlay();
     };
+
     window.addEventListener("keydown", onKeyDown);
+
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
     if (!visible) return;
     const timer = window.setInterval(tick, 250);
+
     return () => window.clearInterval(timer);
   }, [visible]);
 
   if (!visible) return null;
   const overBudget = perfStats.frameMs > 16.6 || perfStats.calls > 60;
+
   return (
     <aside
       className={`perf-overlay ${overBudget ? "is-over" : ""}`}

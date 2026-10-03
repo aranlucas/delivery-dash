@@ -29,13 +29,16 @@ test("a frame spanning the strip entrance still triggers, but teleports and othe
 test("the strip footprint and direction rotate with all four road headings", () => {
   for (const yaw of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
     const rotated = { ...pad, yaw };
+
     const point = (along: number, across = 0) =>
       [
         pad.x + along * Math.sin(yaw) + across * Math.cos(yaw),
         pad.z + along * Math.cos(yaw) - across * Math.sin(yaw),
       ] as const;
+
     const from = point(-5),
       to = point(-2);
+
     assert.equal(crossesBoostPad(rotated, ...from, ...to, 0, 30), true);
     assert.equal(crossesBoostPad(rotated, ...point(5), ...point(2), 0, 30), false);
     assert.equal(crossesBoostPad(rotated, ...point(-5, 3), ...point(-2, 3), 0, 30), false);

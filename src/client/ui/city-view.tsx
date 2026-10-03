@@ -24,6 +24,7 @@ export function CityViewOverlay() {
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
       const target = event.target;
+
       if (
         event.repeat ||
         event.metaKey ||
@@ -36,8 +37,10 @@ export function CityViewOverlay() {
         return;
       const state = useGameStore.getState();
       const key = event.key.toLowerCase();
+
       if (state.phase === "racing" && key === "v") {
         event.preventDefault();
+
         if (state.cameraMode === "city") returnToDriving();
         else focusCityView();
       } else if (state.cameraMode === "city") {
@@ -50,10 +53,14 @@ export function CityViewOverlay() {
         }
       }
     };
+
     window.addEventListener("keydown", keyDown);
+
     return () => window.removeEventListener("keydown", keyDown);
   }, []);
+
   if (cameraMode !== "city" || phase !== "racing") return null;
+
   return (
     <div className="city-view-overlay">
       <header className="city-view-header">

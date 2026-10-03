@@ -7,10 +7,15 @@ import { makeFleetGeometry, useVehicleAsset } from "../model-assets";
 import { trafficCars, updateTraffic } from "../traffic";
 
 const matrix = new THREE.Matrix4();
+
 const position = new THREE.Vector3();
+
 const quaternion = new THREE.Quaternion();
+
 const tint = new THREE.Color();
+
 const UP = new THREE.Vector3(0, 1, 0);
+
 const ONE = new THREE.Vector3(1, 1, 1);
 
 type CarFleet = {
@@ -44,31 +49,39 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
     },
     [parts],
   );
+
   const painted = useRef<THREE.InstancedMesh>(null),
     glass = useRef<THREE.InstancedMesh>(null),
     trim = useRef<THREE.InstancedMesh>(null),
     heads = useRef<THREE.InstancedMesh>(null),
     tails = useRef<THREE.InstancedMesh>(null),
     toppers = useRef<THREE.InstancedMesh>(null);
+
   const fleet = useMemo(
     () => [painted, glass, trim, heads, tails, ...(kind === "taxi" ? [toppers] : [])] as const,
     [kind],
   );
+
   useLayoutEffect(() => {
     if (!painted.current) return;
     colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
+
     if (painted.current.instanceColor) painted.current.instanceColor.needsUpdate = true;
   }, [colors]);
+
   const write = useCallback(
     (index: number, x: number, z: number, yaw: number) => {
       matrix.compose(position.set(x, 0, z), quaternion.setFromAxisAngle(UP, yaw), ONE);
+
       for (const ref of fleet) ref.current?.setMatrixAt(index, matrix);
     },
     [fleet],
   );
+
   const flush = useCallback(
     (count = colors.length) => {
       if (!count) return;
+
       for (const ref of fleet) {
         if (!ref.current) continue;
         queueMatrixUpload(ref.current, count);
@@ -76,7 +89,9 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
     },
     [fleet, colors.length],
   );
+
   const count = Math.max(1, colors.length);
+
   const meshes = useMemo(
     () => (
       <>
@@ -104,10 +119,12 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
     ),
     [count, kind, parts],
   );
+
   return useMemo(() => ({ write, flush, meshes }), [flush, meshes, write]);
 }
 
 const FLEET_KINDS: CarKind[] = ["sedan", "van", "hatch", "sports", "taxi"];
+
 type FleetSlot = { color: string; index: number; moving: boolean };
 
 /** Traffic and parked cars share five shape-specific fleets, so every Blender vehicle appears. */
@@ -120,6 +137,7 @@ export function FleetCars({ city }: { city: CityData }) {
       hatch: [],
       sports: [],
     };
+
     city.trafficRoutes.forEach((route, index) =>
       output[FLEET_KINDS[index % FLEET_KINDS.length]!]!.push({
         color: route.color,
@@ -134,8 +152,10 @@ export function FleetCars({ city }: { city: CityData }) {
         moving: false,
       }),
     );
+
     return output;
   }, [city]);
+
   const sedanColors = useMemo(() => groups.sedan.map((slot) => slot.color), [groups]);
   const vanColors = useMemo(() => groups.van.map((slot) => slot.color), [groups]);
   const hatchColors = useMemo(() => groups.hatch.map((slot) => slot.color), [groups]);
@@ -146,16 +166,20 @@ export function FleetCars({ city }: { city: CityData }) {
   const hatch = useCarFleet("hatch", hatchColors);
   const sports = useCarFleet("sports", sportsColors);
   const taxi = useCarFleet("taxi", taxiColors);
+
   const fleets = useMemo(
     () => ({ sedan, van, hatch, sports, taxi }),
     [hatch, sedan, sports, taxi, van],
   );
+
   useLayoutEffect(() => {
     updateTraffic(city, 0);
+
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
       groups[kind].forEach((slot, localIndex) => {
         const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
+
         if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
       });
       fleet.flush();
@@ -163,19 +187,24 @@ export function FleetCars({ city }: { city: CityData }) {
   }, [city, fleets, groups]);
   useFrame(({ clock }) => {
     updateTraffic(city, clock.elapsedTime);
+
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
       const slots = groups[kind];
       let movingCount = 0;
+
       // Moving slots precede parking in each batch. Parked transforms never change per frame.
       while (movingCount < slots.length && slots[movingCount]!.moving) {
         const car = trafficCars[slots[movingCount]!.index];
+
         if (car) fleet.write(movingCount, car.x, car.z, car.yaw);
         movingCount++;
       }
+
       fleet.flush(movingCount);
     }
   });
+
   return (
     <>
       {FLEET_KINDS.map((kind) => (

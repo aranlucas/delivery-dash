@@ -8,6 +8,9 @@
  * TEST_GAME_RECONNECT=1 runs the optional reconnect/next-round checks.
  */
 import { strict as assert } from "node:assert";
+import { z } from "zod";
+import { decodeServerMessage } from "../src/shared/wire-schema.ts";
+import type { ServerMessage } from "../src/shared/protocol.ts";
 import {
   generateCity,
   generateOrders,
@@ -22,12 +25,20 @@ import {
   type GameMode,
 } from "../src/shared/game-modes.ts";
 
-type WireMessage = Record<string, unknown> & { t: string };
+type WireMessage = ServerMessage;
+
+interface OutboundMessage {
+  [field: string]: string | number | boolean | null;
+}
+
 type WireMode = GameMode | string;
 
 const origin = process.env.TEST_GAME_URL ?? "http://localhost:5173";
+
 const timeoutScale = Number(process.env.TEST_GAME_TIMEOUT_SCALE ?? "1");
+
 const timeout = (milliseconds: number) => Math.max(100, milliseconds * timeoutScale);
+
 const roomCounter = { value: 0 };
 
 function websocketUrl(room: string): string {
@@ -36,21 +47,20 @@ function websocketUrl(room: string): string {
   url.pathname = `/api/room/${room}/ws`;
   url.search = "";
   url.hash = "";
+
   return url.toString();
 }
 
 function roomCode(label: string): string {
   roomCounter.value++;
+
   const suffix = [roomCounter.value - 1].map(
     (value) =>
       String.fromCharCode(65 + (Math.floor(value / 26) % 26)) +
       String.fromCharCode(65 + (value % 26)),
   )[0]!;
-  return `${label.slice(0, 2).toUpperCase()}${suffix}`;
-}
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return `${label.slice(0, 2).toUpperCase()}${suffix}`;
 }
 
 class Client {
@@ -67,20 +77,19 @@ class Client {
   private constructor(socket: WebSocket) {
     this.socket = socket;
     socket.addEventListener("message", (event) => {
-      const raw = typeof event.data === "string" ? event.data : String(event.data);
-      let parsed: unknown;
+      const raw = String(event.data);
+      let message: WireMessage;
+
       try {
-        parsed = JSON.parse(raw);
+        message = decodeServerMessage(raw);
       } catch {
-        this.fail(new Error(`invalid JSON from worker: ${raw}`));
-        return;
-      }
-      if (!isObject(parsed) || typeof parsed.t !== "string") {
         this.fail(new Error(`invalid message from worker: ${raw}`));
+
         return;
       }
-      const message = parsed as WireMessage;
+
       const waiter = [...this.waiters].find(({ predicate }) => predicate(message));
+
       if (waiter) {
         this.waiters.delete(waiter);
         clearTimeout(waiter.timer);
@@ -99,6 +108,7 @@ class Client {
         () => reject(new Error(`WebSocket open timed out for ${room}`)),
         timeout(8_000),
       );
+
       socket.addEventListener(
         "open",
         () => {
@@ -116,19 +126,22 @@ class Client {
         { once: true },
       );
     });
+
     return client;
   }
 
   private fail(error: Error) {
     this.failure ??= error;
+
     for (const waiter of this.waiters) {
       clearTimeout(waiter.timer);
       waiter.reject(this.failure);
     }
+
     this.waiters.clear();
   }
 
-  send(message: Record<string, unknown>) {
+  send(message: OutboundMessage) {
     assert.equal(this.socket.readyState, WebSocket.OPEN, "cannot send on a closed WebSocket");
     this.socket.send(JSON.stringify(message));
   }
@@ -140,7 +153,9 @@ class Client {
   ): Promise<WireMessage> {
     if (this.failure) throw this.failure;
     const queuedIndex = this.inbox.findIndex(predicate);
+
     if (queuedIndex >= 0) return this.inbox.splice(queuedIndex, 1)[0]!;
+
     return new Promise<WireMessage>((resolve, reject) => {
       const waiter = {
         predicate,
@@ -151,6 +166,7 @@ class Client {
           reject(new Error(`timed out waiting for ${description}`));
         }, timeout(milliseconds)),
       };
+
       this.waiters.add(waiter);
     });
   }
@@ -161,7 +177,9 @@ class Client {
     milliseconds: number,
   ) {
     if (this.failure) throw this.failure;
+
     if (this.inbox.some(predicate)) throw new Error(`unexpected ${description}`);
+
     return new Promise<void>((resolve, reject) => {
       const waiter = {
         predicate,
@@ -175,6 +193,7 @@ class Client {
           resolve();
         }, timeout(milliseconds)),
       };
+
       this.waiters.add(waiter);
     });
   }
@@ -196,21 +215,29 @@ class Client {
   }
 }
 
-function hasType(message: WireMessage, t: string): boolean {
+function hasType<T extends WireMessage["t"]>(
+  message: WireMessage,
+  t: T,
+): message is Extract<WireMessage, { t: T }> {
   return message.t === t;
 }
 
 function numberField(message: WireMessage, key: string): number {
-  const value = message[key];
-  assert.equal(typeof value, "number", `${key} should be a number in ${message.t}`);
-  assert.ok(Number.isFinite(value), `${key} should be finite in ${message.t}`);
-  return value;
+  const field = Object.entries(message).find(([name]) => name === key)?.[1];
+  const parsed = z.number().safeParse(field);
+
+  assert.ok(parsed.success, `${key} should be a finite number in ${message.t}`);
+
+  return parsed.data;
 }
 
 function stringField(message: WireMessage, key: string): string {
-  const value = message[key];
-  assert.equal(typeof value, "string", `${key} should be a string in ${message.t}`);
-  return value;
+  const field = Object.entries(message).find(([name]) => name === key)?.[1];
+  const parsed = z.string().safeParse(field);
+
+  assert.ok(parsed.success, `${key} should be a string in ${message.t}`);
+
+  return parsed.data;
 }
 
 function messageMode(message: WireMessage): WireMode {
@@ -218,36 +245,46 @@ function messageMode(message: WireMessage): WireMode {
 }
 
 async function join(client: Client, name: string, mode?: WireMode): Promise<WireMessage> {
-  client.send({ t: "join", name, ...(mode === undefined ? {} : { mode }) });
+  const message: OutboundMessage = { t: "join", name };
+
+  if (mode !== undefined) message.mode = mode;
+
+  client.send(message);
+
   return client.waitFor(
     (message) => hasType(message, "welcome") || hasType(message, "error"),
     "join response",
   );
 }
 
-function assertWelcome(message: WireMessage, mode: WireMode): { seed: number; id: string } {
-  assert.equal(message.t, "welcome");
+function assertWelcome(message: WireMessage, mode: WireMode) {
+  assert.ok(message.t === "welcome");
   assert.equal(messageMode(message), mode, "room adopts the creator's requested mode");
   const seed = numberField(message, "seed");
   const id = stringField(message, "id");
   assert.ok(Array.isArray(message.players), "welcome includes the player roster");
+
   return { seed, id };
 }
 
 async function readyAndRace(clients: Client[]): Promise<WireMessage> {
   for (const client of clients) client.send({ t: "ready", ready: true });
   const countdownObservedAt = Date.now();
+
   const countdown = await clients[0]!.waitFor(
     (message) => hasType(message, "phase") && message.phase === "countdown",
     "countdown phase",
   );
+
   const countdownEndsAt = numberField(countdown, "countdownEndsAt");
   assert.ok(countdownEndsAt > Date.now(), "countdown deadline is in the future");
+
   const race = await clients[0]!.waitFor(
     (message) => hasType(message, "phase") && message.phase === "racing",
     "racing phase",
     8_000,
   );
+
   const raceStartedAt = numberField(race, "raceStartedAt");
   assert.ok(raceStartedAt >= countdownEndsAt - 800, "race starts at the countdown deadline");
   assert.ok(raceStartedAt - countdownObservedAt >= 2_000, "countdown does not end early");
@@ -255,6 +292,7 @@ async function readyAndRace(clients: Client[]): Promise<WireMessage> {
     raceStartedAt - countdownObservedAt <= 5_000,
     `countdown is approximately three seconds (countdownEndsAt=${countdownEndsAt}, raceStartedAt=${raceStartedAt})`,
   );
+
   return race;
 }
 
@@ -279,7 +317,10 @@ async function progressFor(
     `progress deliveries=${deliveries} checkpointIndex=${checkpointIndex}`,
     milliseconds,
   );
+
+  assert.ok(hasType(progress, "progress"));
   assert.equal(progress.id, id);
+
   return progress;
 }
 
@@ -295,6 +336,7 @@ async function completeDelivery(
   position(client, city.restaurants[order.restaurantId]!);
   await progressFor(client, id, orderIndex, 0);
   position(client, city.houses[order.houseId]!);
+
   if (expectWin) {
     await progressFor(client, id, orderIndex + 1, 0);
     await client.waitFor((message) => hasType(message, "win"), "delivery win");
@@ -305,24 +347,24 @@ async function testCreatorModeAndRush(): Promise<void> {
   const room = roomCode("RU");
   const creator = await Client.open(room);
   let joiner: Client | undefined;
+
   try {
     joiner = await Client.open(room);
     const creatorWelcome = await join(creator, "Rush creator", "rush");
     const creatorInfo = assertWelcome(creatorWelcome, "rush");
+    assert.ok(creatorWelcome.t === "welcome");
     const joinerWelcome = await join(joiner, "Free chooser", "free");
     assertWelcome(joinerWelcome, "rush");
+    assert.ok(joinerWelcome.t === "welcome");
     const players = joinerWelcome.players;
     assert.ok(Array.isArray(players));
     assert.equal(players.length, 2, "joining a second player creates exactly one roster entry");
-    assert.equal(
-      new Set((players as Array<{ id: string }>).map((player) => player.id)).size,
-      2,
-      "roster ids are unique",
-    );
+    assert.equal(new Set(players.map((player) => player.id)).size, 2, "roster ids are unique");
 
     // A duplicate join on an already attached socket must not create a ghost player.
     const duplicate = await join(creator, "Rush creator", "free");
     assertWelcome(duplicate, "rush");
+    assert.ok(duplicate.t === "welcome");
     const rosterAfterDuplicate = Array.isArray(duplicate.players) ? duplicate.players : [];
     assert.equal(rosterAfterDuplicate.length, 2, "duplicate join does not create a ghost");
 
@@ -334,6 +376,7 @@ async function testCreatorModeAndRush(): Promise<void> {
     );
     const city = generateCity(creatorInfo.seed);
     const orders = generateOrders(creatorInfo.seed);
+
     for (let index = 0; index < 7; index++)
       await completeDelivery(creator, creatorInfo.id, city, orders, index);
     assert.equal(
@@ -352,6 +395,8 @@ async function testCreatorModeAndRush(): Promise<void> {
         "rush deadline finish",
         185_000,
       );
+
+      assert.ok(hasType(finished, "phase"));
       assert.equal(finished.phase, "finished");
       assert.ok(Array.isArray(finished.standings), "rush deadline publishes standings");
     }
@@ -362,30 +407,40 @@ async function testCreatorModeAndRush(): Promise<void> {
 
 async function testDeliveryRace(): Promise<void> {
   const creator = await Client.open(roomCode("DE"));
+
   try {
     const welcome = await join(creator, "Delivery creator", "delivery");
     const { seed, id } = assertWelcome(welcome, "delivery");
+    assert.ok(welcome.t === "welcome");
     await readyAndRace([creator]);
     const city = generateCity(seed);
     const orders = generateOrders(seed);
+
     for (let index = 0; index < 3; index++)
       await completeDelivery(creator, id, city, orders, index, index === 2);
+
     const finished = await creator.waitFor(
       (message) => hasType(message, "phase") && message.phase === "finished",
       "delivery finished phase",
     );
+
+    assert.ok(hasType(finished, "phase"));
     assert.equal(finished.phase, "finished");
+
     const lobby = await creator.waitFor(
       (message) => hasType(message, "phase") && message.phase === "lobby",
       "next-round lobby reset",
       15_000,
     );
+
+    assert.ok(hasType(lobby, "phase"));
     assert.equal(lobby.phase, "lobby");
+
     const roster = await creator.waitFor(
       (message) =>
         hasType(message, "roster") &&
         Array.isArray(message.players) &&
-        (message.players as Array<Record<string, unknown>>).some(
+        message.players.some(
           (player) =>
             player.id === id &&
             player.ready === false &&
@@ -395,9 +450,11 @@ async function testDeliveryRace(): Promise<void> {
         ),
       "next-round reset roster",
     );
-    const resetPlayer = (roster.players as Array<Record<string, unknown>>).find(
-      (player) => player.id === id,
-    );
+
+    assert.ok(hasType(roster, "roster"));
+
+    const resetPlayer = roster.players.find((player) => player.id === id);
+
     assert.ok(resetPlayer, "finished player remains for the next round");
     assert.equal(resetPlayer.ready, false, "next round clears readiness");
     assert.equal(resetPlayer.deliveries, 0, "next round clears delivery score");
@@ -410,18 +467,22 @@ async function testDeliveryRace(): Promise<void> {
 
 async function testCheckpointRace(): Promise<void> {
   const creator = await Client.open(roomCode("CP"));
+
   try {
     const welcome = await join(creator, "Checkpoint creator", "checkpoint");
     const { seed, id } = assertWelcome(welcome, "checkpoint");
+    assert.ok(welcome.t === "welcome");
     await readyAndRace([creator]);
     const checkpoints = getCheckpoints(generateCity(seed));
     assert.equal(checkpoints.length, CHECKPOINT_COUNT, "shared checkpoint route has eight targets");
+
     for (let index = 0; index < CHECKPOINT_COUNT; index++) {
       position(creator, checkpoints[index]!);
       const progress = await progressFor(creator, id, 0, index + 1);
       assert.equal(progress.orderIndex, 0, "checkpoint mode does not advance delivery orders");
       assert.equal(progress.deliveries, 0, "checkpoint mode does not award delivery score");
     }
+
     await creator.waitFor((message) => hasType(message, "win"), "checkpoint win");
   } finally {
     await creator.close();
@@ -432,23 +493,27 @@ async function testFreeDrive(): Promise<void> {
   const room = roomCode("FR");
   const creator = await Client.open(room);
   let lateJoiner: Client | undefined;
+
   try {
     const welcome = await join(creator, "Free driver", "free");
     const { seed, id } = assertWelcome(welcome, "free");
+    assert.ok(welcome.t === "welcome");
     assert.equal(welcome.raceEndsAt, undefined, "free drive has no deadline");
     await readyAndRace([creator]);
     lateJoiner = await Client.open(room);
     // Free Drive permits exploration joins after the shared countdown; competitive rounds do not.
     const lateWelcome = await join(lateJoiner, "Late free driver", "free");
     assertWelcome(lateWelcome, "free");
+    assert.ok(lateWelcome.t === "welcome");
     assert.equal(
       lateWelcome.phase,
       "racing",
       "late free-drive join starts directly in racing phase",
     );
-    assert.equal((lateWelcome.players as unknown[]).length, 2, "late free-drive join appears once");
+    assert.equal(lateWelcome.players.length, 2, "late free-drive join appears once");
     const city = generateCity(seed);
     const orders = generateOrders(seed);
+
     for (let index = 0; index < 3; index++)
       await completeFreeDriveRoute(creator, city, orders[index % orders.length]!);
     await creator.waitForNo(
@@ -474,6 +539,7 @@ async function completeFreeDriveRoute(client: Client, city: City, order: Order) 
 
 async function testInvalidMode(): Promise<void> {
   const client = await Client.open(roomCode("IV"));
+
   try {
     const result = await join(client, "Invalid mode", "not-a-mode");
     assert.equal(result.t, "error", "invalid mode is rejected");
@@ -487,16 +553,20 @@ async function testReconnectAndNextRound(): Promise<void> {
   if (process.env.TEST_GAME_RECONNECT !== "1") return;
   const room = roomCode("RC");
   const client = await Client.open(room);
+
   try {
     const welcome = await join(client, "Reconnect driver", "free");
     assertWelcome(welcome, "free");
+    assert.ok(welcome.t === "welcome");
     await client.close();
     const reconnected = await Client.open(room);
+
     try {
       const rejoinWelcome = await join(reconnected, "Reconnect driver", "free");
       assertWelcome(rejoinWelcome, "free");
+      assert.ok(rejoinWelcome.t === "welcome");
       assert.equal(
-        (rejoinWelcome.players as unknown[]).length,
+        rejoinWelcome.players.length,
         1,
         "reconnect prunes the disconnected player before rejoining",
       );
@@ -517,15 +587,17 @@ async function main() {
     ["invalid mode rejection", testInvalidMode],
     ["reconnect and next-round reset", testReconnectAndNextRound],
   ];
+
   for (const [name, test] of tests) {
     const started = Date.now();
     await test();
     console.log(`ok - ${name} (${Date.now() - started}ms)`);
   }
+
   console.log(`game modes integration passed (${origin})`);
 }
 
-main().catch((error: unknown) => {
+main().catch((error) => {
   console.error(error instanceof Error ? error.stack : error);
   process.exitCode = 1;
 });

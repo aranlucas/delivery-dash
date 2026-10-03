@@ -10,15 +10,20 @@ test("waterfront rails stop a boost-speed approach at every street end", () => {
   city.collisionGrid = buildGrid(COAST_ROAD_ENDS);
   city.ramps = [];
   city.decks = [];
+
   for (const box of COAST_ROAD_ENDS) {
     const alongX = box.maxX - box.minX < box.maxZ - box.minZ;
+
     const x = (box.minX + box.maxX) / 2,
       z = (box.minZ + box.maxZ) / 2;
+
     const sign = Math.sign(alongX ? x : z);
     const startX = alongX ? sign * (WORLD_HALF - 15) : x;
     const startZ = alongX ? z : sign * (WORLD_HALF - 15);
+
     const dx = alongX ? sign * 12 : 0,
       dz = alongX ? 0 : sign * 12;
+
     assert.equal(blocked(city, startX, startZ, 0), false);
     const travel = safeTravel(city, startX, startZ, dx, dz, 0);
     assert.ok(travel > 0.7 && travel < 0.9, `unreadable stop at ${x}, ${z}`);
@@ -31,7 +36,9 @@ test("waterfront rails stop a boost-speed approach at every street end", () => {
 test("waterfront rails enter the shared collision grid without blocking the starting grid", () => {
   for (const seed of [1, 99, 777, 2026, 12345]) {
     const city = generateCity(seed);
+
     for (const rail of COAST_ROAD_ENDS) assert.ok(city.collisionGrid.boxes.includes(rail));
+
     for (const { pos } of city.spawns) assert.equal(blocked(city, ...pos, 0), false);
   }
 });

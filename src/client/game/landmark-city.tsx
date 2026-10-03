@@ -12,6 +12,7 @@ const assetUrl = (name: string) => `/models/landmarks/${name}.glb?v=coast-1`;
 /** Blender objects are merged by material at export; each landmark is only a few draw calls. */
 function Landmark({ name }: { name: string }) {
   const { scene } = useGLTF(assetUrl(name));
+
   const instance = useMemo(() => {
     const clone = scene.clone(true);
     clone.traverse((object) => {
@@ -20,36 +21,43 @@ function Landmark({ name }: { name: string }) {
         object.receiveShadow = true;
       }
     });
+
     return clone;
   }, [scene]);
+
   return <primitive object={instance} dispose={null} />;
 }
 
 const LANE_DASHES: StaticInstance[] = Array.from({ length: 16 }, (_, i) => {
   const yaw = (i * Math.PI) / 8;
+
   return {
     position: [Math.sin(yaw) * 28, 0.055, Math.cos(yaw) * 28],
     rotation: [-Math.PI / 2, 0, yaw],
   };
 });
+
 const APPROACH_ARROWS: StaticInstance[] = [-1, 1].flatMap((direction) =>
   [-1, 1].map((side) => ({
     position: [side * 1.25 * direction, 0.065, -direction * 40],
     rotation: [-Math.PI / 2, 0, side * 0.7 + (direction === 1 ? 0 : Math.PI)],
   })),
 );
+
 const PORTALS: StaticInstance[] = CITY_ZONES.map((zone) => ({
   position: [zone.x, 0, zone.z - 43],
 }));
 
 function Portals() {
   const { scene } = useGLTF(assetUrl("portal"));
+
   // Share the cached model's buffers. Only the instance matrices belong to these batches.
   return <GltfInstances scene={scene} items={PORTALS} />;
 }
 
 function Plaza({ zone }: { zone: CityZone }) {
   const stunt = zone.id === "stunt";
+
   return (
     <group position={[zone.x, 0, zone.z]}>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0]} receiveShadow>

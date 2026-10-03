@@ -13,6 +13,7 @@ const assetUrl = (name: DeliveryModel) => `/models/delivery/${name}.glb?v=delive
 
 function Batch({ model, items }: { model: DeliveryModel; items: StaticInstance[] }) {
   const { scene } = useGLTF(assetUrl(model));
+
   return <GltfInstances scene={scene} items={items} />;
 }
 
@@ -20,8 +21,10 @@ const gates: StaticInstance[] = CITY_ZONES.filter(
   (zone) => zone.id === "stunt" || zone.id === "freight",
 ).map((zone) => {
   const [x, z] = jumpGatePosition(zone);
+
   return { position: [x, 0, z] };
 });
+
 const targets: StaticInstance[] = gates.flatMap((gate) =>
   [-35, 35].map((offset) => ({ position: [gate.position[0], 0, gate.position[2] + offset] })),
 );
@@ -31,14 +34,15 @@ export function DeliveryAssets({ city }: { city: City }) {
     () =>
       city.restaurants.flatMap((place) => {
         const model = storefrontModel(place.name);
+
         return model
           ? [
               {
                 model,
                 items: [
                   {
-                    position: [place.pos[0], 0, place.pos[1]] as [number, number, number],
-                    rotation: [0, storefrontYaw(place), 0] as [number, number, number],
+                    position: [place.pos[0], 0, place.pos[1]] satisfies [number, number, number],
+                    rotation: [0, storefrontYaw(place), 0] satisfies [number, number, number],
                   },
                 ],
               },
@@ -47,6 +51,7 @@ export function DeliveryAssets({ city }: { city: City }) {
       }),
     [city],
   );
+
   return (
     <>
       {shops.map((shop) => (

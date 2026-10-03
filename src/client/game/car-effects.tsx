@@ -17,6 +17,7 @@ export function BoostFlames() {
       drivingTelemetry.padPulse * 0.4 +
       Math.sin(state.clock.elapsedTime * 55) * 0.22;
   });
+
   return (
     <group ref={flames} visible={false}>
       {EXHAUST_POSITIONS.map((x) => (
@@ -42,20 +43,26 @@ export function RushTrails() {
   const rings = useRef<Array<THREE.Mesh | null>>([]);
   useFrame(({ clock }) => {
     const tier = drivingTelemetry.rushTier;
+
     for (let index = 0; index < rings.current.length; index++) {
       const ring = rings.current[index];
+
       if (!ring) continue;
       ring.visible = tier > 0;
+
       if (tier === 0) continue;
       const phase = (clock.elapsedTime * (2.7 + tier * 0.35) + index / rings.current.length) % 1;
       ring.position.z = -3.2 - phase * (7 + tier * 1.3);
       const scale = 0.7 + phase * (0.8 + tier * 0.12);
       ring.scale.set(scale, scale, 1);
-      const material = ring.material as THREE.MeshBasicMaterial;
+      const material = ring.material;
+
+      if (!(material instanceof THREE.MeshBasicMaterial)) continue;
       material.color.set(RUSH_COLORS[tier - 1]);
       material.opacity = (1 - phase) * 0.48;
     }
   });
+
   return (
     <group position-y={0.1}>
       {Array.from({ length: 4 }, (_, index) => (
@@ -78,8 +85,10 @@ export function DriftSmoke() {
   const particles = useRef<Array<THREE.Mesh | null>>([]);
   useFrame(({ clock }) => {
     const active = drivingTelemetry.drifting;
+
     for (let i = 0; i < particles.current.length; i++) {
       const particle = particles.current[i];
+
       if (!particle) continue;
       const phase = (clock.elapsedTime * 1.7 + i / particles.current.length) % 1;
       particle.visible = active;
@@ -88,6 +97,7 @@ export function DriftSmoke() {
       particle.scale.set(scale, scale * 0.7, scale);
     }
   });
+
   return (
     <group>
       {Array.from({ length: 10 }, (_, i) => (

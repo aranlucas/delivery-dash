@@ -10,6 +10,7 @@ function importGameSession() {
 
 function loadGameSession() {
   gameSessionPromise ??= importGameSession();
+
   return gameSessionPromise;
 }
 
@@ -29,7 +30,9 @@ function GameLoading() {
 
 export function App() {
   const screen = useGameStore((s) => s.screen);
+
   if (screen === "menu") return <Menu onGameIntent={() => void loadGameSession()} />;
+
   return (
     <Suspense fallback={<GameLoading />}>
       <GameSession />

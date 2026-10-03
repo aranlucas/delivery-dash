@@ -40,8 +40,10 @@ export function ArcadeAudio() {
     const start = () => {
       if (context) {
         if (context.state === "suspended") void context.resume();
+
         return;
       }
+
       context = new AudioContext();
       master = context.createGain();
       master.gain.value = 0.16;
@@ -83,6 +85,7 @@ export function ArcadeAudio() {
         engineGain.gain.setTargetAtTime(active ? 0.055 + speedRatio * 0.085 : 0, now, 0.08);
         tire.frequency.setTargetAtTime(360 + speedRatio * 190, now, 0.035);
         tireGain.gain.setTargetAtTime(drivingTelemetry.drifting ? 0.045 : 0, now, 0.035);
+
         if (heardReward !== drivingTelemetry.rewardSequence) {
           heardReward = drivingTelemetry.rewardSequence;
           playRewardStinger(context, master, drivingTelemetry.rewardTier);
@@ -92,6 +95,7 @@ export function ArcadeAudio() {
 
     window.addEventListener("pointerdown", start, { once: true });
     window.addEventListener("keydown", start, { once: true });
+
     return () => {
       window.removeEventListener("pointerdown", start);
       window.removeEventListener("keydown", start);

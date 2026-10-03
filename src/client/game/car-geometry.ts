@@ -94,16 +94,20 @@ const bump = (position: number, center: number, spread: number) =>
 
 export function bodyHalfWidth(spec: CarSpec, position: number) {
   let widthScale = spec.profile[spec.profile.length - 1]![1];
+
   for (let index = 0; index < spec.profile.length - 1; index++) {
     const [start, startWidth] = spec.profile[index]!;
     const [end, endWidth] = spec.profile[index + 1]!;
+
     if (position < start || position > end) continue;
     const progress = end === start ? 0 : (position - start) / (end - start);
     widthScale = startWidth + (endWidth - startWidth) * progress;
     break;
   }
+
   const flare =
     spec.arch * (bump(position, spec.axleInset, 0.15) + bump(position, 1 - spec.axleInset, 0.15));
+
   return (spec.width / 2) * widthScale + flare;
 }
 
@@ -115,6 +119,7 @@ export function wheelPositions(spec: CarSpec): [number, number, number][] {
   const rear = -spec.length / 2 + rearPosition * spec.length;
   const frontX = bodyHalfWidth(spec, frontPosition) - spec.wheelWidth * 0.3;
   const rearX = bodyHalfWidth(spec, rearPosition) - spec.wheelWidth * 0.3;
+
   return [
     [-frontX, y, front],
     [frontX, y, front],

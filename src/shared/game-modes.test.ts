@@ -17,6 +17,7 @@ test("game mode registry has the stable public modes", () => {
   assert.deepEqual(GAME_MODE_IDS, ["delivery", "rush", "checkpoint", "free"]);
   assert.equal(DEFAULT_MODE, "delivery");
   assert.equal(RUSH_DURATION_MS, 180_000);
+
   for (const id of GAME_MODE_IDS) {
     assert.ok(GAME_MODES[id].name);
     assert.ok(GAME_MODES[id].description);
@@ -24,6 +25,7 @@ test("game mode registry has the stable public modes", () => {
     assert.match(GAME_MODES[id].color, /^#[0-9a-f]{6}$/i);
     assert.equal(isGameMode(id), true);
   }
+
   assert.equal(isGameMode("unknown"), false);
   assert.equal(isGameMode(null), false);
 });
@@ -34,6 +36,7 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
     const checkpoints = getCheckpoints(city);
     assert.equal(checkpoints.length, CHECKPOINT_COUNT);
     assert.deepEqual(checkpoints, getCheckpoints(generateCity(seed)));
+
     for (const checkpoint of checkpoints) {
       assert.ok(city.restaurants.includes(checkpoint) || city.houses.includes(checkpoint));
       assert.ok(
@@ -46,6 +49,7 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
         ),
       );
     }
+
     for (let index = 1; index < checkpoints.length; index++)
       assert.ok(
         Math.hypot(

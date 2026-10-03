@@ -10,8 +10,11 @@ export type RemotePosition = {
   speed: number;
   t: number;
 };
+
 export const remotePositions = new Map<string, RemotePosition>();
+
 type Screen = "menu" | "game";
+
 export type CityViewFocus =
   | "overview"
   | "overhead"
@@ -21,6 +24,7 @@ export type CityViewFocus =
   | "skyline"
   | "freight"
   | "stunt";
+
 type GameState = {
   screen: Screen;
   roomCode: string;
@@ -42,17 +46,18 @@ type GameState = {
   set: (patch: Partial<GameState>) => void;
   reset: () => void;
 };
-const initial = {
-  screen: "menu" as Screen,
+
+const initial: Omit<GameState, "set" | "reset"> = {
+  screen: "menu",
   roomCode: "",
   mode: DEFAULT_MODE,
   cameraMode: "drive" as const,
-  cityViewFocus: "overview" as CityViewFocus,
+  cityViewFocus: "overview",
   cityViewSequence: 0,
   selfId: undefined,
   seed: undefined,
-  phase: "lobby" as Phase,
-  players: [] as PlayerPub[],
+  phase: "lobby",
+  players: [],
   connected: false,
   connecting: false,
   countdownEndsAt: undefined,
@@ -61,6 +66,7 @@ const initial = {
   standings: undefined,
   lastError: undefined,
 };
+
 export const useGameStore = create<GameState>((set) => ({
   ...initial,
   set: (patch) => set(patch),
@@ -69,6 +75,7 @@ export const useGameStore = create<GameState>((set) => ({
     set(initial);
   },
 }));
+
 export const ownPlayer = (state: Pick<GameState, "selfId" | "players">) =>
   state.players.find((p) => p.id === state.selfId);
 

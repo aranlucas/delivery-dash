@@ -17,12 +17,15 @@ const rotation = (pitch: number, yaw: number): [number, number, number] => {
   const euler = new THREE.Euler().setFromQuaternion(
     new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, "YXZ")),
   );
+
   return [euler.x, euler.y, euler.z];
 };
 
 function merge(parts: THREE.BufferGeometry[]) {
   const geometry = mergeGeometries(parts)!;
+
   for (const part of parts) part.dispose();
+
   return geometry;
 }
 
@@ -33,25 +36,32 @@ export function Ramps({ city }: { city: City }) {
     const asphalt = makeAsphaltTexture();
     asphalt.repeat.set(1, 1);
     const hazard = makeRampHazardTexture();
+
     const gradeMaterials = [
       new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.97 }),
       new THREE.MeshStandardMaterial({ map: concrete, color: "#dad3c2", roughness: 0.93 }),
     ];
+
     const kickerMaterials = [
       new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.86 }),
       new THREE.MeshStandardMaterial({ color: "#a86438", roughness: 0.68, metalness: 0.22 }),
     ];
+
     const kicker = makeRampGeometry({ kind: "kicker", length: 1, width: 1, height: 1 });
+
     return { concrete, asphalt, hazard, gradeMaterials, kickerMaterials, kicker };
   }, []);
+
   const grades = useMemo(
     () =>
       city.ramps
         .filter((r) => r.kind === "grade")
         .map((ramp) => {
           const paint: THREE.BufferGeometry[] = [];
+
           for (const side of [-1, 1])
             paint.push(makeRampRibbonGeometry(ramp, side * (ramp.width / 2 - 0.75), 0.16));
+
           for (let along = 2; along < ramp.length - 2; along += 7)
             paint.push(
               makeRampRibbonGeometry(
@@ -62,6 +72,7 @@ export function Ramps({ city }: { city: City }) {
                 Math.min(1, (along + 3) / ramp.length),
               ),
             );
+
           const barriers = [-1, 1].map((side) =>
             makeRampRibbonGeometry(
               ramp,
@@ -72,6 +83,7 @@ export function Ramps({ city }: { city: City }) {
               true,
             ),
           );
+
           return {
             ramp,
             body: makeRampGeometry(ramp),
@@ -81,11 +93,13 @@ export function Ramps({ city }: { city: City }) {
         }),
     [city],
   );
+
   const details = useMemo(() => {
     const kickers: StaticInstance[] = [];
     const ribs: StaticInstance[] = [];
     const hardware: StaticInstance[] = [];
     const lips: StaticInstance[] = [];
+
     for (const r of city.ramps) {
       if (r.kind !== "kicker") continue;
       kickers.push({
@@ -100,9 +114,11 @@ export function Ramps({ city }: { city: City }) {
         rotation: rotation(-slope, r.yaw),
         scale: [r.width, 0.08, 0.32],
       });
+
       for (const side of [-1, 1]) {
         const across = side * (r.width / 2 + 0.04);
         const stations = [0.28, 0.52, 0.76, 0.98];
+
         for (let i = 0; i < stations.length; i++) {
           const t = stations[i]!;
           const top = rampHeight(r, t);
@@ -117,6 +133,7 @@ export function Ramps({ city }: { city: City }) {
             scale: [0.045, 0.09, 0.09],
             rotation: [0, r.yaw, 0],
           });
+
           if (i === 0) continue;
           const previous = stations[i - 1]!;
           const dz = (t - previous) * r.length;
@@ -126,6 +143,7 @@ export function Ramps({ city }: { city: City }) {
             scale: [0.1, Math.hypot(dz, top), 0.12],
           });
         }
+
         hardware.push({
           position: position(r, across, 0.045, r.length * 0.36),
           rotation: [0, r.yaw, 0],
@@ -133,14 +151,17 @@ export function Ramps({ city }: { city: City }) {
         });
       }
     }
+
     return { kickers, ribs, hardware, lips };
   }, [city]);
+
   useEffect(
     () => () => {
       resources.concrete.dispose();
       resources.asphalt.dispose();
       resources.hazard.dispose();
       resources.kicker.dispose();
+
       for (const material of [...resources.gradeMaterials, ...resources.kickerMaterials])
         material.dispose();
     },
@@ -156,6 +177,7 @@ export function Ramps({ city }: { city: City }) {
     },
     [grades],
   );
+
   return (
     <group name="ramp-structures">
       {grades.map(({ ramp, body, paint, barriers }) => (

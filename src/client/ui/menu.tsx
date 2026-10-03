@@ -8,12 +8,21 @@ const randomCode = () =>
     "",
   );
 
+interface ModeStyle extends CSSProperties {
+  "--mode-color": string;
+}
+
+function modeStyle(id: (typeof GAME_MODE_IDS)[number]): ModeStyle {
+  return { "--mode-color": GAME_MODES[id].color };
+}
+
 export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<GameMode>(DEFAULT_MODE);
   const error = useGameStore((state) => state.lastError);
   const connecting = useGameStore((state) => state.connecting);
+
   const go = (room: string) => {
     if (!name.trim() || connecting) return;
     onGameIntent();
@@ -79,7 +88,7 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
                 <label
                   className={`mode-option ${mode === id ? "is-selected" : ""}`}
                   key={id}
-                  style={{ "--mode-color": GAME_MODES[id].color } as CSSProperties}
+                  style={modeStyle(id)}
                 >
                   <input
                     type="radio"

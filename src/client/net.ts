@@ -1,9 +1,12 @@
+import { decodeServerMessage } from "../shared/wire-schema";
 import type { ClientMessage, ServerMessage } from "../shared/protocol";
 import { DEFAULT_MODE, type GameMode } from "../shared/game-modes";
 import { remotePositions, useGameStore } from "./store";
 
 let socket: WebSocket | undefined;
+
 let session: { code: string; name: string; mode: GameMode } | undefined;
+
 export function connect(code: string, name: string, mode: GameMode = DEFAULT_MODE) {
   close();
   useGameStore.getState().reset();
@@ -16,16 +19,20 @@ export function connect(code: string, name: string, mode: GameMode = DEFAULT_MOD
     if (socket !== current) return;
     send({ t: "join", name, mode });
   };
+
   current.onmessage = (event) => {
-    if (socket === current) handle(JSON.parse(String(event.data)) as ServerMessage);
+    if (socket === current) handle(decodeServerMessage(String(event.data)));
   };
+
   current.onerror = () => {
     if (socket === current)
       useGameStore.getState().set({ lastError: "Connection error. Please try again." });
   };
+
   current.onclose = () => {
     if (socket !== current) return;
     const store = useGameStore.getState();
+
     if (session)
       store.set({
         connected: false,
@@ -35,19 +42,24 @@ export function connect(code: string, name: string, mode: GameMode = DEFAULT_MOD
     socket = undefined;
   };
 }
+
 export function close() {
   session = undefined;
   socket?.close();
   socket = undefined;
 }
+
 export function rejoin() {
   if (session) connect(session.code, session.name, session.mode);
 }
+
 export function send(message: ClientMessage) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
+
 function handle(message: ServerMessage) {
   const store = useGameStore.getState();
+
   switch (message.t) {
     case "welcome":
       store.set({

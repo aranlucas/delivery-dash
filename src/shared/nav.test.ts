@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { relativeBearing, worldBearing } from "./nav.ts";
 
 const HALF_PI = Math.PI / 2;
+
 const near = (actual: number, expected: number, message: string) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: got ${actual}, want ${expected}`);
 
@@ -22,6 +23,7 @@ function screenX(yaw: number, tx: number, tz: number): number {
   camera.position.set(-Math.sin(yaw) * 9.4, 4.65, -Math.cos(yaw) * 9.4);
   camera.lookAt(new THREE.Vector3(Math.sin(yaw) * 7, 1.35, Math.cos(yaw) * 7));
   camera.updateMatrixWorld(true);
+
   return new THREE.Vector3(tx, 1, tz).project(camera).x;
 }
 

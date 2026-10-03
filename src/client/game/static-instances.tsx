@@ -27,6 +27,7 @@ export function StaticInstances({
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const mesh = ref.current;
+
     if (!mesh) return;
     const transform = new THREE.Object3D();
     const color = new THREE.Color();
@@ -35,15 +36,19 @@ export function StaticInstances({
       transform.rotation.set(...(item.rotation ?? [0, 0, 0]));
       transform.scale.set(...(item.scale ?? [1, 1, 1]));
       transform.updateMatrix();
+
       if (localMatrix) transform.matrix.multiply(localMatrix);
       mesh.setMatrixAt(index, transform.matrix);
+
       if (item.color) mesh.setColorAt(index, color.set(item.color));
     });
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
+
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, [items, localMatrix]);
+
   return (
     <instancedMesh
       ref={ref}
@@ -73,14 +78,18 @@ export function GltfInstances({
     const meshes: THREE.Mesh[] = [];
     scene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
+
       if (shadows) {
         object.castShadow = true;
         object.receiveShadow = true;
       }
+
       meshes.push(object);
     });
+
     return meshes;
   }, [scene, shadows]);
+
   return (
     <>
       {parts.map((part) => (

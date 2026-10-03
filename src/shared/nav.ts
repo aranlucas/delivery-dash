@@ -9,5 +9,6 @@ export const worldBearing = (x: number, z: number, tx: number, tz: number) =>
  */
 export function relativeBearing(x: number, z: number, yaw: number, tx: number, tz: number): number {
   const delta = yaw - worldBearing(x, z, tx, tz);
+
   return Math.atan2(Math.sin(delta), Math.cos(delta));
 }

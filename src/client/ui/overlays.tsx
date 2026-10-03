@@ -36,6 +36,7 @@ export function Lobby() {
   const connected = useGameStore((state) => state.connected);
   const error = useGameStore((state) => state.lastError);
   const mode = useGameStore((state) => state.mode);
+
   if (phase !== "lobby") return null;
 
   return (
@@ -82,6 +83,7 @@ export function Lobby() {
 }
 
 const MINIMAP_SIZE = 190;
+
 /** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
 function Minimap({
   city,
@@ -100,8 +102,10 @@ function Minimap({
 
   useEffect(() => {
     const element = canvas.current;
+
     if (!element) return;
     const context = element.getContext("2d");
+
     if (!context) return;
     const ratio = Math.min(2, window.devicePixelRatio || 1);
     element.width = element.height = MINIMAP_SIZE * ratio;
@@ -112,8 +116,10 @@ function Minimap({
 
     let frame = 0;
     let previous = 0;
+
     const draw = (time: number) => {
       frame = requestAnimationFrame(draw);
+
       if (time - previous < 55) return;
       previous = time;
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -122,15 +128,18 @@ function Minimap({
 
       const block = BLOCK_SIZE * scale;
       context.fillStyle = "#1f4c2c";
+
       for (const [x, z] of city.parks) {
         const px = toMap(x),
           pz = toMap(z);
+
         context.fillRect(px - block / 2, pz - block / 2, block, block);
       }
 
       context.strokeStyle = "#39434f";
       context.lineWidth = Math.max(1.4, ROAD_WIDTH * scale);
       context.beginPath();
+
       for (let i = 0; i < GRID_SIZE; i++) {
         const c = toMap(roadCenter(i));
         context.moveTo(c, 0);
@@ -138,12 +147,14 @@ function Minimap({
         context.moveTo(0, c);
         context.lineTo(MINIMAP_SIZE, c);
       }
+
       context.stroke();
 
       for (const zone of CITY_ZONES) {
         const x = toMap(zone.x),
           z = toMap(zone.z),
           half = zone.half * scale;
+
         context.globalAlpha = 0.3;
         context.fillStyle = zone.color;
         context.fillRect(x - half, z - half, half * 2, half * 2);
@@ -156,20 +167,26 @@ function Minimap({
         context.textAlign = "center";
         context.fillText(zone.id === "stunt" ? "JUMP" : zone.name.split(" ")[0]!, x, z + 3);
       }
+
       context.strokeStyle = "#ff9d33";
       context.lineWidth = 3;
       context.beginPath();
+
       for (const deck of city.decks) {
         const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
+
         const midX = (deck.minX + deck.maxX) / 2,
           midZ = (deck.minZ + deck.maxZ) / 2;
+
         const ax = toMap(alongX ? deck.minX : midX),
           az = toMap(alongX ? midZ : deck.minZ),
           bx = toMap(alongX ? deck.maxX : midX),
           bz = toMap(alongX ? midZ : deck.maxZ);
+
         context.moveTo(ax, az);
         context.lineTo(bx, bz);
       }
+
       for (const ramp of city.ramps) {
         if (ramp.kind !== "grade") continue;
         const dx = (Math.sin(ramp.yaw) * ramp.length) / 2;
@@ -177,21 +194,29 @@ function Minimap({
         context.moveTo(toMap(ramp.x - dx), toMap(ramp.z - dz));
         context.lineTo(toMap(ramp.x + dx), toMap(ramp.z + dz));
       }
+
       context.stroke();
 
       context.fillStyle = "#ffd400";
+
       for (const ramp of city.ramps) {
         if (ramp.kind !== "kicker") continue;
+
         const px = toMap(ramp.x),
           pz = toMap(ramp.z);
+
         context.fillRect(px - 1.6, pz - 1.6, 3.2, 3.2);
       }
+
       context.fillStyle = "#54e6f2";
+
       for (const pad of city.boostPads) {
         const px = toMap(pad.x),
           pz = toMap(pad.z);
+
         const dx = Math.sin(pad.yaw),
           dz = Math.cos(pad.yaw);
+
         context.beginPath();
         context.moveTo(px + dx * 2.7, pz + dz * 2.7);
         context.lineTo(px - dx * 1.8 + dz * 1.3, pz - dz * 1.8 - dx * 1.3);
@@ -203,6 +228,7 @@ function Minimap({
       if (target) {
         const tx = toMap(target[0]),
           tz = toMap(target[1]);
+
         const pulse = 5 + Math.sin(time / 220) * 2;
         context.strokeStyle = checkpoint ? "#00dcff" : dropoff ? "#65f578" : "#ff7a00";
         context.lineWidth = 2.5;
@@ -213,8 +239,10 @@ function Minimap({
 
       for (const [id, pose] of remotePositions) {
         if (id === selfId) continue;
+
         const px = toMap(pose.x),
           pz = toMap(pose.z);
+
         context.fillStyle = colors.get(id) ?? "#ffffff";
         context.beginPath();
         context.arc(px, pz, 2.8, 0, Math.PI * 2);
@@ -224,8 +252,10 @@ function Minimap({
       // Own car as an arrow: world +z is map +y, so the heading maps straight across.
       const sx = toMap(ownPose.x),
         sz = toMap(ownPose.z);
+
       const dx = Math.sin(ownPose.yaw),
         dz = Math.cos(ownPose.yaw);
+
       context.fillStyle = "#ffe100";
       context.beginPath();
       context.moveTo(sx + dx * 6.5, sz + dz * 6.5);
@@ -234,7 +264,9 @@ function Minimap({
       context.closePath();
       context.fill();
     };
+
     frame = requestAnimationFrame(draw);
+
     return () => cancelAnimationFrame(frame);
   }, [city, target, dropoff, checkpoint, players, selfId]);
 
@@ -243,6 +275,7 @@ function Minimap({
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
+
   return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
 }
 
@@ -253,17 +286,26 @@ export function Countdown() {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 50);
+
     return () => window.clearInterval(timer);
   }, []);
 
   const count = Math.ceil(((ends ?? now) - now) / 1000);
   const showGo = phase === "racing" && started !== undefined && now - started < 900;
+
   if (phase !== "countdown" && !showGo) return null;
+
   return (
     <div className={`countdown ${showGo ? "is-go" : ""}`} aria-live="assertive">
       <span>{showGo ? "GO!" : Math.max(1, count)}</span>
     </div>
   );
+}
+
+interface MeterStyle extends React.CSSProperties {
+  "--speed"?: string;
+  "--boost"?: string;
+  "--charge"?: string;
 }
 
 export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
@@ -280,10 +322,12 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
   useEffect(() => {
     if (phase !== "racing" || cameraMode === "city") return;
     const timer = window.setInterval(() => setNow(Date.now()), 50);
+
     return () => window.clearInterval(timer);
   }, [phase, cameraMode]);
 
   if (phase !== "racing" || !city || !self) return connected ? null : <Reconnect />;
+
   if (cameraMode === "city") return null;
   const target = getObjective(mode, city, orders, self);
   const checkpoint = mode === "checkpoint";
@@ -292,24 +336,39 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
   const total = checkpoint ? CHECKPOINT_COUNT : DELIVERIES_TO_WIN;
   const completed = checkpoint ? self.checkpointIndex : self.deliveries;
   const distance = target ? Math.hypot(target.stop[0] - ownPose.x, target.stop[1] - ownPose.z) : 0;
+
   const arrowAngle = target
     ? relativeBearing(ownPose.x, ownPose.z, cameraPose.yaw, target.stop[0], target.stop[1])
     : 0;
+
   const speed = Math.round(ownPose.speed * 3.6);
   const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);
   const elapsed = raceStartedAt ? (now - raceStartedAt) / 1000 : 0;
   const remaining = raceEndsAt ? Math.max(0, Math.ceil((raceEndsAt - now) / 1000)) : 0;
+
   const district = CITY_ZONES.find(
     (zone) => Math.hypot(ownPose.x - zone.x, ownPose.z - zone.z) < 85,
   );
+
   const sortedPlayers = [...players].sort((a, b) => comparePlayers(mode, a, b));
+
   const fast =
     ownPose.speed > 26 ||
     drivingTelemetry.boosting ||
     drivingTelemetry.rushTier > 0 ||
     drivingTelemetry.padPulse > 0;
+
   const hasDriftCharge = drivingTelemetry.driftCharge > 1;
   const rushLabel = ["BUILDING", "LOCAL", "EXPRESS", "OVERNIGHT"][drivingTelemetry.driftTier];
+
+  const speedStyle: MeterStyle = {
+    "--speed": `${Math.max(8, speedRatio)}%`,
+    "--boost": `${drivingTelemetry.boost}%`,
+  };
+
+  const chargeStyle: MeterStyle = {
+    "--charge": `${Math.min(100, (drivingTelemetry.driftCharge / MAX_DRIFT_CHARGE) * 100)}%`,
+  };
 
   return (
     <div
@@ -410,12 +469,7 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
 
       <section
         className="speed-cluster"
-        style={
-          {
-            "--speed": `${Math.max(8, speedRatio)}%`,
-            "--boost": `${drivingTelemetry.boost}%`,
-          } as React.CSSProperties
-        }
+        style={speedStyle}
         aria-label={`${speed} kilometers per hour, ${Math.round(drivingTelemetry.boost)} percent boost`}
       >
         <div className="speed-dial">
@@ -467,11 +521,7 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
       </div>
       <div
         className={`rush-meter rush-tier-${drivingTelemetry.driftTier} ${hasDriftCharge ? "is-visible" : ""}`}
-        style={
-          {
-            "--charge": `${Math.min(100, (drivingTelemetry.driftCharge / MAX_DRIFT_CHARGE) * 100)}%`,
-          } as React.CSSProperties
-        }
+        style={chargeStyle}
         aria-hidden={!hasDriftCharge}
       >
         <meter
@@ -517,10 +567,12 @@ function Reconnect() {
 export function WinnerScreen() {
   const standings = useGameStore((state) => state.standings) ?? [];
   const mode = useGameStore((state) => state.mode);
+
   const tied =
     mode === "rush" &&
     standings.length > 1 &&
     standings[0]?.deliveries === standings[1]?.deliveries;
+
   return (
     <div className="modal-backdrop winner-backdrop">
       <section className="arcade-panel winner-panel">

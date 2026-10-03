@@ -3,11 +3,13 @@ import { mulberry32 } from "../../shared/rng";
 
 /** One facade tile covers this much of the world, so windows keep a constant size on every block. */
 export const FACADE_TILE_X = 9;
+
 export const FACADE_TILE_Y = 11;
 
 const canvas = (size: number) => {
   const element = document.createElement("canvas");
   element.width = element.height = size;
+
   return [element, element.getContext("2d")!] as const;
 };
 
@@ -16,7 +18,9 @@ const finish = (element: HTMLCanvasElement, repeat = 1) => {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.anisotropy = 4;
+
   if (repeat !== 1) texture.repeat.set(repeat, repeat);
+
   return texture;
 };
 
@@ -66,11 +70,13 @@ export function makeFacade(style: FacadeStyle) {
 
   const bayW = size / style.columns,
     bayH = size / style.rows;
+
   // Storey bands: a slightly darker spandrel under every floor line.
   for (let r = 0; r < style.rows; r++) {
     map.fillStyle = style.wallDark;
     map.fillRect(0, r * bayH + bayH * 0.86, size, bayH * 0.14);
   }
+
   if (style.banded)
     for (let r = 0; r < style.rows; r++) {
       map.fillStyle = style.frame;
@@ -81,8 +87,10 @@ export function makeFacade(style: FacadeStyle) {
     for (let r = 0; r < style.rows; r++) {
       const w = bayW * style.fill[0],
         h = bayH * style.fill[1];
+
       const x = c * bayW + (bayW - w) / 2,
         y = r * bayH + (bayH - h) / 2;
+
       const lit = rng() < 0.34;
       map.fillStyle = style.frame;
       map.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -91,15 +99,18 @@ export function makeFacade(style: FacadeStyle) {
       // Glass catches a sliver of sky along its top edge.
       map.fillStyle = "rgba(255,255,255,0.16)";
       map.fillRect(x, y, w, h * 0.22);
+
       if (lit) {
         glow.fillStyle = `rgb(255, ${196 + Math.floor(rng() * 44)}, ${120 + Math.floor(rng() * 50)})`;
         glow.fillRect(x, y, w, h);
       }
     }
+
   grain(map, rng, size, 900, 0.05);
 
   const mapTexture = finish(mapCanvas);
   const glowTexture = finish(glowCanvas);
+
   return { mapTexture, glowTexture };
 }
 
@@ -147,29 +158,39 @@ export function makeAsphaltTexture() {
   const rng = mulberry32(11);
   ctx.fillStyle = "#242b31";
   ctx.fillRect(0, 0, size, size);
+
   for (let i = 0; i < 14; i++) {
     ctx.fillStyle = `rgba(${18 + rng() * 26},${20 + rng() * 26},${24 + rng() * 26},0.55)`;
+
     const w = 30 + rng() * 70,
       h = 20 + rng() * 60;
+
     ctx.beginPath();
     ctx.roundRect(rng() * size, rng() * size, w, h, 8);
     ctx.fill();
   }
+
   ctx.strokeStyle = "rgba(12,14,17,0.7)";
   ctx.lineWidth = 1.2;
+
   for (let i = 0; i < 9; i++) {
     let x = rng() * size,
       y = rng() * size;
+
     ctx.beginPath();
     ctx.moveTo(x, y);
+
     for (let s = 0; s < 5; s++) {
       x += (rng() - 0.5) * 34;
       y += (rng() - 0.5) * 34;
       ctx.lineTo(x, y);
     }
+
     ctx.stroke();
   }
+
   grain(ctx, rng, size, 2600, 0.09);
+
   return finish(element, 72);
 }
 
@@ -177,18 +198,22 @@ export function makeAsphaltTexture() {
 export function makePavingTexture() {
   const size = 256,
     cells = 6;
+
   const [element, ctx] = canvas(size);
   const rng = mulberry32(23);
   ctx.fillStyle = "#8d8578";
   ctx.fillRect(0, 0, size, size);
   const step = size / cells;
+
   for (let c = 0; c < cells; c++)
     for (let r = 0; r < cells; r++) {
       const shade = 208 + Math.floor(rng() * 26);
       ctx.fillStyle = `rgb(${shade},${shade - 12},${shade - 32})`;
       ctx.fillRect(c * step + 1.5, r * step + 1.5, step - 3, step - 3);
     }
+
   grain(ctx, rng, size, 1400, 0.06);
+
   return finish(element, 5);
 }
 
@@ -199,15 +224,18 @@ export function makeGrassTexture() {
   const rng = mulberry32(29);
   ctx.fillStyle = "#4aa855";
   ctx.fillRect(0, 0, size, size);
+
   for (let i = 0; i < 8; i++) {
     ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.06)" : "rgba(0,40,0,0.08)";
     ctx.fillRect(0, (i * size) / 8, size, size / 8);
   }
+
   for (let i = 0; i < 2200; i++) {
     const green = 120 + Math.floor(rng() * 90);
     ctx.fillStyle = `rgba(${green * 0.45},${green},${green * 0.5},0.35)`;
     ctx.fillRect(rng() * size, rng() * size, 1.5, 2.5);
   }
+
   return finish(element, 4);
 }
 
@@ -220,6 +248,7 @@ export function makeRampHazardTexture() {
   ctx.fillRect(0, 0, size, size);
   grain(ctx, rng, size, 6200, 0.065);
   ctx.fillStyle = "#d7a440";
+
   for (const x of [12, size - 34]) {
     ctx.fillRect(x, 0, 22, size);
     ctx.save();
@@ -228,23 +257,29 @@ export function makeRampHazardTexture() {
     ctx.clip();
     ctx.strokeStyle = "#273941";
     ctx.lineWidth = 11;
+
     for (let y = -24; y < size + 24; y += 34) {
       ctx.beginPath();
       ctx.moveTo(x - 8, y);
       ctx.lineTo(x + 32, y + 30);
       ctx.stroke();
     }
+
     ctx.restore();
   }
+
   ctx.strokeStyle = "rgba(150,174,178,0.24)";
   ctx.lineWidth = 2;
+
   for (const y of [96, 208, 320, 432]) {
     ctx.beginPath();
     ctx.moveTo(44, y);
     ctx.lineTo(size - 44, y);
     ctx.stroke();
   }
+
   ctx.fillStyle = "#f6d879";
+
   for (const y of [94, 226, 358]) {
     ctx.beginPath();
     ctx.moveTo(128, y + 40);
@@ -256,8 +291,10 @@ export function makeRampHazardTexture() {
     ctx.closePath();
     ctx.fill();
   }
+
   ctx.fillStyle = "#a9b9ba";
   ctx.fillRect(44, size - 10, size - 88, 8);
+
   return finish(element);
 }
 
@@ -268,17 +305,21 @@ export function makeConcreteTexture() {
   const rng = mulberry32(37);
   ctx.fillStyle = "#9aa0a6";
   ctx.fillRect(0, 0, size, size);
+
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = "rgba(120,126,132,0.5)";
     ctx.fillRect(0, (i * size) / 5, size, 2);
   }
+
   for (let i = 0; i < 40; i++) {
     ctx.fillStyle = `rgba(${130 + rng() * 40},${134 + rng() * 40},${140 + rng() * 40},0.4)`;
     ctx.beginPath();
     ctx.ellipse(rng() * size, rng() * size, 6 + rng() * 22, 5 + rng() * 16, rng() * 3, 0, 7);
     ctx.fill();
   }
+
   grain(ctx, rng, size, 1800, 0.07);
+
   return finish(element);
 }
 
@@ -290,6 +331,7 @@ export function makeBoostPadTexture() {
   ctx.scale(1, -1);
   ctx.fillStyle = "#04222c";
   ctx.fillRect(0, 0, size, size);
+
   for (let i = 0; i < 3; i++) {
     const y = 14 + i * 38;
     ctx.fillStyle = i === 2 ? "#b6fbff" : "#5ff0ff";
@@ -303,5 +345,6 @@ export function makeBoostPadTexture() {
     ctx.closePath();
     ctx.fill();
   }
+
   return finish(element);
 }
