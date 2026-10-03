@@ -223,7 +223,7 @@ export class RaceRoomCore {
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
-      return new Response("Expected RoomSocket", { status: 426 });
+      return new Response("Expected WebSocket", { status: 426 });
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];

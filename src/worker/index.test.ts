@@ -189,6 +189,21 @@ async function setup(t: TestContext, mode: GameMode = "rush") {
   };
 }
 
+test("non-WebSocket requests preserve the upgrade error response", async () => {
+  const room = new RaceRoomCore({
+    storage: new Storage(),
+    getWebSockets: () => [],
+    acceptWebSocket() {
+      throw new Error("HTTP requests must not accept a socket");
+    },
+  });
+
+  const response = await room.fetch(new Request("https://room.example/"));
+
+  assert.equal(response.status, 426);
+  assert.equal(await response.text(), "Expected WebSocket");
+});
+
 function phases(socket: Socket) {
   return socket.messages.filter((message) => message.t === "phase").map((message) => message.phase);
 }
