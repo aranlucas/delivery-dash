@@ -35,7 +35,7 @@ The world includes a festival market, harbor scenery, and plaza furniture. Asset
 
 ## Run locally
 
-Requires Node.js 24–26 and pnpm 12.3.1 (the version pinned in `package.json`). Enable Corepack's pnpm shim if your system pnpm is older.
+Requires Node.js 24–26 and the pnpm version pinned in `package.json`. Enable Corepack's pnpm shim if your system pnpm is older.
 
 ```bash
 corepack enable pnpm
@@ -59,6 +59,11 @@ and documentation. Conventional tool-discovery filenames are reserved: `.node-ve
 CI also verifies formatting with oxfmt. The linter uses React's automatic JSX runtime, matching
 the TypeScript and Vite configuration.
 
+`pnpm cf-typegen` generates Worker bindings and runtime types from `cloudflare.config.ts` into
+ignored `.cloudflare/types/index.d.ts`. Typechecking regenerates them first, so a fresh checkout
+does not need a development server or committed generated declarations. The development and
+build scripts regenerate these types first. Vite's duplicate root type generation is disabled.
+
 With the local server running, exercise the real room protocol and all four modes:
 
 ```bash
@@ -71,7 +76,21 @@ The second command also waits for Rush Hour's actual three-minute server deadlin
 ## Deploy
 
 ```bash
+pnpm deploy:dry-run
+pnpm exec cf auth login
 pnpm deploy
 ```
 
 The Cloudflare Worker, Durable Object, and client configuration live in [`cloudflare.config.ts`](cloudflare.config.ts). Keep local secrets in ignored `.dev.vars` files.
+
+The deployment scripts build and typecheck first, then reuse the production Build Output with
+`cf deploy --prebuilt --mode production`. The dry run validates packaging without uploading or
+requiring authentication. `RaceRoom` retains its SQLite storage through `worker.exports`, which
+replaces Wrangler's ordered Durable Object migration history.
+
+The project uses the beta Cloudflare CLI and Vite plugin. See Cloudflare's
+[Wrangler migration guide](https://developers.cloudflare.com/cf/wrangler/migrate/) and
+[build and deployment reference](https://developers.cloudflare.com/cf/projects/).
+The legacy Wrangler configuration and committed declarations were removed after verifying a
+successful `cf` production deployment. Project scripts, CI, and TypeScript now use
+`cloudflare.config.ts` and the ignored generated types.

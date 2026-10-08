@@ -6,4 +6,7 @@ minimumReleaseAge: 0
 trustPolicy: no-downgrade
 pmOnFail: ignore
 overrides:
+  # cf beta.13 pins the version with private type exports; remove when cf includes this fix.
+  # https://github.com/cloudflare/workers-sdk/pull/16138
+  "@cloudflare/config@0.24.0": "0.24.1"
   "undici@>=7.0.0 <7.29.1": "7.29.1"
