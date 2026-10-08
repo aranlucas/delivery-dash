@@ -91,6 +91,6 @@ replaces Wrangler's ordered Durable Object migration history.
 The project uses the beta Cloudflare CLI and Vite plugin. See Cloudflare's
 [Wrangler migration guide](https://developers.cloudflare.com/cf/wrangler/migrate/) and
 [build and deployment reference](https://developers.cloudflare.com/cf/projects/).
-`wrangler.jsonc` and `worker-configuration.d.ts` are legacy rollout files; project scripts and
-TypeScript use the new configuration and generated types. Remove the legacy files after the
-first successful `cf` deployment, following the migration guide.
+The legacy Wrangler configuration and committed declarations were removed after verifying a
+successful `cf` production deployment. Project scripts, CI, and TypeScript now use
+`cloudflare.config.ts` and the ignored generated types.
