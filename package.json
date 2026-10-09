@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm cf-typegen && cf dev",
-    "dev:portless": "pnpm cf-typegen && portless run --name delivery-dash vite",
+    "dev": "pnpm cf-typegen && portless run --name delivery-dash vite",
+    "dev:direct": "pnpm cf-typegen && cf dev",
     "build": "pnpm typecheck && cf build",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && cf deploy --prebuilt --mode production",
