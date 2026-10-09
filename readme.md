@@ -69,7 +69,6 @@ Worker type generation still runs before the server starts.
 
 Linked Git worktrees receive a branch-name prefix, such as
 `https://fix-ui.delivery-dash.localhost`; use the URL Portless prints.
-Use `pnpm run dev:direct` to run the original localhost server without Portless.
 
 Browser storage and offline caches belong to each origin. Existing data at a
 numbered localhost URL stays there; use the app's export/import flow when available
