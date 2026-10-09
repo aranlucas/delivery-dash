@@ -40,39 +40,10 @@ Requires Node.js 24–26 and the pnpm version pinned in `package.json`. Enable C
 ```bash
 corepack enable pnpm
 pnpm install --frozen-lockfile
-npm install -g portless@0.15.7
 pnpm dev
 ```
 
-### Development URL with Portless
-
-The normal `pnpm run dev` command uses
-[Portless](https://github.com/vercel-labs/portless/tree/v0.15.7) for a stable local URL.
-Install its CLI once with **Node.js 24 or newer** (within this project's supported
-range), then run:
-
-```sh
-npm install -g portless@0.15.7
-pnpm run dev
-```
-
-Open **https://delivery-dash.localhost** with the default proxy settings.
-Portless starts its shared proxy automatically. Its first HTTPS run creates and
-trusts a local certificate authority and may prompt for administrator privileges
-to bind port 443 or update local hostname entries. Start it from an interactive
-terminal and review those prompts. `portless doctor` diagnoses local setup issues.
-
-Portless supplies Vite with a free port, a loopback host, and `--strictPort`.
-It starts Vite with the existing Cloudflare plugin directly, since `cf dev`
-does not forward arbitrary Vite CLI flags.
-Worker type generation still runs before the server starts.
-
-Linked Git worktrees receive a branch-name prefix, such as
-`https://fix-ui.delivery-dash.localhost`; use the URL Portless prints.
-
-Browser storage and offline caches belong to each origin. Existing data at a
-numbered localhost URL stays there; use the app's export/import flow when available
-to move data to the named URL.
+Open <https://delivery-dash.localhost>. `pnpm dev` runs through [Portless](https://github.com/vercel-labs/portless) (a dev dependency); its first run may ask for `sudo` to bind port 443 and trust a local certificate.
 
 ## Verify
 
