@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm cf-typegen && cf dev",
+    "dev": "pnpm cf-typegen && portless run vite",
     "build": "pnpm typecheck && cf build",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && cf deploy --prebuilt --mode production",
@@ -39,6 +39,7 @@
     "cf": "1.0.0-beta.13",
     "oxfmt": "^0.72.0",
     "oxlint": "1.87.0",
+    "portless": "0.15.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   },

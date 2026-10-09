@@ -43,6 +43,8 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+Open <https://delivery-dash.localhost>. `pnpm dev` runs through [Portless](https://github.com/vercel-labs/portless) (a dev dependency); its first run may ask for `sudo` to bind port 443 and trust a local certificate.
+
 ## Verify
 
 ```bash
