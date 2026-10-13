@@ -32,11 +32,11 @@ function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
 
   object.updateWorldMatrix(true, false);
 
-  return object;
+  return object as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
 }
 
 /** Bake a Blender node into the asset root; repeated callers share the resulting buffer. */
-function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTranslation = true) {
+function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTranslation = true): THREE.BufferGeometry {
   const object = mesh(nodes, name);
   const cache = keepTranslation ? bakedGeometry : localGeometry;
   const cached = cache.get(object);
@@ -108,7 +108,15 @@ export function makeFleetGeometry(asset: VehicleAsset) {
   };
 }
 
-export function useStreetPropAssets() {
+export function useStreetPropAssets(): {
+  hydrant: THREE.BufferGeometry;
+  bin: THREE.BufferGeometry;
+  bench: THREE.BufferGeometry;
+  streetlightPole: THREE.BufferGeometry;
+  streetlightLens: THREE.BufferGeometry;
+  palmTrunk: THREE.BufferGeometry;
+  palmFrond: THREE.BufferGeometry;
+} {
   const { nodes } = useGLTF(STREET_PROPS_URL);
 
   return useMemo(

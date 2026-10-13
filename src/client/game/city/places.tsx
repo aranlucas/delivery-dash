@@ -70,7 +70,7 @@ function PlaceProps({ city }: PlacePropsProps) {
       houseShells.push({
         pos: [place.pos[0], 1.5, place.pos[1]],
         rotY: yaw,
-        color: houseColors[index % houseColors.length]!,
+        color: houseColors[index % houseColors.length],
       });
       roofs.push({
         pos: placeOffset(place.pos, yaw, 0, 4.05, 0),
@@ -111,7 +111,7 @@ function PlaceProps({ city }: PlacePropsProps) {
         pos: placeOffset(place.pos, yaw, 0, 2.85, 3.4),
         rotY: yaw,
         rotX: 0.5,
-        color: awningColors[index % awningColors.length]!,
+        color: awningColors[index % awningColors.length],
       });
       signBoards.push({
         pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05),

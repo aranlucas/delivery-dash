@@ -95,11 +95,11 @@ const bump = (position: number, center: number, spread: number) =>
   Math.max(0, 1 - ((position - center) / spread) ** 2);
 
 export function bodyHalfWidth(spec: CarSpec, position: number) {
-  let widthScale = spec.profile.at(-1)![1];
+  let widthScale = spec.profile.at(-1)?.[1] ?? 1;
 
   for (let index = 0; index < spec.profile.length - 1; index++) {
-    const [start, startWidth] = spec.profile[index]!;
-    const [end, endWidth] = spec.profile[index + 1]!;
+    const [start, startWidth] = spec.profile[index];
+    const [end, endWidth] = spec.profile[index + 1];
 
     if (position < start || position > end) {
       continue;

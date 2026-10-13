@@ -16,7 +16,7 @@ const kindFor = (id: string) => {
     hash = Math.trunc(hash * 31 + id.charCodeAt(index));
   }
 
-  return RIVAL_KINDS[Math.abs(hash) % RIVAL_KINDS.length]!;
+  return RIVAL_KINDS[Math.abs(hash) % RIVAL_KINDS.length];
 };
 
 const lodFor = (distanceSquared: number): CarLod =>

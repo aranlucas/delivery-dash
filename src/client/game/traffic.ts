@@ -15,7 +15,7 @@ export function updateTraffic(city: City, time: number) {
   trafficCars.length = city.trafficRoutes.length;
 
   for (let index = 0; index < city.trafficRoutes.length; index++) {
-    const route = city.trafficRoutes[index]!;
+    const route = city.trafficRoutes[index];
     const travelled = route.offset + route.direction * route.speed * time;
     const along = ((((travelled + WORLD_HALF) % SPAN) + SPAN) % SPAN) - WORLD_HALF;
 

@@ -158,7 +158,7 @@ export function Buildings({ city }: BuildingsProps) {
   return (
     <>
       {FACADE_STYLES.map((style, index) => (
-        <BuildingDistrict key={style.seed} buildings={districts[index]!} style={style} />
+        <BuildingDistrict key={style.seed} buildings={districts[index]} style={style} />
       ))}
     </>
   );
@@ -429,7 +429,7 @@ export function Expressway({ city }: ExpresswayProps) {
         const depth = deck.maxZ - deck.minZ;
 
         const geometry = new THREE.PlaneGeometry(width, depth);
-        const uv = geometry.attributes.uv!;
+        const uv = geometry.attributes.uv;
 
         for (let i = 0; i < uv.count; i++) {
           uv.setXY(i, (uv.getX(i) * width) / 4, (uv.getY(i) * depth) / 4);

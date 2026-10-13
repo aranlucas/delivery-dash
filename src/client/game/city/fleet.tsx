@@ -68,7 +68,7 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
     }
 
     for (let i = 0; i < colors.length; i++) {
-      painted.current!.setColorAt(i, tint.set(colors[i]!));
+      painted.current.setColorAt(i, tint.set(colors[i]));
     }
 
     if (painted.current.instanceColor) {
@@ -158,7 +158,7 @@ export function FleetCars({ city }: FleetCarsProps) {
 
     for (let index = 0; index < city.trafficRoutes.length; index++) {
       const route = city.trafficRoutes[index];
-      output[FLEET_KINDS[index % FLEET_KINDS.length]!]!.push({
+      output[FLEET_KINDS[index % FLEET_KINDS.length]].push({
         color: route.color,
         index,
         moving: true,
@@ -166,7 +166,7 @@ export function FleetCars({ city }: FleetCarsProps) {
     }
     for (let index = 0; index < city.parkedCars.length; index++) {
       const car = city.parkedCars[index];
-      output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]!]!.push({
+      output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]].push({
         color: car.color,
         index,
         moving: false,
@@ -217,8 +217,8 @@ export function FleetCars({ city }: FleetCarsProps) {
       let movingCount = 0;
 
       // Moving slots precede parking in each batch. Parked transforms never change per frame.
-      while (movingCount < slots.length && slots[movingCount]!.moving) {
-        const car = trafficCars[slots[movingCount]!.index];
+      while (movingCount < slots.length && slots[movingCount].moving) {
+        const car = trafficCars[slots[movingCount].index];
 
         if (car) {
           fleet.write(movingCount, car.x, car.z, car.yaw);

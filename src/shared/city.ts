@@ -317,7 +317,7 @@ export function groundHeightAt(
   const candidateCount = queryRange(city.collisionGrid, x, z, x, z, collisionCandidates);
 
   for (let index = 0; index < candidateCount; index++) {
-    const box = city.buildingAABBs[collisionCandidates[index]!]!;
+    const box = city.buildingAABBs[collisionCandidates[index]];
 
     if (
       box.top > best &&
@@ -360,7 +360,7 @@ export function blocked(city: City, x: number, z: number, height: number): boole
   );
 
   for (let index = 0; index < candidateCount; index++) {
-    const box = city.buildingAABBs[collisionCandidates[index]!]!;
+    const box = city.buildingAABBs[collisionCandidates[index]];
 
     if (
       height < box.top - 0.6 &&
@@ -864,7 +864,7 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
           direction,
           speed: 11 + random() * 9,
           offset: (random() * 2 - 1) * WORLD_HALF,
-          color: carColors[randomInt(random, carColors.length)]!,
+          color: carColors[randomInt(random, carColors.length)],
         });
       }
     }
@@ -924,7 +924,7 @@ function buildParking(
             x,
             z,
             yaw: axis === "x" ? Math.PI / 2 : 0,
-            color: carColors[randomInt(random, carColors.length)]!,
+            color: carColors[randomInt(random, carColors.length)],
           });
         }
       }
@@ -942,7 +942,10 @@ export function generateCity(seed: number): City {
   // Two authored cross-block launches, with long clear run-ups and landing zones.
   // They sit between traffic lanes, so drivers choose the shortcut rather than being forced onto it.
   for (const id of ["stunt", "freight"] as const) {
-    const foundZone = CITY_ZONES.find((z) => z.id === id)!;
+    const foundZone = CITY_ZONES.find((z) => z.id === id);
+    if (!foundZone) {
+      continue;
+    }
     const x = foundZone.x + (id === "freight" ? 24 : 0);
 
     for (const direction of [-1, 1]) {
@@ -1025,10 +1028,10 @@ export function generateCity(seed: number): City {
     // Most destinations frame the landmarks, encouraging routes through the authored districts.
     // A few stay city-wide so each seed still offers different delivery runs.
     if (id >= 10) {
-      return corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
+      return corners.splice(randomInt(placeRandom, corners.length), 1)[0];
     }
 
-    const zone = CITY_ZONES[id % CITY_ZONES.length]!;
+    const zone = CITY_ZONES[id % CITY_ZONES.length];
 
     const candidates = corners
       .map((corner, index) => ({
@@ -1038,7 +1041,7 @@ export function generateCity(seed: number): City {
       .toSorted((a, b) => a.distance - b.distance)
       .slice(0, 12);
 
-    return corners.splice(candidates[randomInt(placeRandom, candidates.length)]!.index, 1)[0]!;
+    return corners.splice(candidates[randomInt(placeRandom, candidates.length)].index, 1)[0];
   };
 
   const makePlace = (name: string, id: number): Place => {
@@ -1048,7 +1051,7 @@ export function generateCity(seed: number): City {
       id,
       name,
       pos: corner.pos,
-      stop: corner.stops[id % corner.stops.length]!,
+      stop: corner.stops[id % corner.stops.length],
     };
   };
 
@@ -1068,7 +1071,7 @@ export function generateCity(seed: number): City {
         continue;
       }
       const district = districtAt(gx, gz);
-      const outline = districtBuilding[district]!;
+      const outline = districtBuilding[district];
 
       if (random() < outline.park) {
         parks.push([cx, cz]);
@@ -1094,14 +1097,14 @@ export function generateCity(seed: number): City {
           ) {
             continue;
           }
-          const palette = districtColors[district]!;
+          const palette = districtColors[district];
           buildings.push({
             x,
             z,
             w,
             d,
             h: outline.base + random() * outline.rise,
-            color: palette[randomInt(random, palette.length)]!,
+            color: palette[randomInt(random, palette.length)],
             district,
           });
           placed = true;
