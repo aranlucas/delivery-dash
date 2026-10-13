@@ -5,7 +5,6 @@
     "node_modules/**",
     ".cloudflare/**",
     ".wrangler/**",
-    "output/playwright/**",
-    "tools/oxlint/anti-slop/**"
+    "output/playwright/**"
   ]
 }

@@ -29,9 +29,6 @@ const violations = [...new Set(paths.split("\0"))].filter((path) => {
   // Deleted index entries still resolve after a case-only rename on macOS. Check the real name.
   if (!directories.get(directory).has(basename(path))) return false;
 
-  // Preserve the pinned third-party plugin, its upstream names, and required licenses.
-  if (path.startsWith("tools/oxlint/anti-slop/")) return false;
-
   if (path.startsWith(".agents/skills/") && basename(path) === "SKILL.md") return false;
 
   return !kebabCase.test(basename(path).replace(/^\./, ""));
