@@ -1,35 +1,27 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["jsx-a11y", "react", "typescript", "unicorn"],
+  "extends": [
+    "./node_modules/@aranlucas/oxforge/configs/recommended.json",
+    "./node_modules/@aranlucas/oxforge/configs/react.json",
+    "./node_modules/@aranlucas/oxforge/configs/type-aware.json"
+  ],
+  "plugins": [
+    "jsx-a11y",
+    "react",
+    "typescript",
+    "unicorn"
+  ],
   "categories": {
     "correctness": "error"
-  },
-  "rules": {
-    "react/react-in-jsx-scope": "off",
-    "anti-slop/no-array-filter-map": "error",
-    "anti-slop/no-reduce-accumulator-copy": "error",
-    "anti-slop/no-chained-type-assertions": "error",
-    "anti-slop/no-conditional-empty-object-spread": "error",
-    "anti-slop/no-known-value-widening": "error",
-    "anti-slop/no-module-mocking": "error",
-    "anti-slop/no-object-parameters": "error",
-    "anti-slop/no-reflect-apply": "error",
-    "anti-slop/no-reflect-get": "error",
-    "anti-slop/no-runtime-typeof": "error",
-    "anti-slop/no-shape-in-symbol-names": "error",
-    "anti-slop/no-unknown-parameters": "error",
-    "anti-slop/no-unknown-returns": "error",
-    "anti-slop/no-unknown-type-aliases": "error",
-    "anti-slop/no-unsafe-dictionary-type": "error",
-    "anti-slop/no-widen-then-assert": "error",
-    "anti-slop/require-readable-spacing": "error",
-    "anti-slop/require-safety-comment-for-type-assertion": "error",
-    "oxc/no-accumulating-spread": "error"
   },
   "env": {
     "browser": true,
     "node": true,
     "es2026": true
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "oxc/no-accumulating-spread": "error"
   },
   "ignorePatterns": [
     "dist/**",
@@ -48,11 +40,5 @@
     ".pi/**",
     ".roo/**",
     ".windsurf/**"
-  ],
-  "jsPlugins": [
-    {
-      "name": "anti-slop",
-      "specifier": "@aranlucas/oxlint-plugin-anti-slop"
-    }
   ]
 }
