@@ -40,7 +40,7 @@ export function ArcadeAudio() {
     const start = () => {
       if (context) {
         if (context.state === "suspended") {
-          void context.resume();
+          context.resume().catch(() => {});
         }
 
         return;
@@ -106,7 +106,7 @@ export function ArcadeAudio() {
       window.clearInterval(timer);
       engine?.stop();
       tire?.stop();
-      void context?.close();
+      context?.close().catch(() => {});
     };
   }, []);
 

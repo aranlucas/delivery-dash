@@ -26,8 +26,8 @@ class RampMesh {
     const start = this.positions.length / 3;
 
     for (let i = 0; i < rows.length; i++) {
-      this.positions.push(...rows[i]![0], ...rows[i]![1]);
-      this.uvs.push(...uvRows[i]![0], ...uvRows[i]![1]);
+      this.positions.push(...rows[i][0], ...rows[i][1]);
+      this.uvs.push(...uvRows[i][0], ...uvRows[i][1]);
 
       if (i === rows.length - 1) {
         continue;

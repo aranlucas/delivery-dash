@@ -59,7 +59,7 @@ export function addDriftCharge(
 
 export function rushRewardForCharge(charge: number): RushReward | undefined {
   for (let index = RUSH_REWARDS.length - 1; index >= 0; index--) {
-    const reward = RUSH_REWARDS[index]!;
+    const reward = RUSH_REWARDS[index];
 
     if (charge >= reward.threshold) {
       return reward;

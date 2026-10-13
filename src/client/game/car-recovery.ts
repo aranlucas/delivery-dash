@@ -29,11 +29,11 @@ export function isRecoverySpotClear(
     [2, -2],
     [2, 2],
   ]) {
-    if (blocked(city, x + dx!, z + dz!, 0)) {
+    if (blocked(city, x + dx, z + dz, 0)) {
       return false;
     }
 
-    if (groundHeightAt(city, x + dx!, z + dz!, 0) > 0.05) {
+    if (groundHeightAt(city, x + dx, z + dz, 0) > 0.05) {
       return false;
     }
   }

@@ -91,7 +91,7 @@ export function GltfInstances({
 }: GltfInstancesProps) {
   const parts = useMemo(() => {
     scene.updateMatrixWorld(true);
-    const meshes: THREE.Mesh[] = [];
+    const meshes: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>[] = [];
     scene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) {
         return;
@@ -102,7 +102,7 @@ export function GltfInstances({
         object.receiveShadow = true;
       }
 
-      meshes.push(object);
+      meshes.push(object as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>);
     });
 
     return meshes;

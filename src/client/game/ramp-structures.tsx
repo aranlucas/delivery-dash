@@ -24,7 +24,7 @@ const rotation = (pitch: number, yaw: number): Vec3 => {
 };
 
 function merge(parts: THREE.BufferGeometry[]) {
-  const geometry = mergeGeometries(parts)!;
+  const geometry = mergeGeometries(parts);
 
   for (const part of parts) {
     part.dispose();
@@ -133,7 +133,7 @@ export function Ramps({ city }: RampsProps) {
         const stations = [0.28, 0.52, 0.76, 0.98];
 
         for (let i = 0; i < stations.length; i++) {
-          const t = stations[i]!;
+          const t = stations[i];
           const top = rampHeight(r, t);
           const along = (t - 0.5) * r.length;
           ribs.push({
@@ -151,7 +151,7 @@ export function Ramps({ city }: RampsProps) {
             continue;
           }
 
-          const previous = stations[i - 1]!;
+          const previous = stations[i - 1];
           const dz = (t - previous) * r.length;
           ribs.push({
             position: position(r, across, top / 2, ((t + previous) / 2 - 0.5) * r.length),

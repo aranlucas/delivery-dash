@@ -7,7 +7,7 @@ import { StaticInstances, type StaticInstance } from "./static-instances";
 
 const SEGMENTS = 256;
 
-const HARBOR = CITY_ZONES.find((zone) => zone.id === "harbor")!;
+const HARBOR = CITY_ZONES.find((zone) => zone.id === "harbor");
 
 /** Keep the street grid intact, then soften its silhouette with coves and rounded headlands. */
 function shorePoint(angle: number) {
@@ -93,6 +93,7 @@ for (let i = 0; i < 160; i++) {
 
     // Leave the dock's gangway and landing clear of decorative boulders.
     const atGangway =
+      HARBOR &&
       x * radius < -WORLD_HALF &&
       x * radius > -WORLD_HALF - 50 &&
       Math.abs(z * radius - HARBOR.z) < 7;
@@ -102,7 +103,7 @@ for (let i = 0; i < 160; i++) {
         position: [x * radius, -0.35 + size * 0.38, z * radius],
         rotation: [0.18 * Math.sin(i), angle, 0.12 * Math.cos(i)],
         scale: [size * 1.6, size * 0.8, size],
-        color: ["#71837f", "#8c9182", "#a0a18c"][i % 3]!,
+        color: ["#71837f", "#8c9182", "#a0a18c"][i % 3],
       });
     }
   }

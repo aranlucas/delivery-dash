@@ -201,17 +201,9 @@ export function useOwnCarController({
   const forwardVectorRef = useRef<THREE.Vector2>(null);
   const rightVectorRef = useRef<THREE.Vector2>(null);
 
-  if (velocityRef.current === null) {
-    velocityRef.current = new THREE.Vector2();
-  }
-
-  if (forwardVectorRef.current === null) {
-    forwardVectorRef.current = new THREE.Vector2();
-  }
-
-  if (rightVectorRef.current === null) {
-    rightVectorRef.current = new THREE.Vector2();
-  }
+  velocityRef.current ??= new THREE.Vector2();
+  forwardVectorRef.current ??= new THREE.Vector2();
+  rightVectorRef.current ??= new THREE.Vector2();
 
   const driftGrace = useRef(0);
   const driftHold = useRef(0);
