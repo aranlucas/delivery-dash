@@ -61,6 +61,8 @@ interface ZonePosition {
   z: number;
 }
 
-export function jumpGatePosition(zone: ZonePosition): [number, number] {
+type GatePosition = [number, number];
+
+export function jumpGatePosition(zone: ZonePosition): GatePosition {
   return [zone.x + (zone.id === "freight" ? 24 : 0), zone.z];
 }

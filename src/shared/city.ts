@@ -273,11 +273,11 @@ export function districtAt(gx: number, gz: number) {
   return gx >= 4 && gx <= 7 && gz >= 3 && gz <= 7 ? 0 : 1;
 }
 
-const districtBuilding = [
+const districtBuilding: DistrictOutline[] = [
   { park: 0.07, count: 3, size: 13, spread: 11, base: 24, rise: 32 },
   { park: 0.16, count: 4, size: 10, spread: 10, base: 13, rise: 24 },
   { park: 0.26, count: 4, size: 8, spread: 9, base: 7, rise: 12 },
-] as const;
+];
 
 /**
  * Highest drivable surface under a car sitting at `height`. Surfaces more than STEP_UP above the
@@ -666,7 +666,12 @@ function buildExpressways() {
 }
 
 /** Seeded jump ramps on the street grid, each with a boost strip on its approach. */
-function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }) {
+interface Structures {
+  ramps: Ramp[];
+  decks: Deck[];
+}
+
+function scatterStunts(seed: number, structures: Structures) {
   const random = mulberry32(seed ^ 0x2b3c1d);
   const kickers: Ramp[] = [];
   const boostPads: BoostPad[] = [];
@@ -782,7 +787,7 @@ const carColors = [
 
 /** True when an expressway deck or approach ramp runs along this road line. */
 function roadHasStructure(
-  structures: { ramps: Ramp[]; decks: Deck[] },
+  structures: Structures,
   axis: "x" | "z",
   cross: number,
 ) {
@@ -837,7 +842,7 @@ export const PARKED_CAR_HALF_LENGTH = 2.3;
 export const PARKED_CAR_HALF_WIDTH = 1.25;
 
 /** A lane of moving traffic on every ordinary road line — the streets should look inhabited. */
-function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }): TrafficRoute[] {
+function buildTraffic(seed: number, structures: Structures): TrafficRoute[] {
   const random = mulberry32(seed ^ 0x1c0ffee);
   const routes: TrafficRoute[] = [];
 
@@ -876,7 +881,7 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
 /** Kerb parking down one side of each road line, skipping anything a driver has to reach. */
 function buildParking(
   seed: number,
-  structures: { ramps: Ramp[]; decks: Deck[] },
+  structures: Structures,
   ramps: Ramp[],
   boostPads: BoostPad[],
   stops: Pos2[],
@@ -896,42 +901,121 @@ function buildParking(
       const cross = road + parkingSide(i) * PARKING_OFFSET;
 
       for (let j = 0; j < GRID_SIZE; j++) {
-        for (const slot of slots) {
-          if (random() < 0.35) {
-            continue;
-          }
-          const along = blockCenter(j) + slot;
-
-          const x = axis === "x" ? along : cross;
-          const z = axis === "x" ? cross : along;
-
-          if (zoneAt(x, z, 6)) {
-            continue;
-          }
-
-          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) {
-            continue;
-          }
-
-          if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) {
-            continue;
-          }
-
-          if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) {
-            continue;
-          }
-          cars.push({
-            x,
-            z,
-            yaw: axis === "x" ? Math.PI / 2 : 0,
-            color: carColors[randomInt(random, carColors.length)]!,
-          });
-        }
+        placeParkingSlots(cars, random, axis, cross, j, slots, stops, ramps, boostPads, carColors);
       }
     }
   }
 
   return cars;
+}
+
+function isParkingSpotValid(
+  x: number,
+  z: number,
+  stops: Pos2[],
+  ramps: Ramp[],
+  boostPads: BoostPad[],
+): boolean {
+  if (zoneAt(x, z, 6)) {
+    return false;
+  }
+
+  if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) {
+    return false;
+  }
+
+  if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) {
+    return false;
+  }
+
+  if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) {
+    return false;
+  }
+
+  return true;
+}
+
+function placeParkingSlots(
+  cars: ParkedCar[],
+  random: () => number,
+  axis: "x" | "z",
+  cross: number,
+  j: number,
+  slots: number[],
+  stops: Pos2[],
+  ramps: Ramp[],
+  boostPads: BoostPad[],
+  carColorsList: string[],
+): void {
+  for (const slot of slots) {
+    if (random() < 0.35) {
+      continue;
+    }
+    const along = blockCenter(j) + slot;
+
+    const x = axis === "x" ? along : cross;
+    const z = axis === "x" ? cross : along;
+
+    if (isParkingSpotValid(x, z, stops, ramps, boostPads)) {
+      cars.push({
+        x,
+        z,
+        yaw: axis === "x" ? Math.PI / 2 : 0,
+        color: carColorsList[randomInt(random, carColorsList.length)]!,
+      });
+    }
+  }
+}
+
+interface DistrictOutline {
+  park: number;
+  count: number;
+  size: number;
+  spread: number;
+  base: number;
+  rise: number;
+}
+
+function placeBuildingsInBlock(
+  buildings: Building[],
+  placePoints: Pos2[],
+  cx: number,
+  cz: number,
+  district: number,
+  outline: DistrictOutline,
+  count: number,
+  random: () => number,
+): void {
+  for (let n = 0; n < count; n++) {
+    const w = outline.size + random() * outline.spread;
+    const d = outline.size + random() * outline.spread;
+
+    let placed = false;
+
+    for (let attempt = 0; attempt < 8 && !placed; attempt++) {
+      const x = cx + (random() - 0.5) * (BLOCK_SIZE - w - 3);
+      const z = cz + (random() - 0.5) * (BLOCK_SIZE - d - 3);
+
+      if (
+        placePoints.some(
+          ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
+        )
+      ) {
+        continue;
+      }
+      const palette = districtColors[district]!;
+      buildings.push({
+        x,
+        z,
+        w,
+        d,
+        h: outline.base + random() * outline.rise,
+        color: palette[randomInt(random, palette.length)]!,
+        district,
+      });
+      placed = true;
+    }
+  }
 }
 
 export function generateCity(seed: number): City {
@@ -979,11 +1063,16 @@ export function generateCity(seed: number): City {
         Math.abs(z - (pillar.minZ + pillar.maxZ) / 2) < 6,
     );
 
-  // Places pull from their own random stream so buildings can avoid their footprints.
-  // Positions sit just inside block corners, adjacent to the surrounding roads.
-  const corners: { pos: Pos2; stops: Pos2[] }[] = [];
+// Places pull from their own random stream so buildings can avoid their footprints.
+// Positions sit just inside block corners, adjacent to the surrounding roads.
+interface Corner {
+  pos: Pos2;
+  stops: Pos2[];
+}
 
-  for (let x = 0; x < GRID_SIZE; x++) {
+const corners: Corner[] = [];
+
+for (let x = 0; x < GRID_SIZE; x++) {
     for (let z = 0; z < GRID_SIZE; z++) {
       if (zoneAt(blockCenter(x), blockCenter(z))) {
         continue;
@@ -1076,37 +1165,7 @@ export function generateCity(seed: number): City {
       }
 
       const count = 1 + randomInt(random, outline.count);
-
-      for (let n = 0; n < count; n++) {
-        const w = outline.size + random() * outline.spread;
-        const d = outline.size + random() * outline.spread;
-
-        let placed = false;
-
-        for (let attempt = 0; attempt < 8 && !placed; attempt++) {
-          const x = cx + (random() - 0.5) * (BLOCK_SIZE - w - 3);
-          const z = cz + (random() - 0.5) * (BLOCK_SIZE - d - 3);
-
-          if (
-            placePoints.some(
-              ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
-            )
-          ) {
-            continue;
-          }
-          const palette = districtColors[district]!;
-          buildings.push({
-            x,
-            z,
-            w,
-            d,
-            h: outline.base + random() * outline.rise,
-            color: palette[randomInt(random, palette.length)]!,
-            district,
-          });
-          placed = true;
-        }
-      }
+      placeBuildingsInBlock(buildings, placePoints, cx, cz, district, outline, count, random);
     }
   }
 

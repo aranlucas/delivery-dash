@@ -33,20 +33,20 @@ function outwardYaw([x, z]: Pos2) {
 }
 
 /** Convert an offset inside a yawed place group to an instance in world space. */
+type Vec3 = [number, number, number];
+
 function placeOffset(
   [px, pz]: Pos2,
   yaw: number,
   x: number,
   y: number,
   z: number,
-): [number, number, number] {
+): Vec3 {
   const cosine = Math.cos(yaw);
   const sine = Math.sin(yaw);
 
   return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
 }
-
-type Vec3 = [number, number, number];
 
 /** All repeated place geometry is instanced; only restaurant text remains per-place. */
 interface PlacePropsProps {

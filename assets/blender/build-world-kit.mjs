@@ -14,6 +14,7 @@ globalThis.FileReader = class {
     return blob.arrayBuffer().then((result) => {
       this.result = result;
       this.onloadend?.();
+      return result;
     });
   }
 };
@@ -134,8 +135,8 @@ function mergedScene(list) {
 async function exportModel(name, list) {
   const exporter = new GLTFExporter();
 
-  const result = await new Promise((resolveResult, _reject) => {
-    exporter.parse(mergedScene(list), resolveResult, undefined, { binary: true });
+  const result = await new Promise((_resolve) => {
+    exporter.parse(mergedScene(list), _resolve, undefined, { binary: true });
   });
 
   await writeFile(resolve(OUT, `${name}.glb`), Buffer.from(result));
