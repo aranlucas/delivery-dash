@@ -16,10 +16,15 @@ import { mulberry32 } from "../../../shared/rng";
 import { useStreetPropAssets } from "../model-assets";
 import { useInstances, type Instance } from "./instances";
 
-export function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
+interface PalmTreesProps {
+  city: CityData;
+  seed: number;
+}
+
+export function PalmTrees({ city, seed }: PalmTreesProps) {
   const { palmTrunk, palmFrond } = useStreetPropAssets();
 
-  const { trunks, fronds } = useMemo(() => {
+  const { trunks: trunkInstances, fronds: frondInstances } = useMemo(() => {
     const rng = mulberry32(seed ^ 0xc0a57);
     const trunks: Instance[] = [];
     const fronds: Instance[] = [];
@@ -68,15 +73,15 @@ export function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   const trunkMesh = useRef<THREE.InstancedMesh>(null);
   const frondMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(trunkMesh, trunks);
-  useInstances(frondMesh, fronds);
+  useInstances(trunkMesh, trunkInstances);
+  useInstances(frondMesh, frondInstances);
 
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[palmTrunk, undefined, trunks.length]} castShadow>
+      <instancedMesh ref={trunkMesh} args={[palmTrunk, undefined, trunkInstances.length]} castShadow>
         <meshStandardMaterial color="#8e542d" roughness={0.96} />
       </instancedMesh>
-      <instancedMesh ref={frondMesh} args={[palmFrond, undefined, fronds.length]} castShadow>
+      <instancedMesh ref={frondMesh} args={[palmFrond, undefined, frondInstances.length]} castShadow>
         <meshStandardMaterial
           color="#27a653"
           roughness={0.88}
@@ -88,8 +93,13 @@ export function PalmTrees({ city, seed }: { city: CityData; seed: number }) {
   );
 }
 
-export function Greenery({ city, seed }: { city: CityData; seed: number }) {
-  const { trunks, canopies } = useMemo(() => {
+interface GreeneryProps {
+  city: CityData;
+  seed: number;
+}
+
+export function Greenery({ city, seed }: GreeneryProps) {
+  const { trunks: trunkInstances, canopies: canopyInstances } = useMemo(() => {
     const rng = mulberry32(seed ^ 0x7ee5);
     const trunks: Instance[] = [];
     const canopies: Instance[] = [];
@@ -126,16 +136,16 @@ export function Greenery({ city, seed }: { city: CityData; seed: number }) {
   const trunkMesh = useRef<THREE.InstancedMesh>(null);
   const canopyMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(trunkMesh, trunks);
-  useInstances(canopyMesh, canopies);
+  useInstances(trunkMesh, trunkInstances);
+  useInstances(canopyMesh, canopyInstances);
 
   return (
     <>
-      <instancedMesh ref={trunkMesh} args={[undefined, undefined, trunks.length]} castShadow>
+      <instancedMesh ref={trunkMesh} args={[undefined, undefined, trunkInstances.length]} castShadow>
         <cylinderGeometry args={[0.5, 0.65, 1, 6]} />
         <meshStandardMaterial color="#5d4630" roughness={1} />
       </instancedMesh>
-      <instancedMesh ref={canopyMesh} args={[undefined, undefined, canopies.length]} castShadow>
+      <instancedMesh ref={canopyMesh} args={[undefined, undefined, canopyInstances.length]} castShadow>
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color="#3f7443" roughness={0.95} flatShading />
       </instancedMesh>
@@ -143,10 +153,14 @@ export function Greenery({ city, seed }: { city: CityData; seed: number }) {
   );
 }
 
-export function StreetLights({ city }: { city: CityData }) {
+interface StreetLightsProps {
+  city: CityData;
+}
+
+export function StreetLights({ city }: StreetLightsProps) {
   const { streetlightPole: poleGeometry, streetlightLens: lensGeometry } = useStreetPropAssets();
 
-  const { poles, heads } = useMemo(() => {
+  const { poles: poleInstances, heads: headInstances } = useMemo(() => {
     const poles: Instance[] = [];
     const heads: Instance[] = [];
 
@@ -176,15 +190,15 @@ export function StreetLights({ city }: { city: CityData }) {
   const poleMesh = useRef<THREE.InstancedMesh>(null);
   const headMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(poleMesh, poles);
-  useInstances(headMesh, heads);
+  useInstances(poleMesh, poleInstances);
+  useInstances(headMesh, headInstances);
 
   return (
     <>
-      <instancedMesh ref={poleMesh} args={[poleGeometry, undefined, poles.length]} castShadow>
+      <instancedMesh ref={poleMesh} args={[poleGeometry, undefined, poleInstances.length]} castShadow>
         <meshStandardMaterial color="#3a3f46" metalness={0.6} roughness={0.5} />
       </instancedMesh>
-      <instancedMesh ref={headMesh} args={[lensGeometry, undefined, heads.length]}>
+      <instancedMesh ref={headMesh} args={[lensGeometry, undefined, headInstances.length]}>
         <meshStandardMaterial color="#ffe9bd" emissive="#ffdf9e" emissiveIntensity={2.4} />
       </instancedMesh>
     </>
@@ -193,7 +207,7 @@ export function StreetLights({ city }: { city: CityData }) {
 
 /** Signals face the traffic they hold: one head per axis, lit green for through traffic. */
 export function TrafficSignals() {
-  const { poles, heads, green, red, dark } = useMemo(() => {
+  const { poles: poleInstances, heads: headInstances, green: greenInstances, red: redInstances, dark: darkInstances } = useMemo(() => {
     const poles: Instance[] = [];
     const heads: Instance[] = [];
     const green: Instance[] = [];
@@ -250,31 +264,31 @@ export function TrafficSignals() {
   const redMesh = useRef<THREE.InstancedMesh>(null);
   const darkMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(poleMesh, poles);
-  useInstances(headMesh, heads);
-  useInstances(greenMesh, green);
-  useInstances(redMesh, red);
-  useInstances(darkMesh, dark);
+  useInstances(poleMesh, poleInstances);
+  useInstances(headMesh, headInstances);
+  useInstances(greenMesh, greenInstances);
+  useInstances(redMesh, redInstances);
+  useInstances(darkMesh, darkInstances);
 
   return (
     <>
-      <instancedMesh ref={poleMesh} args={[undefined, undefined, poles.length]}>
+      <instancedMesh ref={poleMesh} args={[undefined, undefined, poleInstances.length]}>
         <boxGeometry />
         <meshStandardMaterial color="#2c3138" metalness={0.5} roughness={0.6} />
       </instancedMesh>
-      <instancedMesh ref={headMesh} args={[undefined, undefined, heads.length]}>
+      <instancedMesh ref={headMesh} args={[undefined, undefined, headInstances.length]}>
         <boxGeometry />
         <meshStandardMaterial color="#15191d" roughness={0.8} />
       </instancedMesh>
-      <instancedMesh ref={greenMesh} args={[undefined, undefined, green.length]}>
+      <instancedMesh ref={greenMesh} args={[undefined, undefined, greenInstances.length]}>
         <sphereGeometry args={[1, 8, 6]} />
         <meshStandardMaterial color="#8bffb0" emissive="#25e06a" emissiveIntensity={2.6} />
       </instancedMesh>
-      <instancedMesh ref={redMesh} args={[undefined, undefined, red.length]}>
+      <instancedMesh ref={redMesh} args={[undefined, undefined, redInstances.length]}>
         <sphereGeometry args={[1, 8, 6]} />
         <meshStandardMaterial color="#ffb0a6" emissive="#ff2d1a" emissiveIntensity={2.6} />
       </instancedMesh>
-      <instancedMesh ref={darkMesh} args={[undefined, undefined, dark.length]}>
+      <instancedMesh ref={darkMesh} args={[undefined, undefined, darkInstances.length]}>
         <sphereGeometry args={[1, 8, 6]} />
         <meshStandardMaterial color="#242a30" roughness={0.4} />
       </instancedMesh>
@@ -282,9 +296,14 @@ export function TrafficSignals() {
   );
 }
 
+interface StreetFurnitureProps {
+  city: CityData;
+  seed: number;
+}
+
 /** Kerbside clutter: hydrants, bins and benches spread along the sidewalks. */
-export function StreetFurniture({ city, seed }: { city: CityData; seed: number }) {
-  const { hydrants, bins, benches } = useMemo(() => {
+export function StreetFurniture({ city, seed }: StreetFurnitureProps) {
+  const { hydrants: hydrantInstances, bins: binInstances, benches: benchInstances } = useMemo(() => {
     const rng = mulberry32(seed ^ 0x51de);
 
     const hydrants: Instance[] = [];
@@ -337,32 +356,37 @@ export function StreetFurniture({ city, seed }: { city: CityData; seed: number }
   const binMesh = useRef<THREE.InstancedMesh>(null);
   const benchMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(hydrantMesh, hydrants);
-  useInstances(binMesh, bins);
-  useInstances(benchMesh, benches);
+  useInstances(hydrantMesh, hydrantInstances);
+  useInstances(binMesh, binInstances);
+  useInstances(benchMesh, benchInstances);
 
   return (
     <>
       <instancedMesh
         ref={hydrantMesh}
-        args={[hydrantGeometry, undefined, hydrants.length]}
+        args={[hydrantGeometry, undefined, hydrantInstances.length]}
         castShadow
       >
         <meshStandardMaterial color="#d43a2a" roughness={0.7} />
       </instancedMesh>
-      <instancedMesh ref={binMesh} args={[binGeometry, undefined, bins.length]} castShadow>
+      <instancedMesh ref={binMesh} args={[binGeometry, undefined, binInstances.length]} castShadow>
         <meshStandardMaterial color="#2f3a34" roughness={0.9} />
       </instancedMesh>
-      <instancedMesh ref={benchMesh} args={[benchGeometry, undefined, benches.length]} castShadow>
+      <instancedMesh ref={benchMesh} args={[benchGeometry, undefined, benchInstances.length]} castShadow>
         <meshStandardMaterial color="#8a5a33" roughness={0.95} />
       </instancedMesh>
     </>
   );
 }
 
+interface RooftopsProps {
+  city: CityData;
+  seed: number;
+}
+
 /** Plant rooms, water tanks and masts break up the flat tops of the taller blocks. */
-export function Rooftops({ city, seed }: { city: CityData; seed: number }) {
-  const { huts, tanks, masts } = useMemo(() => {
+export function Rooftops({ city, seed }: RooftopsProps) {
+  const { huts: hutInstances, tanks: tankInstances, masts: mastInstances } = useMemo(() => {
     const rng = mulberry32(seed ^ 0x2f00f);
 
     const huts: Instance[] = [];
@@ -399,15 +423,15 @@ export function Rooftops({ city, seed }: { city: CityData; seed: number }) {
   const tankMesh = useRef<THREE.InstancedMesh>(null);
   const mastMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(hutMesh, huts);
-  useInstances(tankMesh, tanks);
-  useInstances(mastMesh, masts);
+  useInstances(hutMesh, hutInstances);
+  useInstances(tankMesh, tankInstances);
+  useInstances(mastMesh, mastInstances);
 
   return (
     <>
       <instancedMesh
         ref={hutMesh}
-        args={[undefined, undefined, Math.max(1, huts.length)]}
+        args={[undefined, undefined, Math.max(1, hutInstances.length)]}
         castShadow
       >
         <boxGeometry />
@@ -415,13 +439,13 @@ export function Rooftops({ city, seed }: { city: CityData; seed: number }) {
       </instancedMesh>
       <instancedMesh
         ref={tankMesh}
-        args={[undefined, undefined, Math.max(1, tanks.length)]}
+        args={[undefined, undefined, Math.max(1, tankInstances.length)]}
         castShadow
       >
         <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
         <meshStandardMaterial color="#7d5a3c" roughness={0.95} />
       </instancedMesh>
-      <instancedMesh ref={mastMesh} args={[undefined, undefined, Math.max(1, masts.length)]}>
+      <instancedMesh ref={mastMesh} args={[undefined, undefined, Math.max(1, mastInstances.length)]}>
         <boxGeometry />
         <meshStandardMaterial color="#c8ccd2" metalness={0.6} roughness={0.4} />
       </instancedMesh>

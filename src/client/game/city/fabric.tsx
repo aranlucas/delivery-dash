@@ -71,13 +71,12 @@ function facadeMaterial(map: THREE.Texture, emissiveMap: THREE.Texture) {
   return material;
 }
 
-function BuildingDistrict({
-  buildings,
-  style,
-}: {
+interface BuildingDistrictProps {
   buildings: CityData["buildings"];
   style: (typeof FACADE_STYLES)[number];
-}) {
+}
+
+function BuildingDistrict({ buildings, style }: BuildingDistrictProps) {
   const mesh = useRef<THREE.InstancedMesh>(null);
 
   const material = useMemo(() => {
@@ -117,7 +116,8 @@ function BuildingDistrict({
       return;
     }
 
-    buildings.forEach((b, i) => {
+    for (let i = 0; i < buildings.length; i++) {
+      const b = buildings[i];
       instanced.setMatrixAt(
         i,
         matrix.compose(
@@ -127,7 +127,7 @@ function BuildingDistrict({
         ),
       );
       instanced.setColorAt(i, tint.set(b.color).multiplyScalar(1.22));
-    });
+    }
     instanced.instanceMatrix.needsUpdate = true;
 
     if (instanced.instanceColor) {
@@ -145,7 +145,11 @@ function BuildingDistrict({
   );
 }
 
-export function Buildings({ city }: { city: CityData }) {
+interface BuildingsProps {
+  city: CityData;
+}
+
+export function Buildings({ city }: BuildingsProps) {
   const districts = useMemo(
     () => FACADE_STYLES.map((_, index) => city.buildings.filter((b) => b.district === index)),
     [city],
@@ -160,12 +164,16 @@ export function Buildings({ city }: { city: CityData }) {
   );
 }
 
+interface BlocksProps {
+  city: CityData;
+}
+
 /** City blocks are all the same size, so the sidewalk slab and its surface instance cleanly. */
-export function Blocks({ city }: { city: CityData }) {
-  const { slabs, parkTops, cityTops } = useMemo(() => {
-    const slabs: Instance[] = [];
-    const parkTops: Instance[] = [];
-    const cityTops: Instance[] = [];
+export function Blocks({ city }: BlocksProps) {
+  const { slabs: slabInstances, parkTops: parkTopInstances, cityTops: cityTopInstances } = useMemo(() => {
+    const localSlabs: Instance[] = [];
+    const localParkTops: Instance[] = [];
+    const localCityTops: Instance[] = [];
 
     for (let gx = 0; gx < GRID_SIZE; gx++) {
       for (let gz = 0; gz < GRID_SIZE; gz++) {
@@ -175,13 +183,13 @@ export function Blocks({ city }: { city: CityData }) {
         if (zoneAt(x, z)) {
           continue;
         }
-        slabs.push({ pos: [x, 0.06, z] });
+        localSlabs.push({ pos: [x, 0.06, z] });
         const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
-        (park ? parkTops : cityTops).push({ pos: [x, 0.2, z] });
+        (park ? localParkTops : localCityTops).push({ pos: [x, 0.2, z] });
       }
     }
 
-    return { slabs, parkTops, cityTops };
+    return { slabs: localSlabs, parkTops: localParkTops, cityTops: localCityTops };
   }, [city]);
 
   const slabGeometry = useMemo(
@@ -210,25 +218,25 @@ export function Blocks({ city }: { city: CityData }) {
   const parkMesh = useRef<THREE.InstancedMesh>(null);
   const cityMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(slabMesh, slabs);
-  useInstances(parkMesh, parkTops);
-  useInstances(cityMesh, cityTops);
+  useInstances(slabMesh, slabInstances);
+  useInstances(parkMesh, parkTopInstances);
+  useInstances(cityMesh, cityTopInstances);
 
   return (
     <>
-      <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabs.length]} receiveShadow>
+      <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabInstances.length]} receiveShadow>
         <meshStandardMaterial color="#ffd36e" roughness={0.86} />
       </instancedMesh>
       <instancedMesh
         ref={parkMesh}
-        args={[topGeometry, undefined, Math.max(1, parkTops.length)]}
+        args={[topGeometry, undefined, Math.max(1, parkTopInstances.length)]}
         receiveShadow
       >
         <meshStandardMaterial map={grass} roughness={0.95} />
       </instancedMesh>
       <instancedMesh
         ref={cityMesh}
-        args={[topGeometry, undefined, Math.max(1, cityTops.length)]}
+        args={[topGeometry, undefined, Math.max(1, cityTopInstances.length)]}
         receiveShadow
       >
         <meshStandardMaterial map={paving} roughness={0.92} />
@@ -237,7 +245,11 @@ export function Blocks({ city }: { city: CityData }) {
   );
 }
 
-export function RoadMarkings({ city }: { city: CityData }) {
+interface RoadMarkingsProps {
+  city: CityData;
+}
+
+export function RoadMarkings({ city }: RoadMarkingsProps) {
   const dashes = useMemo(() => {
     const items: Instance[] = [];
 
@@ -291,7 +303,7 @@ export function RoadMarkings({ city }: { city: CityData }) {
 }
 
 export function ArcadeCurbs() {
-  const { yellow, black } = useMemo(() => {
+  const { yellow: yellowInstances, black: blackInstances } = useMemo(() => {
     const yellow: Instance[] = [];
     const black: Instance[] = [];
     const edge = BLOCK_SIZE / 2 + 1.62;
@@ -335,16 +347,16 @@ export function ArcadeCurbs() {
   const yellowMesh = useRef<THREE.InstancedMesh>(null);
   const blackMesh = useRef<THREE.InstancedMesh>(null);
 
-  useInstances(yellowMesh, yellow);
-  useInstances(blackMesh, black);
+  useInstances(yellowMesh, yellowInstances);
+  useInstances(blackMesh, blackInstances);
 
   return (
     <>
-      <instancedMesh ref={yellowMesh} args={[undefined, undefined, yellow.length]}>
+      <instancedMesh ref={yellowMesh} args={[undefined, undefined, yellowInstances.length]}>
         <boxGeometry />
         <meshStandardMaterial color="#ffd400" roughness={0.72} />
       </instancedMesh>
-      <instancedMesh ref={blackMesh} args={[undefined, undefined, black.length]}>
+      <instancedMesh ref={blackMesh} args={[undefined, undefined, blackInstances.length]}>
         <boxGeometry />
         <meshStandardMaterial color="#15191d" roughness={0.82} />
       </instancedMesh>
@@ -396,7 +408,11 @@ export function Crosswalks() {
 
 export { Ramps } from "../ramp-structures";
 
-export function Expressway({ city }: { city: CityData }) {
+interface ExpresswayProps {
+  city: CityData;
+}
+
+export function Expressway({ city }: ExpresswayProps) {
   const concrete = useMemo(() => makeConcreteTexture(), []);
 
   const asphalt = useMemo(() => {

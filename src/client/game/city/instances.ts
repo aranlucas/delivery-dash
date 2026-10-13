@@ -24,7 +24,8 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
     const up = new THREE.Vector3(0, 1, 0);
     const right = new THREE.Vector3(1, 0, 0);
     const color = new THREE.Color();
-    items.forEach((it, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
       const s = it.scale ?? 1;
       const sv = Array.isArray(s) ? new THREE.Vector3(...s) : new THREE.Vector3(s, s, s);
       q.setFromAxisAngle(up, it.rotY ?? 0);
@@ -39,7 +40,7 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
       if (it.color) {
         mesh.setColorAt(i, color.set(it.color));
       }
-    });
+    }
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
 

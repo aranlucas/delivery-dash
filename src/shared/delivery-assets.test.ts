@@ -9,6 +9,26 @@ import {
   jumpGatePosition,
 } from "./delivery-assets.ts";
 
+interface Mesh {
+  primitives: Primitive[];
+}
+
+interface Primitive {
+  indices: number;
+  attributes: Record<string, number>;
+}
+
+interface Accessor {
+  count: number;
+}
+
+interface GLTF {
+  materials: unknown[];
+  textures?: unknown[];
+  meshes: Mesh[];
+  accessors: Accessor[];
+}
+
 test("authored storefronts keep pickup stops and their approach clear across seeds", () => {
   for (let seed = 1; seed <= 32; seed++) {
     const city = generateCity(seed);
@@ -46,31 +66,35 @@ test("jump gate posts and overhead beam are solid while the whole jump lane stay
 });
 
 test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
+  const names = ["sushi", "pizza", "depot", "jump-gate", "landing-target"] as const;
+  const results = await Promise.all(
+    names.map(async (name) => {
+      const bytes = await readFile(
+        new URL(`../../public/models/delivery/${name}.glb`, import.meta.url),
+      );
+      return { name, bytes };
+    }),
+  );
+
   let totalBytes = 0;
 
-  for (const name of ["sushi", "pizza", "depot", "jump-gate", "landing-target"]) {
-    const bytes = await readFile(
-      new URL(`../../public/models/delivery/${name}.glb`, import.meta.url),
-    );
-
+  for (const { name, bytes } of results) {
     totalBytes += bytes.length;
     assert.equal(bytes.toString("utf8", 0, 4), "glTF");
-    const json = JSON.parse(bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12)));
+    const json = JSON.parse(bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12))) as GLTF;
     assert.equal(json.materials.length, 1, `${name} has extra materials`);
     assert.equal(json.textures?.length ?? 0, 0, `${name} unexpectedly downloads textures`);
-    const primitives = json.meshes.flatMap((m: { primitives: unknown[] }) => m.primitives);
+    const primitives = json.meshes.flatMap((m) => m.primitives);
     assert.equal(primitives.length, 1, `${name} needs more than one draw call`);
 
     const triangles = primitives.reduce(
-      (sum: number, p: { indices: number }) => sum + json.accessors[p.indices].count / 3,
+      (sum, p) => sum + json.accessors[p.indices].count / 3,
       0,
     );
 
     assert.ok(triangles < 3000, `${name} has ${triangles} triangles`);
     assert.ok(
-      primitives.every(
-        (p: { attributes: Record<string, number> }) => p.attributes.COLOR_0 !== undefined,
-      ),
+      primitives.every((p) => p.attributes.COLOR_0 !== undefined),
       "missing vertex palette",
     );
   }

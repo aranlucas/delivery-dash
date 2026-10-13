@@ -8,6 +8,13 @@ type WorldModel = "market" | "harbor" | "plaza";
 
 const assetUrl = (name: WorldModel) => `/models/world/${name}.glb?v=world-4`;
 
+interface RelativePlacement {
+  model: WorldModel;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale?: [number, number, number];
+}
+
 /**
  * The authored kit lives at the outer corners of each superblock; the harbor boat sits
  * off the west shore beside Lighthouse Point. The center 20–36 m drift ring,
@@ -16,12 +23,7 @@ const assetUrl = (name: WorldModel) => `/models/world/${name}.glb?v=world-4`;
  */
 const RELATIVE_PLACEMENTS: Record<
   (typeof CITY_ZONES)[number]["id"],
-  Array<{
-    model: WorldModel;
-    position: [number, number, number];
-    rotation: [number, number, number];
-    scale?: [number, number, number];
-  }>
+  RelativePlacement[]
 > = {
   festival: [
     { model: "market", position: [-32, 0, 36], rotation: [0, -0.18, 0], scale: [0.8, 0.8, 0.8] },
@@ -61,7 +63,12 @@ for (const zone of CITY_ZONES) {
   }
 }
 
-function ModelBatch({ name, items }: { name: WorldModel; items: StaticInstance[] }) {
+interface ModelBatchProps {
+  name: WorldModel;
+  items: StaticInstance[];
+}
+
+function ModelBatch({ name, items }: ModelBatchProps) {
   const { scene } = useGLTF(assetUrl(name));
 
   return <GltfInstances scene={scene} items={items} shadows batchKey={name} />;

@@ -7,8 +7,13 @@ import { ownPose } from "./driving-state";
 import type { Place } from "../../shared/city";
 import { CHECKPOINT_COUNT } from "../../shared/game-modes";
 
+interface CheckpointGateProps {
+  place: Place;
+  number: number;
+}
+
 /** A holographic gate faces the road and stays passable from either direction. */
-export function CheckpointGate({ place, number }: { place: Place; number: number }) {
+export function CheckpointGate({ place, number }: CheckpointGateProps) {
   const acrossX = Math.abs(place.stop[0] - place.pos[0]) < Math.abs(place.stop[1] - place.pos[1]);
   const color = number === CHECKPOINT_COUNT ? "#ffd400" : "#00dcff";
 
@@ -55,8 +60,13 @@ export function CheckpointGate({ place, number }: { place: Place; number: number
   );
 }
 
+interface TargetBeaconProps {
+  pos: [number, number];
+  dropoff: boolean;
+}
+
 /** Grounded delivery zone: pulsing ring + soft pillar + bobbing cone, sitting on the sidewalk plane. */
-export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff: boolean }) {
+export function TargetBeacon({ pos, dropoff }: TargetBeaconProps) {
   const color = dropoff ? "#65f578" : "#ff7a00";
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
@@ -94,16 +104,14 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
 
 const CHEVRON_COUNT = 3;
 
-/** Flowing chevrons immediately ahead of the car, aimed at the destination. */
-export function TargetPointer({
-  target,
-  dropoff,
-  checkpoint = false,
-}: {
+interface TargetPointerProps {
   target: [number, number];
   dropoff: boolean;
   checkpoint?: boolean;
-}) {
+}
+
+/** Flowing chevrons immediately ahead of the car, aimed at the destination. */
+export function TargetPointer({ target, dropoff, checkpoint = false }: TargetPointerProps) {
   const group = useRef<THREE.Group>(null);
   const chevrons = useRef<Array<THREE.Mesh | null>>([]);
   useFrame(({ clock }) => {

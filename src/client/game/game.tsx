@@ -14,7 +14,13 @@ import { CityViewCamera } from "./city-view-camera";
 import { ownPose } from "./driving-state";
 import { PerfProbe } from "../ui/perf-overlay";
 
-export function Game({ seed, city, orders }: { seed: number; city: CityData; orders: Order[] }) {
+interface GameProps {
+  seed: number;
+  city: CityData;
+  orders: Order[];
+}
+
+export function Game({ seed, city, orders }: GameProps) {
   return (
     <Canvas
       shadows="percentage"
@@ -26,8 +32,12 @@ export function Game({ seed, city, orders }: { seed: number; city: CityData; ord
   );
 }
 
+interface SunProps {
+  inspecting: boolean;
+}
+
 /** The city outgrew a single static shadow frustum, so the sun rides along with the player. */
-function Sun({ inspecting }: { inspecting: boolean }) {
+function Sun({ inspecting }: SunProps) {
   const light = useRef<THREE.DirectionalLight>(null);
   const target = useMemo(() => new THREE.Object3D(), []);
   useFrame(({ controls }) => {
@@ -67,7 +77,13 @@ function Sun({ inspecting }: { inspecting: boolean }) {
   );
 }
 
-function Scene({ seed, city, orders }: { seed: number; city: CityData; orders: Order[] }) {
+interface SceneProps {
+  seed: number;
+  city: CityData;
+  orders: Order[];
+}
+
+function Scene({ seed, city, orders }: SceneProps) {
   const players = useGameStore((s) => s.players);
   const selfId = useGameStore((s) => s.selfId);
   const phase = useGameStore((s) => s.phase);

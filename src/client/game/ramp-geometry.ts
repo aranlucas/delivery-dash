@@ -11,8 +11,10 @@ import {
 type RampProfile = Pick<Ramp, "kind" | "length" | "width" | "height">;
 
 type Vertex = [number, number, number];
-
 type UV = [number, number];
+
+type VertexPair = [Vertex, Vertex];
+type UVPair = [UV, UV];
 
 /** Indexed ribbons keep the curved riding surface smooth and the structural edges crisp. */
 class RampMesh {
@@ -20,7 +22,7 @@ class RampMesh {
   uvs: number[] = [];
   indices: number[] = [];
 
-  ribbon(rows: [Vertex, Vertex][], uvRows: [UV, UV][]) {
+  ribbon(rows: VertexPair[], uvRows: UVPair[]) {
     const start = this.positions.length / 3;
 
     for (let i = 0; i < rows.length; i++) {

@@ -152,6 +152,20 @@ function unstick(city: City, pose: { x: number; z: number }, height: number, ste
   return false;
 }
 
+/**
+ * Check if the car is climbing a ramp at the given position and ground height.
+ */
+function isClimbingRamp(city: City, x: number, z: number, ground: number): boolean {
+  for (const ramp of city.ramps) {
+    const rampGround = rampSurface(ramp, x, z);
+
+    if (rampGround !== undefined && Math.abs(rampGround - ground) < 1e-4) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const airCallout = (seconds: number) => {
   if (seconds >= 1.7) {
     return "INSANE AIR!";
@@ -678,18 +692,7 @@ export function useOwnCarController({
         }
       } else {
         const rise = ground - surface.current;
-        let climbingRamp = false;
-
-        if (rise > LEDGE_SNAP) {
-          for (const ramp of city.ramps) {
-            const rampGround = rampSurface(ramp, ownPose.x, ownPose.z);
-
-            if (rampGround !== undefined && Math.abs(rampGround - ground) < 1e-4) {
-              climbingRamp = true;
-              break;
-            }
-          }
-        }
+        const climbingRamp = rise > LEDGE_SNAP && isClimbingRamp(city, ownPose.x, ownPose.z, ground);
 
         // A long frame on a steep launch still stores its climb rate. Only an
         // actual ledge should discard it and snap the wheels up without a jump.

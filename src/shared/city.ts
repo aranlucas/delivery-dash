@@ -884,6 +884,8 @@ function buildParking(
   const random = mulberry32(seed ^ 0x7a12b);
   const cars: ParkedCar[] = [];
 
+  const slots = [-10, -3, 4, 11];
+
   for (const axis of ["x", "z"] as const) {
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
@@ -894,20 +896,30 @@ function buildParking(
       const cross = road + parkingSide(i) * PARKING_OFFSET;
 
       for (let j = 0; j < GRID_SIZE; j++) {
-        for (const slot of [-10, -3, 4, 11]) {
-          if (random() < 0.35) continue;
+        for (const slot of slots) {
+          if (random() < 0.35) {
+            continue;
+          }
           const along = blockCenter(j) + slot;
 
           const x = axis === "x" ? along : cross;
           const z = axis === "x" ? cross : along;
 
-          if (zoneAt(x, z, 6)) continue;
+          if (zoneAt(x, z, 6)) {
+            continue;
+          }
 
-          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) continue;
+          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) {
+            continue;
+          }
 
-          if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) continue;
+          if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) {
+            continue;
+          }
 
-          if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) continue;
+          if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) {
+            continue;
+          }
           cars.push({
             x,
             z,
@@ -930,13 +942,13 @@ export function generateCity(seed: number): City {
   // Two authored cross-block launches, with long clear run-ups and landing zones.
   // They sit between traffic lanes, so drivers choose the shortcut rather than being forced onto it.
   for (const id of ["stunt", "freight"] as const) {
-    const zone = CITY_ZONES.find((zone) => zone.id === id)!;
-    const x = zone.x + (id === "freight" ? 24 : 0);
+    const foundZone = CITY_ZONES.find((z) => z.id === id)!;
+    const x = foundZone.x + (id === "freight" ? 24 : 0);
 
     for (const direction of [-1, 1]) {
       stunts.kickers.push({
         x,
-        z: zone.z - direction * 18,
+        z: foundZone.z - direction * 18,
         yaw: direction === 1 ? 0 : Math.PI,
         length: 14,
         width: 11,
@@ -945,7 +957,7 @@ export function generateCity(seed: number): City {
       });
       stunts.boostPads.push({
         x,
-        z: zone.z - direction * 35,
+        z: foundZone.z - direction * 35,
         y: 0,
         yaw: direction === 1 ? 0 : Math.PI,
       });
@@ -1023,7 +1035,7 @@ export function generateCity(seed: number): City {
         index,
         distance: Math.hypot(corner.pos[0] - zone.x, corner.pos[1] - zone.z),
       }))
-      .sort((a, b) => a.distance - b.distance)
+      .toSorted((a, b) => a.distance - b.distance)
       .slice(0, 12);
 
     return corners.splice(candidates[randomInt(placeRandom, candidates.length)]!.index, 1)[0]!;

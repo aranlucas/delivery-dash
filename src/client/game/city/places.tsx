@@ -46,8 +46,14 @@ function placeOffset(
   return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
 }
 
+type Vec3 = [number, number, number];
+
 /** All repeated place geometry is instanced; only restaurant text remains per-place. */
-function PlaceProps({ city }: { city: CityData }) {
+interface PlacePropsProps {
+  city: CityData;
+}
+
+function PlaceProps({ city }: PlacePropsProps) {
   const groups = useMemo(() => {
     const restaurantShells: Instance[] = [];
     const houseShells: Instance[] = [];
@@ -58,7 +64,8 @@ function PlaceProps({ city }: { city: CityData }) {
     const awnings: Instance[] = [];
     const signBoards: Instance[] = [];
 
-    city.houses.forEach((place, index) => {
+    for (let index = 0; index < city.houses.length; index++) {
+      const place = city.houses[index];
       const yaw = outwardYaw(place.pos);
       houseShells.push({
         pos: [place.pos[0], 1.5, place.pos[1]],
@@ -83,11 +90,12 @@ function PlaceProps({ city }: { city: CityData }) {
           rotY: yaw,
         },
       );
-    });
+    }
 
-    city.restaurants.forEach((place, index) => {
+    for (let index = 0; index < city.restaurants.length; index++) {
+      const place = city.restaurants[index];
       if (storefrontModel(place.name)) {
-        return;
+        continue;
       }
 
       const yaw = outwardYaw(place.pos);
@@ -109,7 +117,7 @@ function PlaceProps({ city }: { city: CityData }) {
         pos: placeOffset(place.pos, yaw, 0, 4.15, 3.05),
         rotY: yaw,
       });
-    });
+    }
 
     return {
       restaurantShells,
@@ -201,7 +209,11 @@ function PlaceProps({ city }: { city: CityData }) {
   );
 }
 
-function RestaurantSign({ place }: { place: CityData["restaurants"][number] }) {
+interface RestaurantSignProps {
+  place: CityData["restaurants"][number];
+}
+
+function RestaurantSign({ place }: RestaurantSignProps) {
   return (
     <group
       position={[place.pos[0], 0, place.pos[1]]}
@@ -223,8 +235,12 @@ function RestaurantSign({ place }: { place: CityData["restaurants"][number] }) {
   );
 }
 
+interface PlacesProps {
+  city: CityData;
+}
+
 /** Procedural houses plus restaurant shells; GLB storefronts stay on DeliveryAssets. */
-export function Places({ city }: { city: CityData }) {
+export function Places({ city }: PlacesProps) {
   return (
     <>
       <PlaceProps city={city} />

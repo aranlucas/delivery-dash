@@ -11,6 +11,11 @@ import {
 } from "../../shared/ramps";
 import { cameraPose, drivingTelemetry, ownPose } from "./driving-state";
 
+interface ChaseCameraProps {
+  grid: SpatialGrid;
+  ramps: Ramp[];
+}
+
 const desired = new THREE.Vector3();
 
 const look = new THREE.Vector3();
@@ -68,7 +73,7 @@ function obstructed(x: number, y: number, z: number, grid: SpatialGrid, ramps: R
   return false;
 }
 
-export function ChaseCamera({ grid, ramps }: { grid: SpatialGrid; ramps: Ramp[] }) {
+export function ChaseCamera({ grid, ramps }: ChaseCameraProps) {
   const cameraYaw = useRef(ownPose.yaw);
   const roll = useRef(0);
   const recoverySequence = useRef(drivingTelemetry.recoverySequence);

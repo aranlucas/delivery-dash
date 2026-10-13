@@ -5,7 +5,13 @@ import { remotePositions, useGameStore } from "./store";
 
 let socket: WebSocket | undefined;
 
-let session: { code: string; name: string; mode: GameMode } | undefined;
+interface SessionData {
+  code: string;
+  name: string;
+  mode: GameMode;
+}
+
+let session: SessionData | undefined;
 
 export function connect(code: string, name: string, mode: GameMode = DEFAULT_MODE) {
   close();

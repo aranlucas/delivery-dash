@@ -18,11 +18,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 const ONE = new THREE.Vector3(1, 1, 1);
 
-type CarFleet = {
+interface CarFleet {
   write: (index: number, x: number, z: number, yaw: number) => void;
   flush: (count?: number) => void;
   meshes: ReactNode;
-};
+}
 
 /** Update mutable GPU buffers without changing React's memoized fleet descriptions. */
 function queueMatrixUpload(mesh: THREE.InstancedMesh, count: number) {
@@ -67,7 +67,9 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
       return;
     }
 
-    colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
+    for (let i = 0; i < colors.length; i++) {
+      painted.current!.setColorAt(i, tint.set(colors[i]!));
+    }
 
     if (painted.current.instanceColor) {
       painted.current.instanceColor.needsUpdate = true;
@@ -140,7 +142,11 @@ const FLEET_KINDS: CarKind[] = ["sedan", "van", "hatch", "sports", "taxi"];
 type FleetSlot = { color: string; index: number; moving: boolean };
 
 /** Traffic and parked cars share five shape-specific fleets, so every Blender vehicle appears. */
-export function FleetCars({ city }: { city: CityData }) {
+interface FleetCarsProps {
+  city: CityData;
+}
+
+export function FleetCars({ city }: FleetCarsProps) {
   const groups = useMemo(() => {
     const output: Record<CarKind, FleetSlot[]> = {
       taxi: [],
@@ -150,20 +156,22 @@ export function FleetCars({ city }: { city: CityData }) {
       sports: [],
     };
 
-    city.trafficRoutes.forEach((route, index) =>
+    for (let index = 0; index < city.trafficRoutes.length; index++) {
+      const route = city.trafficRoutes[index];
       output[FLEET_KINDS[index % FLEET_KINDS.length]!]!.push({
         color: route.color,
         index,
         moving: true,
-      }),
-    );
-    city.parkedCars.forEach((car, index) =>
+      });
+    }
+    for (let index = 0; index < city.parkedCars.length; index++) {
+      const car = city.parkedCars[index];
       output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]!]!.push({
         color: car.color,
         index,
         moving: false,
-      }),
-    );
+      });
+    }
 
     return output;
   }, [city]);
@@ -189,13 +197,14 @@ export function FleetCars({ city }: { city: CityData }) {
 
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
-      groups[kind].forEach((slot, localIndex) => {
+      for (let localIndex = 0; localIndex < groups[kind].length; localIndex++) {
+        const slot = groups[kind][localIndex];
         const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
 
         if (car) {
           fleet.write(localIndex, car.x, car.z, car.yaw);
         }
-      });
+      }
       fleet.flush();
     }
   }, [city, fleets, groups]);

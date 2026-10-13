@@ -7,12 +7,11 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { mkdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 
 globalThis.FileReader = class {
   readAsArrayBuffer(blob) {
-    blob.arrayBuffer().then((result) => {
+    return blob.arrayBuffer().then((result) => {
       this.result = result;
       this.onloadend?.();
     });
@@ -135,9 +134,9 @@ function mergedScene(list) {
 async function exportModel(name, list) {
   const exporter = new GLTFExporter();
 
-  const result = await new Promise((resolveResult, reject) =>
-    exporter.parse(mergedScene(list), resolveResult, reject, { binary: true }),
-  );
+  const result = await new Promise((resolveResult, _reject) => {
+    exporter.parse(mergedScene(list), resolveResult, undefined, { binary: true });
+  });
 
   await writeFile(resolve(OUT, `${name}.glb`), Buffer.from(result));
 }
