@@ -16,7 +16,11 @@ function modeStyle(id: (typeof GAME_MODE_IDS)[number]): ModeStyle {
   return { "--mode-color": GAME_MODES[id].color };
 }
 
-export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
+type MenuProps = {
+  onGameIntent: () => void;
+};
+
+export function Menu({ onGameIntent }: MenuProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<GameMode>(DEFAULT_MODE);

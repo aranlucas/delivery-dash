@@ -16,6 +16,9 @@ type UV = [number, number];
 type VertexPair = [Vertex, Vertex];
 type UVPair = [UV, UV];
 
+type VertexPairArray = VertexPair[];
+type UVPairArray = UVPair[];
+
 /** Indexed ribbons keep the curved riding surface smooth and the structural edges crisp. */
 class RampMesh {
   positions: number[] = [];
@@ -80,8 +83,8 @@ export function makeRampGeometry(ramp: RampProfile) {
   const segments = rampSegments(ramp.kind);
   const halfW = ramp.width / 2;
   const halfL = ramp.length / 2;
-  const rows: [Vertex, Vertex][] = [];
-  const uvs: [UV, UV][] = [];
+  const rows: VertexPairArray = [];
+  const uvs: UVPairArray = [];
 
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -105,8 +108,8 @@ export function makeRampGeometry(ramp: RampProfile) {
   const surfaceIndices = mesh.indices.length;
 
   for (const side of [-1, 1]) {
-    const edgeRows: [Vertex, Vertex][] = [];
-    const edgeUvs: [UV, UV][] = [];
+    const edgeRows: VertexPairArray = [];
+    const edgeUvs: UVPairArray = [];
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
@@ -122,8 +125,8 @@ export function makeRampGeometry(ramp: RampProfile) {
     mesh.ribbon(edgeRows, edgeUvs);
   }
 
-  const bottomRows: [Vertex, Vertex][] = [];
-  const bottomUvs: [UV, UV][] = [];
+  const bottomRows: VertexPairArray = [];
+  const bottomUvs: UVPairArray = [];
 
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -164,8 +167,8 @@ export function makeRampRibbonGeometry(
 ) {
   const mesh = new RampMesh();
   const segments = Math.max(1, Math.ceil(rampSegments(ramp.kind) * (to - from)));
-  const rows: [Vertex, Vertex][] = [];
-  const uvs: [UV, UV][] = [];
+  const rows: VertexPairArray = [];
+  const uvs: UVPairArray = [];
   const left = across - width / 2;
   const right = across + width / 2;
 
@@ -188,7 +191,7 @@ export function makeRampRibbonGeometry(
 
   if (barrier) {
     for (const side of [-1, 1]) {
-      const edgeRows: [Vertex, Vertex][] = [];
+      const edgeRows: VertexPairArray = [];
 
       for (let i = 0; i <= segments; i++) {
         const t = from + ((to - from) * i) / segments;

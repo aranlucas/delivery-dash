@@ -77,6 +77,11 @@ export type Deck = {
   height: number;
 };
 
+export type Structures = {
+  ramps: Ramp[];
+  decks: Deck[];
+};
+
 export type BoostPad = { x: number; z: number; y: number; yaw: number };
 
 export type ParkedCar = { x: number; z: number; yaw: number; color: string };
@@ -666,7 +671,7 @@ function buildExpressways() {
 }
 
 /** Seeded jump ramps on the street grid, each with a boost strip on its approach. */
-function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }) {
+function scatterStunts(seed: number, structures: Structures) {
   const random = mulberry32(seed ^ 0x2b3c1d);
   const kickers: Ramp[] = [];
   const boostPads: BoostPad[] = [];
@@ -782,7 +787,7 @@ const carColors = [
 
 /** True when an expressway deck or approach ramp runs along this road line. */
 function roadHasStructure(
-  structures: { ramps: Ramp[]; decks: Deck[] },
+  structures: Structures,
   axis: "x" | "z",
   cross: number,
 ) {
@@ -837,7 +842,7 @@ export const PARKED_CAR_HALF_LENGTH = 2.3;
 export const PARKED_CAR_HALF_WIDTH = 1.25;
 
 /** A lane of moving traffic on every ordinary road line — the streets should look inhabited. */
-function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }): TrafficRoute[] {
+function buildTraffic(seed: number, structures: Structures): TrafficRoute[] {
   const random = mulberry32(seed ^ 0x1c0ffee);
   const routes: TrafficRoute[] = [];
 
@@ -876,7 +881,7 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
 /** Kerb parking down one side of each road line, skipping anything a driver has to reach. */
 function buildParking(
   seed: number,
-  structures: { ramps: Ramp[]; decks: Deck[] },
+  structures: Structures,
   ramps: Ramp[],
   boostPads: BoostPad[],
   stops: Pos2[],
@@ -934,6 +939,11 @@ function buildParking(
   return cars;
 }
 
+interface BlockCorner {
+  pos: Pos2;
+  stops: Pos2[];
+}
+
 export function generateCity(seed: number): City {
   const random = mulberry32(seed);
   const structures = buildExpressways();
@@ -981,7 +991,7 @@ export function generateCity(seed: number): City {
 
   // Places pull from their own random stream so buildings can avoid their footprints.
   // Positions sit just inside block corners, adjacent to the surrounding roads.
-  const corners: { pos: Pos2; stops: Pos2[] }[] = [];
+  const corners: BlockCorner[] = [];
 
   for (let x = 0; x < GRID_SIZE; x++) {
     for (let z = 0; z < GRID_SIZE; z++) {

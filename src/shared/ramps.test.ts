@@ -6,7 +6,9 @@ import { buildGrid } from "./collision.ts";
 import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "./ramps.ts";
 import { makeRampGeometry } from "../client/game/ramp-geometry.ts";
 
-const point = (ramp: Ramp, across: number, along: number): [number, number] => [
+type Pos2 = [number, number];
+
+const point = (ramp: Ramp, across: number, along: number): Pos2 => [
   ramp.x + Math.cos(ramp.yaw) * across + Math.sin(ramp.yaw) * along,
   ramp.z - Math.sin(ramp.yaw) * across + Math.cos(ramp.yaw) * along,
 ];

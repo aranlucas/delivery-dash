@@ -27,6 +27,10 @@ import {
 import { findCarRecovery, type RecoveryPose } from "./car-recovery";
 import { trafficCars } from "./traffic";
 
+type CarPose = { x: number; z: number };
+
+type RushState = { remaining: number; maxSpeed: number; tier: RushTier };
+
 const FORWARD_ACCELERATION = 31;
 
 const REVERSE_ACCELERATION = 18;
@@ -130,7 +134,7 @@ const driftCallout = (score: number) => {
  * Nudge a car out of geometry it can only have reached by landing on it — a jump that ends inside
  * a guardrail or a bridge column would otherwise wedge it there forever.
  */
-function unstick(city: City, pose: { x: number; z: number }, height: number, step: number) {
+function unstick(city: City, pose: CarPose, height: number, step: number) {
   for (const radius of [2.5, 5, 9]) {
     for (let a = 0; a < 8; a++) {
       const angle = (a / 8) * Math.PI * 2;
@@ -219,7 +223,7 @@ export function useOwnCarController({
   const driftCharge = useRef(0);
   const previousHandbrake = useRef(false);
 
-  const rush = useRef<{ remaining: number; maxSpeed: number; tier: RushTier }>({
+  const rush = useRef<RushState>({
     remaining: 0,
     maxSpeed: NORMAL_MAX_SPEED,
     tier: 0,

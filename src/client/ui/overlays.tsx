@@ -15,6 +15,7 @@ import {
   roadCenter,
   type City,
   type Order,
+  type Pos2,
 } from "../../shared/city";
 import { relativeBearing } from "../../shared/nav";
 import { MAX_DRIFT_CHARGE } from "../game/arcade-rewards";
@@ -22,6 +23,18 @@ import { cameraPose, drivingTelemetry, ownPose, requestCarRecovery } from "../ga
 import { close, rejoin, send } from "../net";
 import { ownPlayer, remotePositions, useGameStore } from "../store";
 import { CityViewButton } from "./city-view";
+
+type MinimapProps = {
+  city: City;
+  target?: Pos2;
+  dropoff: boolean;
+  checkpoint?: boolean;
+};
+
+type HUDProps = {
+  city?: City;
+  orders?: Order[];
+};
 
 function leaveRoom() {
   close();
@@ -87,17 +100,7 @@ export function Lobby() {
 const MINIMAP_SIZE = 190;
 
 /** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
-function Minimap({
-  city,
-  target,
-  dropoff,
-  checkpoint = false,
-}: {
-  city: City;
-  target?: [number, number];
-  dropoff: boolean;
-  checkpoint?: boolean;
-}) {
+function Minimap({ city, target, dropoff, checkpoint = false }: MinimapProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const players = useGameStore((state) => state.players);
   const selfId = useGameStore((state) => state.selfId);
@@ -328,7 +331,7 @@ interface MeterStyle extends React.CSSProperties {
   "--charge"?: string;
 }
 
-export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
+export function HUD({ city, orders = [] }: HUDProps) {
   const phase = useGameStore((state) => state.phase);
   const players = useGameStore((state) => state.players);
   const self = useGameStore(ownPlayer);

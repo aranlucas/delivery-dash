@@ -10,6 +10,9 @@ import {
   type ServerMessage,
   type Standing,
 } from "../shared/protocol.ts";
+
+type PositionMessage = Extract<ClientMessage, { t: "pos" }>;
+type ProgressMessage = Extract<ServerMessage, { t: "progress" }>;
 import {
   CHECKPOINT_COUNT,
   DEFAULT_MODE,
@@ -46,6 +49,12 @@ export type RoomState = {
   raceEndsAt?: number;
   rematchAt?: number;
   standings?: Standing[];
+};
+
+type WorldState = {
+  seed: number;
+  city: City;
+  orders: Order[];
 };
 
 export type Attachment = { playerId: string };
@@ -94,7 +103,7 @@ export class RaceRoomCore {
   }
 
   private state?: RoomState;
-  private world?: { seed: number; city: City; orders: Order[] };
+  private world?: WorldState;
 
   /** The city is large enough that regenerating it per position update would dominate the tick. */
   private route(seed: number) {
@@ -414,15 +423,16 @@ export class RaceRoomCore {
       return;
     }
 
-    await this.transition({
+    const nextState: RoomState = {
       ...state,
       phase: "countdown",
       countdownEndsAt: Date.now() + COUNTDOWN_MS,
-    });
+    };
+    await this.transition(nextState);
     this.broadcast(this.phaseMessage());
   }
 
-  private async position(id: string, update: Extract<ClientMessage, { t: "pos" }>) {
+  private async position(id: string, update: PositionMessage) {
     const state = this.state!;
 
     if (
@@ -490,9 +500,9 @@ export class RaceRoomCore {
       player.leg = "pickup";
     }
 
-    const next = { ...state, players: { ...state.players, [id]: player } };
+    const nextState: RoomState = { ...state, players: { ...state.players, [id]: player } };
 
-    const progress: Extract<ServerMessage, { t: "progress" }> = {
+    const progress: ProgressMessage = {
       t: "progress",
       id,
       orderIndex: player.orderIndex,
@@ -505,27 +515,28 @@ export class RaceRoomCore {
       (state.mode === "delivery" && player.deliveries >= DELIVERIES_TO_WIN) ||
       (state.mode === "checkpoint" && player.checkpointIndex >= CHECKPOINT_COUNT)
     ) {
-      await this.finish(next, progress);
+      await this.finish(nextState, progress);
     } else {
-      await this.ctx.storage.put("state", next);
-      this.state = next;
+      await this.ctx.storage.put("state", nextState);
+      this.state = nextState;
       this.broadcast(progress);
     }
   }
 
-  private async finish(state = this.state!, progress?: Extract<ServerMessage, { t: "progress" }>) {
+  private async finish(state = this.state!, progress?: ProgressMessage) {
     if (state.phase === "finished") {
       return;
     }
 
     const standings = this.standings(state);
-    await this.transition({
+    const finishedState: RoomState = {
       ...state,
       phase: "finished",
       raceEndsAt: undefined,
       rematchAt: Date.now() + FINISH_LINGER_MS,
       standings,
-    });
+    };
+    await this.transition(finishedState);
 
     if (progress) {
       this.broadcast(progress);

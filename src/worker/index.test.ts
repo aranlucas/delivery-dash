@@ -25,6 +25,12 @@ import { decodeServerMessage } from "../shared/wire-schema.ts";
 
 type Failure = "setAlarm" | "deleteAlarm" | "commit";
 
+type PhaseObservation = {
+  phase: string;
+  storedPhase: string;
+  alarm: number | null;
+};
+
 /** Transactional local storage mock; failed writes never escape the staged transaction. */
 class Storage {
   data = new Map<string, RoomState>();
@@ -239,7 +245,7 @@ for (const failure of ["setAlarm", "commit"] as const) {
 
 test("clients see phase changes only after the state and alarm commit, including transaction retries", async (t) => {
   const game = await setup(t);
-  const observations: { phase: string; storedPhase: string; alarm: number | null }[] = [];
+  const observations: PhaseObservation[] = [];
 
   for (const socket of game.sockets) {
     socket.onSend = (message) => {

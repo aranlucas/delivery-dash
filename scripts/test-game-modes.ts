@@ -27,6 +27,15 @@ import {
 
 type WireMessage = ServerMessage;
 
+type MessageOfType<T extends WireMessage["t"]> = Extract<WireMessage, { t: T }>;
+
+interface Waiter {
+  predicate: (message: WireMessage) => boolean;
+  resolve: (message: WireMessage) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 interface OutboundMessage {
   [field: string]: string | number | boolean | null;
 }
@@ -66,12 +75,7 @@ function roomCode(label: string): string {
 class Client {
   readonly socket: WebSocket;
   private readonly inbox: WireMessage[] = [];
-  private readonly waiters = new Set<{
-    predicate: (message: WireMessage) => boolean;
-    resolve: (message: WireMessage) => void;
-    reject: (error: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
-  }>();
+  private readonly waiters = new Set<Waiter>();
   private failure?: Error;
 
   private constructor(socket: WebSocket) {
@@ -232,7 +236,7 @@ class Client {
 function hasType<T extends WireMessage["t"]>(
   message: WireMessage,
   t: T,
-): message is Extract<WireMessage, { t: T }> {
+): message is MessageOfType<T> {
   return message.t === t;
 }
 
@@ -607,8 +611,10 @@ async function testReconnectAndNextRound(): Promise<void> {
   }
 }
 
+type TestCase = [string, () => Promise<void>];
+
 async function main() {
-  const tests: Array<[string, () => Promise<void>]> = [
+  const tests: TestCase[] = [
     ["creator mode adoption, duplicate join, rush routes", testCreatorModeAndRush],
     ["delivery first-to-three race", testDeliveryRace],
     ["checkpoint sequence", testCheckpointRace],

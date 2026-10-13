@@ -15,6 +15,8 @@ import {
 import { storefrontModel, storefrontYaw } from "../../../shared/delivery-assets";
 import { useInstances, type Instance } from "./instances";
 
+type Vec3 = [number, number, number];
+
 const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#ff8a20"];
 
 const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
@@ -39,14 +41,12 @@ function placeOffset(
   x: number,
   y: number,
   z: number,
-): [number, number, number] {
+): Vec3 {
   const cosine = Math.cos(yaw);
   const sine = Math.sin(yaw);
 
   return [px + x * cosine + z * sine, y, pz - x * sine + z * cosine];
 }
-
-type Vec3 = [number, number, number];
 
 /** All repeated place geometry is instanced; only restaurant text remains per-place. */
 interface PlacePropsProps {
