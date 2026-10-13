@@ -37,7 +37,9 @@ export function Lobby() {
   const error = useGameStore((state) => state.lastError);
   const mode = useGameStore((state) => state.mode);
 
-  if (phase !== "lobby") {return null;}
+  if (phase !== "lobby") {
+    return null;
+  }
 
   return (
     <aside className="lobby-panel arcade-panel">
@@ -103,11 +105,15 @@ function Minimap({
   useEffect(() => {
     const element = canvas.current;
 
-    if (!element) {return;}
+    if (!element) {
+      return;
+    }
 
     const context = element.getContext("2d");
 
-    if (!context) {return;}
+    if (!context) {
+      return;
+    }
 
     const ratio = Math.min(2, window.devicePixelRatio || 1);
     element.width = element.height = MINIMAP_SIZE * ratio;
@@ -122,7 +128,9 @@ function Minimap({
     const draw = (time: number) => {
       frame = requestAnimationFrame(draw);
 
-      if (time - previous < 55) {return;}
+      if (time - previous < 55) {
+        return;
+      }
 
       previous = time;
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -134,7 +142,7 @@ function Minimap({
 
       for (const [x, z] of city.parks) {
         const px = toMap(x);
-          const pz = toMap(z);
+        const pz = toMap(z);
 
         context.fillRect(px - block / 2, pz - block / 2, block, block);
       }
@@ -155,8 +163,8 @@ function Minimap({
 
       for (const zone of CITY_ZONES) {
         const x = toMap(zone.x);
-          const z = toMap(zone.z);
-          const half = zone.half * scale;
+        const z = toMap(zone.z);
+        const half = zone.half * scale;
 
         context.globalAlpha = 0.3;
         context.fillStyle = zone.color;
@@ -179,19 +187,21 @@ function Minimap({
         const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
 
         const midX = (deck.minX + deck.maxX) / 2;
-          const midZ = (deck.minZ + deck.maxZ) / 2;
+        const midZ = (deck.minZ + deck.maxZ) / 2;
 
         const ax = toMap(alongX ? deck.minX : midX);
-          const az = toMap(alongX ? midZ : deck.minZ);
-          const bx = toMap(alongX ? deck.maxX : midX);
-          const bz = toMap(alongX ? midZ : deck.maxZ);
+        const az = toMap(alongX ? midZ : deck.minZ);
+        const bx = toMap(alongX ? deck.maxX : midX);
+        const bz = toMap(alongX ? midZ : deck.maxZ);
 
         context.moveTo(ax, az);
         context.lineTo(bx, bz);
       }
 
       for (const ramp of city.ramps) {
-        if (ramp.kind !== "grade") {continue;}
+        if (ramp.kind !== "grade") {
+          continue;
+        }
 
         const dx = (Math.sin(ramp.yaw) * ramp.length) / 2;
         const dz = (Math.cos(ramp.yaw) * ramp.length) / 2;
@@ -204,10 +214,12 @@ function Minimap({
       context.fillStyle = "#ffd400";
 
       for (const ramp of city.ramps) {
-        if (ramp.kind !== "kicker") {continue;}
+        if (ramp.kind !== "kicker") {
+          continue;
+        }
 
         const px = toMap(ramp.x);
-          const pz = toMap(ramp.z);
+        const pz = toMap(ramp.z);
 
         context.fillRect(px - 1.6, pz - 1.6, 3.2, 3.2);
       }
@@ -216,10 +228,10 @@ function Minimap({
 
       for (const pad of city.boostPads) {
         const px = toMap(pad.x);
-          const pz = toMap(pad.z);
+        const pz = toMap(pad.z);
 
         const dx = Math.sin(pad.yaw);
-          const dz = Math.cos(pad.yaw);
+        const dz = Math.cos(pad.yaw);
 
         context.beginPath();
         context.moveTo(px + dx * 2.7, pz + dz * 2.7);
@@ -231,7 +243,7 @@ function Minimap({
 
       if (target) {
         const tx = toMap(target[0]);
-          const tz = toMap(target[1]);
+        const tz = toMap(target[1]);
 
         const pulse = 5 + Math.sin(time / 220) * 2;
         context.strokeStyle = checkpoint ? "#00dcff" : dropoff ? "#65f578" : "#ff7a00";
@@ -242,10 +254,12 @@ function Minimap({
       }
 
       for (const [id, pose] of remotePositions) {
-        if (id === selfId) {continue;}
+        if (id === selfId) {
+          continue;
+        }
 
         const px = toMap(pose.x);
-          const pz = toMap(pose.z);
+        const pz = toMap(pose.z);
 
         context.fillStyle = colors.get(id) ?? "#ffffff";
         context.beginPath();
@@ -255,10 +269,10 @@ function Minimap({
 
       // Own car as an arrow: world +z is map +y, so the heading maps straight across.
       const sx = toMap(ownPose.x);
-        const sz = toMap(ownPose.z);
+      const sz = toMap(ownPose.z);
 
       const dx = Math.sin(ownPose.yaw);
-        const dz = Math.cos(ownPose.yaw);
+      const dz = Math.cos(ownPose.yaw);
 
       context.fillStyle = "#ffe100";
       context.beginPath();
@@ -297,7 +311,9 @@ export function Countdown() {
   const count = Math.ceil(((ends ?? now) - now) / 1000);
   const showGo = phase === "racing" && started !== undefined && now - started < 900;
 
-  if (phase !== "countdown" && !showGo) {return null;}
+  if (phase !== "countdown" && !showGo) {
+    return null;
+  }
 
   return (
     <div className={`countdown ${showGo ? "is-go" : ""}`} aria-live="assertive">
@@ -324,16 +340,22 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
   const cameraMode = useGameStore((state) => state.cameraMode);
 
   useEffect(() => {
-    if (phase !== "racing" || cameraMode === "city") {return;}
+    if (phase !== "racing" || cameraMode === "city") {
+      return;
+    }
 
     const timer = window.setInterval(() => setNow(Date.now()), 50);
 
     return () => window.clearInterval(timer);
   }, [phase, cameraMode]);
 
-  if (phase !== "racing" || !city || !self) {return connected ? null : <Reconnect />;}
+  if (phase !== "racing" || !city || !self) {
+    return connected ? null : <Reconnect />;
+  }
 
-  if (cameraMode === "city") {return null;}
+  if (cameraMode === "city") {
+    return null;
+  }
 
   const target = getObjective(mode, city, orders, self);
   const checkpoint = mode === "checkpoint";

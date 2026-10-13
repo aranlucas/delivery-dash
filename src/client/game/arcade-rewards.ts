@@ -61,7 +61,9 @@ export function rushRewardForCharge(charge: number): RushReward | undefined {
   for (let index = RUSH_REWARDS.length - 1; index >= 0; index--) {
     const reward = RUSH_REWARDS[index]!;
 
-    if (charge >= reward.threshold) {return reward;}
+    if (charge >= reward.threshold) {
+      return reward;
+    }
   }
 
   return undefined;
@@ -106,7 +108,9 @@ function closestSegmentPointToOrigin(ax: number, az: number, bx: number, bz: num
   const dz = bz - az;
   const lengthSquared = dx * dx + dz * dz;
 
-  if (lengthSquared === 0) {return { distance: Math.hypot(ax, az), progress: 0 };}
+  if (lengthSquared === 0) {
+    return { distance: Math.hypot(ax, az), progress: 0 };
+  }
 
   const t = Math.max(0, Math.min(1, -(ax * dx + az * dz) / lengthSquared));
 
@@ -200,7 +204,9 @@ export function updateNearMissPass(
   if (!pass || distance <= NEAR_MISS_EXIT_RADIUS) {
     const nextTracker: NearMissTracker = { ...nextPosition };
 
-    if (pass) {nextTracker.pass = pass;}
+    if (pass) {
+      nextTracker.pass = pass;
+    }
 
     return { tracker: nextTracker, awarded: false, contacted };
   }

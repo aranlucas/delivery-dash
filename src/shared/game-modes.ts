@@ -60,7 +60,9 @@ const checkpointCache = new WeakMap<City, Place[]>();
 export function getCheckpoints(city: City): Place[] {
   const cached = checkpointCache.get(city);
 
-  if (cached) {return cached;}
+  if (cached) {
+    return cached;
+  }
 
   const candidates = [...city.restaurants, ...city.houses];
   const checkpoints: Place[] = [];
@@ -72,10 +74,13 @@ export function getCheckpoints(city: City): Place[] {
           Math.hypot(place.stop[0] - previous.stop[0], place.stop[1] - previous.stop[1]) >=
           2 * TARGET_RADIUS,
       )
-    )
-      {checkpoints.push(place);}
+    ) {
+      checkpoints.push(place);
+    }
 
-    if (checkpoints.length === CHECKPOINT_COUNT) {break;}
+    if (checkpoints.length === CHECKPOINT_COUNT) {
+      break;
+    }
   }
 
   checkpointCache.set(city, checkpoints);
@@ -89,15 +94,23 @@ export function getObjective(
   orders: Order[],
   player: Pick<PlayerPub, "orderIndex" | "leg" | "checkpointIndex">,
 ): Place | undefined {
-  if (mode === "free") {return undefined;}
+  if (mode === "free") {
+    return undefined;
+  }
 
-  if (mode === "checkpoint") {return getCheckpoints(city)[player.checkpointIndex];}
+  if (mode === "checkpoint") {
+    return getCheckpoints(city)[player.checkpointIndex];
+  }
 
-  if (orders.length === 0) {return undefined;}
+  if (orders.length === 0) {
+    return undefined;
+  }
 
   const order = orders[mode === "rush" ? player.orderIndex % orders.length : player.orderIndex];
 
-  if (!order) {return undefined;}
+  if (!order) {
+    return undefined;
+  }
 
   return player.leg === "pickup"
     ? city.restaurants[order.restaurantId]

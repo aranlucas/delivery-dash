@@ -33,7 +33,9 @@ function samplePass(distances: number[], speed: number) {
     const update = updateNearMissPass(tracker, distance, 0, speed);
     tracker = update.tracker;
 
-    if (update.awarded) {awards++;}
+    if (update.awarded) {
+      awards++;
+    }
   }
 
   return { tracker, awards };
@@ -64,7 +66,9 @@ test("accelerating only after leaving the close zone does not retroactively scor
     const update = updateNearMissPass(tracker, distance, 0, speed);
     tracker = update.tracker;
 
-    if (update.awarded) {awards++;}
+    if (update.awarded) {
+      awards++;
+    }
   }
 
   assert.equal(awards, 0);
@@ -80,7 +84,9 @@ test("a frame-spanning swept collision cannot become a near-miss reward", () => 
     tracker = update.tracker;
     contacted ||= update.contacted;
 
-    if (update.awarded) {awards++;}
+    if (update.awarded) {
+      awards++;
+    }
   }
 
   assert.equal(contacted, true);

@@ -50,14 +50,15 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
       );
     }
 
-    for (let index = 1; index < checkpoints.length; index++)
-      {assert.ok(
+    for (let index = 1; index < checkpoints.length; index++) {
+      assert.ok(
         Math.hypot(
           checkpoints[index]!.stop[0] - checkpoints[index - 1]!.stop[0],
           checkpoints[index]!.stop[1] - checkpoints[index - 1]!.stop[1],
         ) >= 20,
         "consecutive checkpoints must not overlap their target radii",
-      );}
+      );
+    }
   });
 }
 

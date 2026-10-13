@@ -58,7 +58,9 @@ test("both ramp sizes and expressway grades render exactly where their collision
     mesh.position.set(r.x, 0, r.z);
     mesh.rotation.y = r.yaw;
 
-    if (r.kind === "kicker") {mesh.scale.set(r.width, r.height, r.length);}
+    if (r.kind === "kicker") {
+      mesh.scale.set(r.width, r.height, r.length);
+    }
 
     mesh.updateMatrixWorld(true);
 
@@ -74,7 +76,9 @@ test("both ramp sizes and expressway grades render exactly where their collision
       );
     }
 
-    if (geometry !== unit) {geometry.dispose();}
+    if (geometry !== unit) {
+      geometry.dispose();
+    }
   }
 
   unit.dispose();

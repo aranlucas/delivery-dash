@@ -5,12 +5,7 @@
     "./node_modules/@aranlucas/oxforge/configs/react.json",
     "./node_modules/@aranlucas/oxforge/configs/type-aware.json"
   ],
-  "plugins": [
-    "jsx-a11y",
-    "react",
-    "typescript",
-    "unicorn"
-  ],
+  "plugins": ["jsx-a11y", "react", "typescript", "unicorn"],
   "categories": {
     "correctness": "error"
   },

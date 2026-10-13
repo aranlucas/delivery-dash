@@ -21,16 +21,24 @@ const paths = execFileSync(
 const directories = new Map();
 
 const violations = [...new Set(paths.split("\0"))].filter((path) => {
-  if (!path || !existsSync(path) || reserved.has(path)) {return false;}
+  if (!path || !existsSync(path) || reserved.has(path)) {
+    return false;
+  }
 
   const directory = dirname(path);
 
-  if (!directories.has(directory)) {directories.set(directory, new Set(readdirSync(directory)));}
+  if (!directories.has(directory)) {
+    directories.set(directory, new Set(readdirSync(directory)));
+  }
 
   // Deleted index entries still resolve after a case-only rename on macOS. Check the real name.
-  if (!directories.get(directory).has(basename(path))) {return false;}
+  if (!directories.get(directory).has(basename(path))) {
+    return false;
+  }
 
-  if (path.startsWith(".agents/skills/") && basename(path) === "SKILL.md") {return false;}
+  if (path.startsWith(".agents/skills/") && basename(path) === "SKILL.md") {
+    return false;
+  }
 
   return !kebabCase.test(basename(path).replace(/^\./, ""));
 });

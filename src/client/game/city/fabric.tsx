@@ -113,7 +113,9 @@ function BuildingDistrict({
   useLayoutEffect(() => {
     const instanced = mesh.current;
 
-    if (!instanced) {return;}
+    if (!instanced) {
+      return;
+    }
 
     buildings.forEach((b, i) => {
       instanced.setMatrixAt(
@@ -128,7 +130,9 @@ function BuildingDistrict({
     });
     instanced.instanceMatrix.needsUpdate = true;
 
-    if (instanced.instanceColor) {instanced.instanceColor.needsUpdate = true;}
+    if (instanced.instanceColor) {
+      instanced.instanceColor.needsUpdate = true;
+    }
   }, [buildings]);
 
   return (
@@ -160,19 +164,22 @@ export function Buildings({ city }: { city: CityData }) {
 export function Blocks({ city }: { city: CityData }) {
   const { slabs, parkTops, cityTops } = useMemo(() => {
     const slabs: Instance[] = [];
-      const parkTops: Instance[] = [];
-      const cityTops: Instance[] = [];
+    const parkTops: Instance[] = [];
+    const cityTops: Instance[] = [];
 
-    for (let gx = 0; gx < GRID_SIZE; gx++)
-      {for (let gz = 0; gz < GRID_SIZE; gz++) {
+    for (let gx = 0; gx < GRID_SIZE; gx++) {
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = blockCenter(gx);
-          const z = blockCenter(gz);
+        const z = blockCenter(gz);
 
-        if (zoneAt(x, z)) {continue;}
+        if (zoneAt(x, z)) {
+          continue;
+        }
         slabs.push({ pos: [x, 0.06, z] });
         const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
         (park ? parkTops : cityTops).push({ pos: [x, 0.2, z] });
-      }}
+      }
+    }
 
     return { slabs, parkTops, cityTops };
   }, [city]);
@@ -200,8 +207,8 @@ export function Blocks({ city }: { city: CityData }) {
   );
 
   const slabMesh = useRef<THREE.InstancedMesh>(null);
-    const parkMesh = useRef<THREE.InstancedMesh>(null);
-    const cityMesh = useRef<THREE.InstancedMesh>(null);
+  const parkMesh = useRef<THREE.InstancedMesh>(null);
+  const cityMesh = useRef<THREE.InstancedMesh>(null);
 
   useInstances(slabMesh, slabs);
   useInstances(parkMesh, parkTops);
@@ -238,9 +245,13 @@ export function RoadMarkings({ city }: { city: CityData }) {
       const c = roadCenter(i);
 
       for (let d = -WORLD_HALF + 4; d < WORLD_HALF - 4; d += 7) {
-        if (!zoneAt(c, d + 1.5)) {items.push({ pos: [c, 0.03, d + 1.5], scale: [0.35, 1, 3] });}
+        if (!zoneAt(c, d + 1.5)) {
+          items.push({ pos: [c, 0.03, d + 1.5], scale: [0.35, 1, 3] });
+        }
 
-        if (!zoneAt(d + 1.5, c)) {items.push({ pos: [d + 1.5, 0.03, c], scale: [3, 1, 0.35] });}
+        if (!zoneAt(d + 1.5, c)) {
+          items.push({ pos: [d + 1.5, 0.03, c], scale: [3, 1, 0.35] });
+        }
       }
     }
 
@@ -249,19 +260,20 @@ export function RoadMarkings({ city }: { city: CityData }) {
       const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
 
       const from = alongX ? deck.minX : deck.minZ;
-        const to = alongX ? deck.maxX : deck.maxZ;
+      const to = alongX ? deck.maxX : deck.maxZ;
 
       const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
 
-      for (let d = from + 3; d < to - 3; d += 7)
-        {items.push(
+      for (let d = from + 3; d < to - 3; d += 7) {
+        items.push(
           alongX
             ? { pos: [d + 1.5, deck.height + 0.03, cross], scale: [3, 1, 0.35] }
             : {
                 pos: [cross, deck.height + 0.03, d + 1.5],
                 scale: [0.35, 1, 3],
               },
-        );}
+        );
+      }
     }
 
     return items;
@@ -284,37 +296,44 @@ export function ArcadeCurbs() {
     const black: Instance[] = [];
     const edge = BLOCK_SIZE / 2 + 1.62;
 
-    for (let gx = 0; gx < GRID_SIZE; gx++)
-      {for (let gz = 0; gz < GRID_SIZE; gz++) {
+    for (let gx = 0; gx < GRID_SIZE; gx++) {
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
         const cx = blockCenter(gx);
-          const cz = blockCenter(gz);
+        const cz = blockCenter(gz);
 
-        if (zoneAt(cx, cz)) {continue;}
+        if (zoneAt(cx, cz)) {
+          continue;
+        }
 
         for (let n = -BLOCK_SIZE / 2 + 2; n < BLOCK_SIZE / 2; n += 4) {
           const target = (Math.floor((n + BLOCK_SIZE / 2) / 4) + gx + gz) % 2 ? black : yellow;
-          target.push({
-            pos: [cx + n, 0.31, cz - edge],
-            scale: [4.05, 0.38, 0.46],
-          }, {
-            pos: [cx + n, 0.31, cz + edge],
-            scale: [4.05, 0.38, 0.46],
-          });
-          target.push({
-            pos: [cx - edge, 0.31, cz + n],
-            scale: [0.46, 0.38, 4.05],
-          }, {
-            pos: [cx + edge, 0.31, cz + n],
-            scale: [0.46, 0.38, 4.05],
-          });
+          target.push(
+            {
+              pos: [cx + n, 0.31, cz - edge],
+              scale: [4.05, 0.38, 0.46],
+            },
+            {
+              pos: [cx + n, 0.31, cz + edge],
+              scale: [4.05, 0.38, 0.46],
+            },
+            {
+              pos: [cx - edge, 0.31, cz + n],
+              scale: [0.46, 0.38, 4.05],
+            },
+            {
+              pos: [cx + edge, 0.31, cz + n],
+              scale: [0.46, 0.38, 4.05],
+            },
+          );
         }
-      }}
+      }
+    }
 
     return { yellow, black };
   }, []);
 
   const yellowMesh = useRef<THREE.InstancedMesh>(null);
-    const blackMesh = useRef<THREE.InstancedMesh>(null);
+  const blackMesh = useRef<THREE.InstancedMesh>(null);
 
   useInstances(yellowMesh, yellow);
   useInstances(blackMesh, black);
@@ -337,23 +356,29 @@ export function Crosswalks() {
   const stripes = useMemo(() => {
     const items: Instance[] = [];
 
-    for (let gx = 0; gx < GRID_SIZE; gx++)
-      {for (let gz = 0; gz < GRID_SIZE; gz++) {
+    for (let gx = 0; gx < GRID_SIZE; gx++) {
+      for (let gz = 0; gz < GRID_SIZE; gz++) {
         const x = roadCenter(gx);
-          const z = roadCenter(gz);
+        const z = roadCenter(gz);
 
-        if (zoneAt(x, z, 8)) {continue;}
+        if (zoneAt(x, z, 8)) {
+          continue;
+        }
 
         for (let s = -2; s <= 2; s++) {
-          items.push({
-            pos: [x + s * 1.65, 0.05, z + ROAD_WIDTH / 2 - 1.2],
-            scale: [0.92, 0.025, 3.8],
-          }, {
-            pos: [x + ROAD_WIDTH / 2 - 1.2, 0.05, z + s * 1.65],
-            scale: [3.8, 0.025, 0.92],
-          });
+          items.push(
+            {
+              pos: [x + s * 1.65, 0.05, z + ROAD_WIDTH / 2 - 1.2],
+              scale: [0.92, 0.025, 3.8],
+            },
+            {
+              pos: [x + ROAD_WIDTH / 2 - 1.2, 0.05, z + s * 1.65],
+              scale: [3.8, 0.025, 0.92],
+            },
+          );
         }
-      }}
+      }
+    }
 
     return items;
   }, []);
@@ -385,13 +410,14 @@ export function Expressway({ city }: { city: CityData }) {
     () =>
       city.decks.map((deck) => {
         const width = deck.maxX - deck.minX;
-          const depth = deck.maxZ - deck.minZ;
+        const depth = deck.maxZ - deck.minZ;
 
         const geometry = new THREE.PlaneGeometry(width, depth);
         const uv = geometry.attributes.uv!;
 
-        for (let i = 0; i < uv.count; i++)
-          {uv.setXY(i, (uv.getX(i) * width) / 4, (uv.getY(i) * depth) / 4);}
+        for (let i = 0; i < uv.count; i++) {
+          uv.setXY(i, (uv.getX(i) * width) / 4, (uv.getY(i) * depth) / 4);
+        }
 
         return { deck, geometry };
       }),
@@ -407,7 +433,9 @@ export function Expressway({ city }: { city: CityData }) {
   );
   useEffect(
     () => () => {
-      for (const { geometry } of decks) {geometry.dispose();}
+      for (const { geometry } of decks) {
+        geometry.dispose();
+      }
     },
     [decks],
   );
@@ -432,13 +460,14 @@ export function Expressway({ city }: { city: CityData }) {
       const end = alongX ? deck.maxX : deck.maxZ;
       const cross = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
 
-      for (let u = start + 1; u + 3 < end; u += 7)
-        {items.push({
+      for (let u = start + 1; u + 3 < end; u += 7) {
+        items.push({
           pos: alongX
             ? [u + 1.5, deck.height + 0.025, cross]
             : [cross, deck.height + 0.025, u + 1.5],
           scale: alongX ? [3, 0.025, 0.14] : [0.14, 0.025, 3],
-        });}
+        });
+      }
 
       for (const side of [-1, 1]) {
         const edge = cross + side * (DECK_HALF - 0.75);
@@ -455,9 +484,9 @@ export function Expressway({ city }: { city: CityData }) {
   }, [city]);
 
   const pillarMesh = useRef<THREE.InstancedMesh>(null);
-    const railMesh = useRef<THREE.InstancedMesh>(null);
-    const capMesh = useRef<THREE.InstancedMesh>(null);
-    const paintMesh = useRef<THREE.InstancedMesh>(null);
+  const railMesh = useRef<THREE.InstancedMesh>(null);
+  const capMesh = useRef<THREE.InstancedMesh>(null);
+  const paintMesh = useRef<THREE.InstancedMesh>(null);
 
   useInstances(pillarMesh, pillars);
   useInstances(railMesh, rails);

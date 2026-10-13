@@ -24,7 +24,9 @@ export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
   const connecting = useGameStore((state) => state.connecting);
 
   const go = (room: string) => {
-    if (!name.trim() || connecting) {return;}
+    if (!name.trim() || connecting) {
+      return;
+    }
 
     onGameIntent();
     connect(room.toUpperCase(), name.trim(), mode);

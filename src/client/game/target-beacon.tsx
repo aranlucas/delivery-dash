@@ -63,7 +63,9 @@ export function TargetBeacon({ pos, dropoff }: { pos: [number, number]; dropoff:
     const s = 1 + Math.sin(clock.elapsedTime * 2.5) * 0.1;
     ring.current?.scale.set(s, s, 1);
 
-    if (ring.current) {ring.current.rotation.z = clock.elapsedTime * 0.32;}
+    if (ring.current) {
+      ring.current.rotation.z = clock.elapsedTime * 0.32;
+    }
   });
 
   return (
@@ -107,7 +109,9 @@ export function TargetPointer({
   useFrame(({ clock }) => {
     const g = group.current;
 
-    if (!g) {return;}
+    if (!g) {
+      return;
+    }
 
     // ownPose.y includes the 0.8m ride height, so this hugs flat roads, ramps,
     // and elevated decks while still following the car through a jump.
@@ -117,7 +121,9 @@ export function TargetPointer({
     for (let index = 0; index < chevrons.current.length; index++) {
       const chevron = chevrons.current[index];
 
-      if (!chevron) {continue;}
+      if (!chevron) {
+        continue;
+      }
 
       const phase = (clock.elapsedTime * 0.85 + index / CHEVRON_COUNT) % 1;
       chevron.position.z = 4 + phase * 7;

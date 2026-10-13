@@ -26,8 +26,9 @@ const localGeometry = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
 function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
   const object = nodes[name];
 
-  if (!(object instanceof THREE.Mesh))
-    {throw new Error(`Missing mesh node "${name}" in Blender asset`);}
+  if (!(object instanceof THREE.Mesh)) {
+    throw new Error(`Missing mesh node "${name}" in Blender asset`);
+  }
 
   object.updateWorldMatrix(true, false);
 
@@ -40,11 +41,15 @@ function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTrans
   const cache = keepTranslation ? bakedGeometry : localGeometry;
   const cached = cache.get(object);
 
-  if (cached) {return cached;}
+  if (cached) {
+    return cached;
+  }
 
   const transform = object.matrixWorld.clone();
 
-  if (!keepTranslation) {transform.setPosition(0, 0, 0);}
+  if (!keepTranslation) {
+    transform.setPosition(0, 0, 0);
+  }
 
   const result = object.geometry.clone().applyMatrix4(transform);
   result.computeBoundingBox();
@@ -120,6 +125,8 @@ export function useStreetPropAssets() {
   );
 }
 
-for (const url of Object.values(VEHICLE_URLS)) {useGLTF.preload(url);}
+for (const url of Object.values(VEHICLE_URLS)) {
+  useGLTF.preload(url);
+}
 
 useGLTF.preload(STREET_PROPS_URL);

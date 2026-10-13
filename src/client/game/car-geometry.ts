@@ -99,7 +99,9 @@ export function bodyHalfWidth(spec: CarSpec, position: number) {
     const [start, startWidth] = spec.profile[index]!;
     const [end, endWidth] = spec.profile[index + 1]!;
 
-    if (position < start || position > end) {continue;}
+    if (position < start || position > end) {
+      continue;
+    }
 
     const progress = end === start ? 0 : (position - start) / (end - start);
     widthScale = startWidth + (endWidth - startWidth) * progress;

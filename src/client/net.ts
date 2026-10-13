@@ -16,31 +16,39 @@ export function connect(code: string, name: string, mode: GameMode = DEFAULT_MOD
   const current = new WebSocket(`${protocol}://${location.host}/api/room/${code}/ws`);
   socket = current;
   current.onopen = () => {
-    if (socket !== current) {return;}
+    if (socket !== current) {
+      return;
+    }
 
     send({ t: "join", name, mode });
   };
 
   current.onmessage = (event) => {
-    if (socket === current) {handle(decodeServerMessage(String(event.data)));}
+    if (socket === current) {
+      handle(decodeServerMessage(String(event.data)));
+    }
   };
 
   current.onerror = () => {
-    if (socket === current)
-      {useGameStore.getState().set({ lastError: "Connection error. Please try again." });}
+    if (socket === current) {
+      useGameStore.getState().set({ lastError: "Connection error. Please try again." });
+    }
   };
 
   current.onclose = () => {
-    if (socket !== current) {return;}
+    if (socket !== current) {
+      return;
+    }
 
     const store = useGameStore.getState();
 
-    if (session)
-      {store.set({
+    if (session) {
+      store.set({
         connected: false,
         connecting: false,
         lastError: store.lastError ?? "Connection closed. Please try again.",
-      });}
+      });
+    }
 
     socket = undefined;
   };
@@ -53,11 +61,15 @@ export function close() {
 }
 
 export function rejoin() {
-  if (session) {connect(session.code, session.name, session.mode);}
+  if (session) {
+    connect(session.code, session.name, session.mode);
+  }
 }
 
 export function send(message: ClientMessage) {
-  if (socket?.readyState === WebSocket.OPEN) {socket.send(JSON.stringify(message));}
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(message));
+  }
 }
 
 function handle(message: ServerMessage) {
@@ -81,8 +93,11 @@ function handle(message: ServerMessage) {
       });
       break;
     case "roster":
-      for (const id of remotePositions.keys())
-        {if (!message.players.some((player) => player.id === id)) {remotePositions.delete(id);}}
+      for (const id of remotePositions.keys()) {
+        if (!message.players.some((player) => player.id === id)) {
+          remotePositions.delete(id);
+        }
+      }
 
       store.set({ players: message.players });
       break;

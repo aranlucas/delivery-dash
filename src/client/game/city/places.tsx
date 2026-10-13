@@ -73,17 +73,22 @@ function PlaceProps({ city }: { city: CityData }) {
         pos: placeOffset(place.pos, yaw, 0, 0.95, 3.02),
         rotY: yaw,
       });
-      windows.push({
-        pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02),
-        rotY: yaw,
-      }, {
-        pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02),
-        rotY: yaw,
-      });
+      windows.push(
+        {
+          pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02),
+          rotY: yaw,
+        },
+        {
+          pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02),
+          rotY: yaw,
+        },
+      );
     });
 
     city.restaurants.forEach((place, index) => {
-      if (storefrontModel(place.name)) {return;}
+      if (storefrontModel(place.name)) {
+        return;
+      }
 
       const yaw = outwardYaw(place.pos);
       restaurantShells.push({

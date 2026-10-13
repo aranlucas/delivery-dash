@@ -31,7 +31,9 @@ function GameLoading() {
 export function App() {
   const screen = useGameStore((s) => s.screen);
 
-  if (screen === "menu") {return <Menu onGameIntent={() => void loadGameSession()} />;}
+  if (screen === "menu") {
+    return <Menu onGameIntent={() => void loadGameSession()} />;
+  }
 
   return (
     <Suspense fallback={<GameLoading />}>
