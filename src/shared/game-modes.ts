@@ -4,10 +4,14 @@ import type { PlayerPub } from "./protocol.ts";
 
 export type GameMode = "delivery" | "rush" | "checkpoint" | "free";
 
-export const GAME_MODES: Record<
-  GameMode,
-  { name: string; description: string; tagline: string; color: string }
-> = {
+interface GameModeInfo {
+  name: string;
+  description: string;
+  tagline: string;
+  color: string;
+}
+
+export const GAME_MODES: Record<GameMode, GameModeInfo> = {
   delivery: {
     name: "Delivery Race",
     description: "Complete the first three deliveries to win.",

@@ -8,6 +8,15 @@ export type StaticInstance = {
   color?: string;
 };
 
+interface StaticInstancesProps {
+  items: StaticInstance[];
+  geometry?: THREE.BufferGeometry;
+  material?: THREE.Material | THREE.Material[];
+  localMatrix?: THREE.Matrix4;
+  children?: ReactNode;
+  shadows?: boolean;
+}
+
 /** Upload immutable scenery once. Separate batches retain useful frustum-culling bounds. */
 export function StaticInstances({
   items,
@@ -16,14 +25,7 @@ export function StaticInstances({
   localMatrix,
   children,
   shadows,
-}: {
-  items: StaticInstance[];
-  geometry?: THREE.BufferGeometry;
-  material?: THREE.Material | THREE.Material[];
-  localMatrix?: THREE.Matrix4;
-  children?: ReactNode;
-  shadows?: boolean;
-}) {
+}: StaticInstancesProps) {
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -34,7 +36,8 @@ export function StaticInstances({
 
     const transform = new THREE.Object3D();
     const color = new THREE.Color();
-    items.forEach((item, index) => {
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
       transform.position.set(...item.position);
       transform.rotation.set(...(item.rotation ?? [0, 0, 0]));
       transform.scale.set(...(item.scale ?? [1, 1, 1]));
@@ -49,7 +52,7 @@ export function StaticInstances({
       if (item.color) {
         mesh.setColorAt(index, color.set(item.color));
       }
-    });
+    }
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
 
@@ -72,18 +75,20 @@ export function StaticInstances({
   );
 }
 
+interface GltfInstancesProps {
+  scene: THREE.Object3D;
+  items: StaticInstance[];
+  shadows?: boolean;
+  batchKey?: string;
+}
+
 /** Walk a GLB scene into instanced parts, sharing the cached model's buffers. */
 export function GltfInstances({
   scene,
   items,
   shadows,
   batchKey,
-}: {
-  scene: THREE.Object3D;
-  items: StaticInstance[];
-  shadows?: boolean;
-  batchKey?: string;
-}) {
+}: GltfInstancesProps) {
   const parts = useMemo(() => {
     scene.updateMatrixWorld(true);
     const meshes: THREE.Mesh[] = [];

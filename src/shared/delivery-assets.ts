@@ -55,7 +55,12 @@ export function modelColliders(model: DeliveryModel, x: number, z: number, yaw =
   });
 }
 
-export const jumpGatePosition = (zone: { id: string; x: number; z: number }): [number, number] => [
-  zone.x + (zone.id === "freight" ? 24 : 0),
-  zone.z,
-];
+interface ZonePosition {
+  id: string;
+  x: number;
+  z: number;
+}
+
+export function jumpGatePosition(zone: ZonePosition): [number, number] {
+  return [zone.x + (zone.id === "freight" ? 24 : 0), zone.z];
+}

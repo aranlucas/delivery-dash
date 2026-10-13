@@ -24,7 +24,12 @@ import {
   TrafficSignals,
 } from "./city/scenery";
 
-export function City({ city, seed }: { city: CityData; seed: number }) {
+interface CityProps {
+  city: CityData;
+  seed: number;
+}
+
+export function City({ city, seed }: CityProps) {
   const asphalt = useMemo(() => makeAsphaltTexture(), []);
   useEffect(() => () => asphalt.dispose(), [asphalt]);
 

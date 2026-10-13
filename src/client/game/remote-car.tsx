@@ -13,7 +13,7 @@ const kindFor = (id: string) => {
   let hash = 0;
 
   for (let index = 0; index < id.length; index++) {
-    hash = (hash * 31 + id.charCodeAt(index)) | 0;
+    hash = Math.trunc(hash * 31 + id.charCodeAt(index));
   }
 
   return RIVAL_KINDS[Math.abs(hash) % RIVAL_KINDS.length]!;
@@ -24,19 +24,15 @@ const lodFor = (distanceSquared: number): CarLod =>
 
 const targetPosition = new THREE.Vector3();
 
-export function RemoteCar({
-  id,
-  color,
-  name,
-  carrying,
-  spawn,
-}: {
+interface RemoteCarProps {
   id: string;
   color: string;
   name: string;
   carrying: boolean;
   spawn: Pos2;
-}) {
+}
+
+export function RemoteCar({ id, color, name, carrying, spawn }: RemoteCarProps) {
   const root = useRef<THREE.Group>(null);
   const yaw = useRef(0);
   const currentLod = useRef<CarLod>("full");

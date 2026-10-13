@@ -1,16 +1,18 @@
 /** Wheel layout shared by gameplay placement. Body loft lives in the Blender asset script. */
+type ProfilePoint = [number, number];
+
 export type CarSpec = {
   length: number;
   width: number;
   /** Stations: [position along body, width scale]. */
-  profile: [number, number][];
+  profile: ProfilePoint[];
   wheelRadius: number;
   wheelWidth: number;
   axleInset: number;
   arch: number;
 };
 
-const SEDAN_PROFILE: [number, number][] = [
+const SEDAN_PROFILE: ProfilePoint[] = [
   [0, 0.78],
   [0.06, 0.92],
   [0.2, 1],
@@ -114,7 +116,9 @@ export function bodyHalfWidth(spec: CarSpec, position: number) {
   return (spec.width / 2) * widthScale + flare;
 }
 
-export function wheelPositions(spec: CarSpec): [number, number, number][] {
+type WheelPosition = [number, number, number];
+
+export function wheelPositions(spec: CarSpec): WheelPosition[] {
   const y = spec.wheelRadius - CAR_ORIGIN_HEIGHT;
   const frontPosition = 1 - spec.axleInset;
   const rearPosition = spec.axleInset;

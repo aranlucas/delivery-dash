@@ -7,13 +7,15 @@ import { makeRampGeometry, makeRampRibbonGeometry } from "./ramp-geometry";
 import { makeAsphaltTexture, makeConcreteTexture, makeRampHazardTexture } from "./textures";
 import { StaticInstances, type StaticInstance } from "./static-instances";
 
-const position = (r: Ramp, across: number, y: number, along: number): [number, number, number] => [
+type Vec3 = [number, number, number];
+
+const position = (r: Ramp, across: number, y: number, along: number): Vec3 => [
   r.x + Math.cos(r.yaw) * across + Math.sin(r.yaw) * along,
   y,
   r.z - Math.sin(r.yaw) * across + Math.cos(r.yaw) * along,
 ];
 
-const rotation = (pitch: number, yaw: number): [number, number, number] => {
+const rotation = (pitch: number, yaw: number): Vec3 => {
   const euler = new THREE.Euler().setFromQuaternion(
     new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, "YXZ")),
   );
@@ -31,8 +33,12 @@ function merge(parts: THREE.BufferGeometry[]) {
   return geometry;
 }
 
+interface RampsProps {
+  city: City;
+}
+
 /** The visible road, structure and barriers use the shared physics profile. */
-export function Ramps({ city }: { city: City }) {
+export function Ramps({ city }: RampsProps) {
   const resources = useMemo(() => {
     const concrete = makeConcreteTexture();
     const asphalt = makeAsphaltTexture();

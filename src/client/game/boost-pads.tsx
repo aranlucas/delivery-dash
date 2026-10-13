@@ -7,8 +7,14 @@ import { StaticInstances, type StaticInstance } from "./static-instances";
 import { drivingTelemetry } from "./driving-state";
 import { makeBoostPadTexture } from "./textures";
 
+type Vec3 = [number, number, number];
+
+interface BoostPadsProps {
+  city: City;
+}
+
 /** Flush steel strips with readable arrows and luminous edges, batched across the city. */
-export function BoostPads({ city }: { city: City }) {
+export function BoostPads({ city }: BoostPadsProps) {
   const texture = useMemo(() => makeBoostPadTexture(), []);
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -28,12 +34,7 @@ export function BoostPads({ city }: { city: City }) {
     const bolts: StaticInstance[] = [];
 
     for (const pad of city.boostPads) {
-      const at = (
-        across: number,
-        up: number,
-        along: number,
-        scale: [number, number, number],
-      ): StaticInstance => ({
+      const at = (across: number, up: number, along: number, scale: Vec3): StaticInstance => ({
         position: [
           pad.x + across * Math.cos(pad.yaw) + along * Math.sin(pad.yaw),
           pad.y + up,

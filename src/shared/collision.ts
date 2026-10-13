@@ -121,16 +121,14 @@ export function queryRange(
         if (box.maxX < minX || box.minX > maxX || box.maxZ < minZ || box.minZ > maxZ) {
           continue;
         }
-        let duplicate = false;
 
-        for (let index = 0; index < count; index++) {
-          if (out[index] === boxIndex) {
-            duplicate = true;
-            break;
-          }
+        // Check for duplicates
+        let index = 0;
+        while (index < count && out[index] !== boxIndex) {
+          index++;
         }
 
-        if (!duplicate) {
+        if (index === count) {
           out[count++] = boxIndex;
         }
       }

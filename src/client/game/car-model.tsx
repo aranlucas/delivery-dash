@@ -7,6 +7,8 @@ import { useVehicleAsset } from "./model-assets";
 
 export type CarLod = "full" | "merged" | "box";
 
+type Vec3 = [number, number, number];
+
 const glassMaterial = new THREE.MeshStandardMaterial({
   color: "#16222e",
   metalness: 0.5,
@@ -44,13 +46,13 @@ const rimMaterial = new THREE.MeshStandardMaterial({
 
 const boxGeometry = new THREE.BoxGeometry(2.5, 1.5, 5.2);
 
-type WheelProps = {
-  position: [number, number, number];
+interface WheelProps {
+  position: Vec3;
   tyre: THREE.BufferGeometry;
   rim: THREE.BufferGeometry;
   radius: number;
   steerable: boolean;
-};
+}
 
 function WheelMeshes({ tyre, rim }: Pick<WheelProps, "tyre" | "rim">) {
   return (
@@ -95,6 +97,16 @@ function StaticWheel({ position, tyre, rim }: WheelProps) {
   );
 }
 
+interface CarModelProps {
+  kind?: CarKind;
+  color: string;
+  lod?: CarLod;
+  animateWheels?: boolean;
+  topperColor?: string;
+  topperEmissive?: string;
+  topperEmissiveIntensity?: number;
+}
+
 export function CarModel({
   kind = "taxi",
   color,
@@ -103,15 +115,7 @@ export function CarModel({
   topperColor = "#15191d",
   topperEmissive = topperColor,
   topperEmissiveIntensity = 0.2,
-}: {
-  kind?: CarKind;
-  color: string;
-  lod?: CarLod;
-  animateWheels?: boolean;
-  topperColor?: string;
-  topperEmissive?: string;
-  topperEmissiveIntensity?: number;
-}) {
+}: CarModelProps) {
   const bodyMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -153,14 +157,14 @@ export function CarModel({
     <>
       <mesh geometry={geometry.body} material={bodyMaterial} castShadow />
       <mesh geometry={geometry.glass} material={glassMaterial} />
-      {lod === "full" ? (
+      {lod === "full" && (
         <>
           <mesh geometry={geometry.trim} material={trimMaterial} />
           <mesh geometry={geometry.headlights} material={headlightMaterial} />
           <mesh geometry={geometry.taillights} material={taillightMaterial} />
-          {kind === "taxi" ? (
+          {kind === "taxi" && (
             <mesh geometry={geometry.topper} material={topperMaterial} castShadow />
-          ) : null}
+          )}
           {wheelPositions(spec).map((position, index) => {
             const props: WheelProps = {
               position,
@@ -179,7 +183,7 @@ export function CarModel({
             );
           })}
         </>
-      ) : null}
+      )}
     </>
   );
 }

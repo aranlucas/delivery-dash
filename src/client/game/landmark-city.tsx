@@ -9,8 +9,12 @@ import { Coast } from "./coast";
 
 const assetUrl = (name: string) => `/models/landmarks/${name}.glb?v=coast-1`;
 
+interface LandmarkProps {
+  name: string;
+}
+
 /** Blender objects are merged by material at export; each landmark is only a few draw calls. */
-function Landmark({ name }: { name: string }) {
+function Landmark({ name }: LandmarkProps) {
   const { scene } = useGLTF(assetUrl(name));
 
   const instance = useMemo(() => {
@@ -55,7 +59,11 @@ function Portals() {
   return <GltfInstances scene={scene} items={PORTALS} />;
 }
 
-function Plaza({ zone }: { zone: CityZone }) {
+interface PlazaProps {
+  zone: CityZone;
+}
+
+function Plaza({ zone }: PlazaProps) {
   const stunt = zone.id === "stunt";
 
   return (
@@ -121,13 +129,11 @@ function Plaza({ zone }: { zone: CityZone }) {
         </Suspense>
       </group>
       {stunt && (
-        <>
-          <Suspense fallback={null}>
-            <Text position={[0, 0.07, 8]} rotation-x={-Math.PI / 2} fontSize={4.5} color="#cafa54">
-              FLY THIS WAY
-            </Text>
-          </Suspense>
-        </>
+        <Suspense fallback={null}>
+          <Text position={[0, 0.07, 8]} rotation-x={-Math.PI / 2} fontSize={4.5} color="#cafa54">
+            FLY THIS WAY
+          </Text>
+        </Suspense>
       )}
       {/* Flat approach arrows make the shortcut legible at driving speed. */}
       {(stunt || zone.id === "freight") && (

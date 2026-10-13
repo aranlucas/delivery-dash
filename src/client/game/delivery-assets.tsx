@@ -11,10 +11,20 @@ import { GltfInstances, type StaticInstance } from "./static-instances";
 
 const assetUrl = (name: DeliveryModel) => `/models/delivery/${name}.glb?v=delivery-2`;
 
-function Batch({ model, items }: { model: DeliveryModel; items: StaticInstance[] }) {
+interface BatchProps {
+  model: DeliveryModel;
+  items: StaticInstance[];
+}
+
+function Batch({ model, items }: BatchProps) {
   const { scene } = useGLTF(assetUrl(model));
 
   return <GltfInstances scene={scene} items={items} />;
+}
+
+interface ShopInstance {
+  model: DeliveryModel;
+  items: StaticInstance[];
 }
 
 const gates: StaticInstance[] = CITY_ZONES.filter(
@@ -29,8 +39,12 @@ const targets: StaticInstance[] = gates.flatMap((gate) =>
   [-35, 35].map((offset) => ({ position: [gate.position[0], 0, gate.position[2] + offset] })),
 );
 
-export function DeliveryAssets({ city }: { city: City }) {
-  const shops = useMemo(
+interface DeliveryAssetsProps {
+  city: City;
+}
+
+export function DeliveryAssets({ city }: DeliveryAssetsProps) {
+  const shops = useMemo<ShopInstance[]>(
     () =>
       city.restaurants.flatMap((place) => {
         const model = storefrontModel(place.name);
@@ -41,8 +55,8 @@ export function DeliveryAssets({ city }: { city: City }) {
                 model,
                 items: [
                   {
-                    position: [place.pos[0], 0, place.pos[1]] satisfies [number, number, number],
-                    rotation: [0, storefrontYaw(place), 0] satisfies [number, number, number],
+                    position: [place.pos[0], 0, place.pos[1]],
+                    rotation: [0, storefrontYaw(place), 0],
                   },
                 ],
               },
