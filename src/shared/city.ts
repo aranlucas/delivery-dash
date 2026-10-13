@@ -266,7 +266,9 @@ export const zoneAt = (x: number, z: number, margin = 0) =>
 
 /** A coastal low-rise strip, a compact glass skyline, and a warm warehouse quarter. */
 export function districtAt(gx: number, gz: number) {
-  if (gx < 3 || gz > 8) return 2;
+  if (gx < 3 || gz > 8) {
+    return 2;
+  }
 
   return gx >= 4 && gx <= 7 && gz >= 3 && gz <= 7 ? 0 : 1;
 }
@@ -294,10 +296,12 @@ export function groundHeightAt(
   for (const ramp of city.ramps) {
     const surface = rampSurface(ramp, x, z);
 
-    if (surface !== undefined && surface > best && surface <= limit) best = surface;
+    if (surface !== undefined && surface > best && surface <= limit) {
+      best = surface;
+    }
   }
 
-  for (const deck of city.decks)
+  for (const deck of city.decks) {
     if (
       deck.height > best &&
       deck.height <= limit &&
@@ -305,8 +309,11 @@ export function groundHeightAt(
       x < deck.maxX &&
       z > deck.minZ &&
       z < deck.maxZ
-    )
+    ) {
       best = deck.height;
+    }
+  }
+
   const candidateCount = queryRange(city.collisionGrid, x, z, x, z, collisionCandidates);
 
   for (let index = 0; index < candidateCount; index++) {
@@ -319,8 +326,9 @@ export function groundHeightAt(
       x < box.maxX &&
       z > box.minZ &&
       z < box.maxZ
-    )
+    ) {
       best = box.top;
+    }
   }
 
   return best;
@@ -332,10 +340,14 @@ const collisionCandidates: number[] = [];
 
 /** True when a car whose wheels sit at `height` cannot occupy this spot. */
 export function blocked(city: City, x: number, z: number, height: number): boolean {
-  if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
+  if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) {
+    return true;
+  }
 
   for (const ramp of city.ramps) {
-    if (rampBlocks(ramp, x, z, height, STEP_UP)) return true;
+    if (rampBlocks(ramp, x, z, height, STEP_UP)) {
+      return true;
+    }
   }
 
   const candidateCount = queryRange(
@@ -357,8 +369,9 @@ export function blocked(city: City, x: number, z: number, height: number): boole
       x < box.maxX + SOLID_MARGIN &&
       z > box.minZ - SOLID_MARGIN &&
       z < box.maxZ + SOLID_MARGIN
-    )
+    ) {
       return true;
+    }
   }
 
   return false;
@@ -381,15 +394,18 @@ export function safeTravel(
   for (let step = 1; step <= steps; step++) {
     const t = step / steps;
 
-    const nextX = x + dx * t,
-      nextZ = z + dz * t;
+    const nextX = x + dx * t;
+    const nextZ = z + dz * t;
 
-    if (blocked(city, nextX, nextZ, sweepHeight)) return (step - 1) / steps;
+    if (blocked(city, nextX, nextZ, sweepHeight)) {
+      return (step - 1) / steps;
+    }
 
     // Grounded uphill motion follows the visible slope during the sweep. Hold
     // the lip height after leaving it; airborne motion keeps its own altitude.
-    if (grounded)
+    if (grounded) {
       sweepHeight = Math.max(sweepHeight, groundHeightAt(city, nextX, nextZ, sweepHeight));
+    }
   }
 
   return 1;
@@ -397,18 +413,22 @@ export function safeTravel(
 
 /** True near any elevated structure — used to keep trees and props out of the expressway. */
 export function nearExpressway(city: City, x: number, z: number, margin: number): boolean {
-  for (const deck of city.decks)
+  for (const deck of city.decks) {
     if (
       x > deck.minX - margin &&
       x < deck.maxX + margin &&
       z > deck.minZ - margin &&
       z < deck.maxZ + margin
-    )
+    ) {
       return true;
+    }
+  }
 
-  for (const ramp of city.ramps)
-    if (ramp.kind === "grade" && Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin)
+  for (const ramp of city.ramps) {
+    if (ramp.kind === "grade" && Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin) {
       return true;
+    }
+  }
 
   return false;
 }
@@ -447,11 +467,11 @@ const EXPRESSWAYS: ExpresswaySpec[] = [
 ];
 
 function buildExpressways() {
-  const ramps: Ramp[] = [],
-    decks: Deck[] = [],
-    pillars: AABB[] = [],
-    rails: AABB[] = [],
-    boostPads: BoostPad[] = [];
+  const ramps: Ramp[] = [];
+  const decks: Deck[] = [];
+  const pillars: AABB[] = [];
+  const rails: AABB[] = [];
+  const boostPads: BoostPad[] = [];
 
   for (const spec of EXPRESSWAYS) {
     const cross = roadCenter(spec.road);
@@ -465,11 +485,11 @@ function buildExpressways() {
 
     const rampLength = Math.round(spec.height * 6.4);
 
-    const start = roadCenter(spec.from),
-      end = roadCenter(spec.to);
+    const start = roadCenter(spec.from);
+    const end = roadCenter(spec.to);
 
-    const deckStart = start + rampLength,
-      deckEnd = end - rampLength;
+    const deckStart = start + rampLength;
+    const deckEnd = end - rampLength;
 
     const [entryX, entryZ] = at(start + rampLength / 2);
     ramps.push({
@@ -537,9 +557,13 @@ function buildExpressways() {
       const segmentEnd = Math.min(u + SEGMENT - 0.6, deckEnd);
       const mid = (u + segmentEnd) / 2;
 
-      if (Math.abs(mid - junction) < DECK_HALF + 9) continue;
+      if (Math.abs(mid - junction) < DECK_HALF + 9) {
+        continue;
+      }
 
-      if (Math.abs(((mid - deckStart) % 160) - 80) < 14) continue;
+      if (Math.abs(((mid - deckStart) % 160) - 80) < 14) {
+        continue;
+      }
 
       for (const side of [-1, 1] as const) {
         const edge = cross + side * (DECK_HALF - RAMP_BARRIER_WIDTH / 2);
@@ -580,7 +604,10 @@ function buildExpressways() {
       const t = along / ramp.length + 0.5;
       const top = rampUnderside(ramp, t);
 
-      if (top < 2.8) continue;
+      if (top < 2.8) {
+        continue;
+      }
+
       const x = ramp.x + Math.sin(ramp.yaw) * along;
       const z = ramp.z + Math.cos(ramp.yaw) * along;
       const roadAlong = alongX ? x : z;
@@ -589,8 +616,9 @@ function buildExpressways() {
         Array.from({ length: GRID_SIZE }, (_, i) => roadCenter(i)).some(
           (centre) => Math.abs(roadAlong - centre) < ROAD_WIDTH / 2 + 3,
         )
-      )
+      ) {
         continue;
+      }
 
       for (const side of [-1, 1]) {
         const across = side * (ramp.width / 2 - 0.7);
@@ -620,7 +648,9 @@ function buildExpressways() {
           pillar.minZ - 4 < deck.maxZ,
       ) &&
       !ramps.some((ramp) => {
-        if (ramp.height >= pillar.top) return false;
+        if (ramp.height >= pillar.top) {
+          return false;
+        }
 
         const surface = rampSurface(
           ramp,
@@ -647,20 +677,26 @@ function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] 
       Math.abs(z - roadCenter(SPAWN_ROAD)) < 4 + margin &&
       x > -WORLD_HALF + 34 - margin &&
       x < -WORLD_HALF + 116 + margin
-    )
+    ) {
       return false;
+    }
 
-    for (const ramp of structures.ramps)
-      if (Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin) return false;
+    for (const ramp of structures.ramps) {
+      if (Math.hypot(x - ramp.x, z - ramp.z) < ramp.length / 2 + margin) {
+        return false;
+      }
+    }
 
-    for (const deck of structures.decks)
+    for (const deck of structures.decks) {
       if (
         x > deck.minX - margin &&
         x < deck.maxX + margin &&
         z > deck.minZ - margin &&
         z < deck.maxZ + margin
-      )
+      ) {
         return false;
+      }
+    }
 
     return true;
   };
@@ -677,11 +713,18 @@ function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] 
   for (let attempt = 0; attempt < 260 && kickers.length < 22; attempt++) {
     const { x, z, yaw } = onRoad();
 
-    if (zoneAt(x, z, 20)) continue;
+    if (zoneAt(x, z, 20)) {
+      continue;
+    }
 
-    if (!clear(x, z, 26)) continue;
+    if (!clear(x, z, 26)) {
+      continue;
+    }
 
-    if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 74)) continue;
+    if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 74)) {
+      continue;
+    }
+
     kickers.push({
       x,
       z,
@@ -702,13 +745,22 @@ function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] 
   for (let attempt = 0; attempt < 200 && boostPads.length < 42; attempt++) {
     const { x, z, yaw } = onRoad();
 
-    if (zoneAt(x, z, 20)) continue;
+    if (zoneAt(x, z, 20)) {
+      continue;
+    }
 
-    if (!clear(x, z, 12)) continue;
+    if (!clear(x, z, 12)) {
+      continue;
+    }
 
-    if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 26)) continue;
+    if (kickers.some((k) => Math.hypot(k.x - x, k.z - z) < 26)) {
+      continue;
+    }
 
-    if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 44)) continue;
+    if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 44)) {
+      continue;
+    }
+
     boostPads.push({ x, z, y: 0, yaw });
   }
 
@@ -737,19 +789,31 @@ function roadHasStructure(
   for (const deck of structures.decks) {
     const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
 
-    if (alongX !== (axis === "x")) continue;
+    if (alongX !== (axis === "x")) {
+      continue;
+    }
+
     const mid = alongX ? (deck.minZ + deck.maxZ) / 2 : (deck.minX + deck.maxX) / 2;
 
-    if (Math.abs(mid - cross) < ROAD_WIDTH) return true;
+    if (Math.abs(mid - cross) < ROAD_WIDTH) {
+      return true;
+    }
   }
 
   for (const ramp of structures.ramps) {
-    if (ramp.kind !== "grade") continue;
+    if (ramp.kind !== "grade") {
+      continue;
+    }
+
     const alongX = Math.abs(Math.sin(ramp.yaw)) > 0.5;
 
-    if (alongX !== (axis === "x")) continue;
+    if (alongX !== (axis === "x")) {
+      continue;
+    }
 
-    if (Math.abs((alongX ? ramp.z : ramp.x) - cross) < ROAD_WIDTH) return true;
+    if (Math.abs((alongX ? ramp.z : ramp.x) - cross) < ROAD_WIDTH) {
+      return true;
+    }
   }
 
   return false;
@@ -777,18 +841,23 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
   const random = mulberry32(seed ^ 0x1c0ffee);
   const routes: TrafficRoute[] = [];
 
-  for (const axis of ["x", "z"] as const)
+  for (const axis of ["x", "z"] as const) {
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
 
-      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) continue;
+      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) {
+        continue;
+      }
 
       // Straight traffic cannot turn around the landmark islands; keep it on through streets.
-      if (CITY_ZONES.some((zone) => Math.abs((axis === "x" ? zone.z : zone.x) - road) < zone.half))
+      if (
+        CITY_ZONES.some((zone) => Math.abs((axis === "x" ? zone.z : zone.x) - road) < zone.half)
+      ) {
         continue;
+      }
       const direction = i % 2 ? 1 : -1;
 
-      for (let n = 0; n < 2; n++)
+      for (let n = 0; n < 2; n++) {
         routes.push({
           axis,
           cross: road - parkingSide(i) * TRAFFIC_LANE_OFFSET,
@@ -797,7 +866,9 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
           offset: (random() * 2 - 1) * WORLD_HALF,
           color: carColors[randomInt(random, carColors.length)]!,
         });
+      }
     }
+  }
 
   return routes;
 }
@@ -813,20 +884,22 @@ function buildParking(
   const random = mulberry32(seed ^ 0x7a12b);
   const cars: ParkedCar[] = [];
 
-  for (const axis of ["x", "z"] as const)
+  for (const axis of ["x", "z"] as const) {
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
 
-      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) continue;
+      if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) {
+        continue;
+      }
       const cross = road + parkingSide(i) * PARKING_OFFSET;
 
-      for (let j = 0; j < GRID_SIZE; j++)
+      for (let j = 0; j < GRID_SIZE; j++) {
         for (const slot of [-10, -3, 4, 11]) {
           if (random() < 0.35) continue;
           const along = blockCenter(j) + slot;
 
-          const x = axis === "x" ? along : cross,
-            z = axis === "x" ? cross : along;
+          const x = axis === "x" ? along : cross;
+          const z = axis === "x" ? cross : along;
 
           if (zoneAt(x, z, 6)) continue;
 
@@ -842,7 +915,9 @@ function buildParking(
             color: carColors[randomInt(random, carColors.length)]!,
           });
         }
+      }
     }
+  }
 
   return cars;
 }
@@ -896,13 +971,15 @@ export function generateCity(seed: number): City {
   // Positions sit just inside block corners, adjacent to the surrounding roads.
   const corners: { pos: Pos2; stops: Pos2[] }[] = [];
 
-  for (let x = 0; x < GRID_SIZE; x++)
+  for (let x = 0; x < GRID_SIZE; x++) {
     for (let z = 0; z < GRID_SIZE; z++) {
-      if (zoneAt(blockCenter(x), blockCenter(z))) continue;
+      if (zoneAt(blockCenter(x), blockCenter(z))) {
+        continue;
+      }
 
-      const cx = blockCenter(x),
-        cz = blockCenter(z),
-        edge = BLOCK_SIZE / 2 - 5;
+      const cx = blockCenter(x);
+      const cz = blockCenter(z);
+      const edge = BLOCK_SIZE / 2 - 5;
 
       // Put the target just beyond the curb. The previous road-centre target
       // was 12m from the storefront, outside the 10m delivery radius.
@@ -923,16 +1000,22 @@ export function generateCity(seed: number): City {
           ] satisfies Pos2[]
         ).filter(usableStop);
 
-        if (stops.length) corners.push({ pos, stops });
+        if (stops.length) {
+          corners.push({ pos, stops });
+        }
       }
     }
+  }
 
   const placeRandom = mulberry32(seed ^ 0x9e3779b9);
 
   const takePlace = (id: number) => {
     // Most destinations frame the landmarks, encouraging routes through the authored districts.
     // A few stay city-wide so each seed still offers different delivery runs.
-    if (id >= 10) return corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
+    if (id >= 10) {
+      return corners.splice(randomInt(placeRandom, corners.length), 1)[0]!;
+    }
+
     const zone = CITY_ZONES[id % CITY_ZONES.length]!;
 
     const candidates = corners
@@ -964,12 +1047,14 @@ export function generateCity(seed: number): City {
   const buildings: Building[] = [];
   const parks: Pos2[] = [];
 
-  for (let gx = 0; gx < GRID_SIZE; gx++)
+  for (let gx = 0; gx < GRID_SIZE; gx++) {
     for (let gz = 0; gz < GRID_SIZE; gz++) {
-      const cx = blockCenter(gx),
-        cz = blockCenter(gz);
+      const cx = blockCenter(gx);
+      const cz = blockCenter(gz);
 
-      if (zoneAt(cx, cz)) continue;
+      if (zoneAt(cx, cz)) {
+        continue;
+      }
       const district = districtAt(gx, gz);
       const outline = districtBuilding[district]!;
 
@@ -981,8 +1066,8 @@ export function generateCity(seed: number): City {
       const count = 1 + randomInt(random, outline.count);
 
       for (let n = 0; n < count; n++) {
-        const w = outline.size + random() * outline.spread,
-          d = outline.size + random() * outline.spread;
+        const w = outline.size + random() * outline.spread;
+        const d = outline.size + random() * outline.spread;
 
         let placed = false;
 
@@ -994,8 +1079,9 @@ export function generateCity(seed: number): City {
             placePoints.some(
               ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
             )
-          )
+          ) {
             continue;
+          }
           const palette = districtColors[district]!;
           buildings.push({
             x,
@@ -1010,6 +1096,7 @@ export function generateCity(seed: number): City {
         }
       }
     }
+  }
 
   const buildingAABBs: AABB[] = buildings.map(({ x, z, w, d, h }) => ({
     minX: x - w / 2,
@@ -1025,8 +1112,9 @@ export function generateCity(seed: number): City {
     const model = storefrontModel(place.name);
     const [px, pz] = place.pos;
 
-    if (model) buildingAABBs.push(...modelColliders(model, px, pz, storefrontYaw(place)));
-    else
+    if (model) {
+      buildingAABBs.push(...modelColliders(model, px, pz, storefrontYaw(place)));
+    } else {
       buildingAABBs.push({
         minX: px - 4.25,
         maxX: px + 4.25,
@@ -1035,9 +1123,10 @@ export function generateCity(seed: number): City {
         base: 0,
         top: 5.2,
       });
+    }
   }
 
-  for (const [px, pz] of placePoints.slice(restaurants.length))
+  for (const [px, pz] of placePoints.slice(restaurants.length)) {
     buildingAABBs.push({
       minX: px - 3,
       maxX: px + 3,
@@ -1046,11 +1135,13 @@ export function generateCity(seed: number): City {
       base: 0,
       top: 5.1,
     });
+  }
+
   buildingAABBs.push(...structures.pillars, ...structures.rails, ...COAST_ROAD_ENDS);
 
   for (const zone of CITY_ZONES) {
-    for (const offset of [-43])
-      for (const side of [-1, 1])
+    for (const offset of [-43]) {
+      for (const side of [-1, 1]) {
         buildingAABBs.push({
           minX: zone.x + side * 8.5 - 0.5,
           maxX: zone.x + side * 8.5 + 0.5,
@@ -1059,11 +1150,14 @@ export function generateCity(seed: number): City {
           base: 0,
           top: 9.6,
         });
+      }
+    }
 
-    if (zone.id === "stunt" || zone.id === "freight")
+    if (zone.id === "stunt" || zone.id === "freight") {
       buildingAABBs.push(...modelColliders("jump-gate", ...jumpGatePosition(zone)));
+    }
 
-    if (zone.radius)
+    if (zone.radius) {
       buildingAABBs.push({
         minX: zone.x - zone.radius,
         maxX: zone.x + zone.radius,
@@ -1072,6 +1166,7 @@ export function generateCity(seed: number): City {
         base: 0,
         top: zone.height,
       });
+    }
   }
 
   const parkedCars = buildParking(
@@ -1084,8 +1179,8 @@ export function generateCity(seed: number): City {
 
   // SOLID_MARGIN already covers the player's own half-width, so parked boxes are stored shrunk by
   // roughly that much: inflated again at collision time they land back on the real bodywork.
-  const solidWidth = PARKED_CAR_HALF_WIDTH - 0.65,
-    solidLength = PARKED_CAR_HALF_LENGTH - 0.6;
+  const solidWidth = PARKED_CAR_HALF_WIDTH - 0.65;
+  const solidLength = PARKED_CAR_HALF_LENGTH - 0.6;
 
   for (const car of parkedCars) {
     const halfX = car.yaw === 0 ? solidWidth : solidLength;
@@ -1129,7 +1224,10 @@ export function generateOrders(seed: number): Order[] {
   for (let i = 0; i < 6; i++) {
     let restaurant = randomInt(random, restaurantNames.length);
 
-    while (restaurant === previous) restaurant = randomInt(random, restaurantNames.length);
+    while (restaurant === previous) {
+      restaurant = randomInt(random, restaurantNames.length);
+    }
+
     previous = restaurant;
     orders.push({
       restaurantId: restaurant,

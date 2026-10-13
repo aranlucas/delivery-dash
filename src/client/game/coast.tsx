@@ -11,8 +11,8 @@ const HARBOR = CITY_ZONES.find((zone) => zone.id === "harbor")!;
 
 /** Keep the street grid intact, then soften its silhouette with coves and rounded headlands. */
 function shorePoint(angle: number) {
-  const x = Math.cos(angle),
-    z = Math.sin(angle);
+  const x = Math.cos(angle);
+  const z = Math.sin(angle);
 
   const inner = (WORLD_HALF - 0.25) / Math.max(Math.abs(x), Math.abs(z));
   const rounded = 355 / Math.pow(Math.abs(x) ** 5 + Math.abs(z) ** 5, 1 / 5);
@@ -28,9 +28,9 @@ function shorePoint(angle: number) {
 }
 
 function makeShoreGeometry() {
-  const positions: number[] = [],
-    colors: number[] = [],
-    indices: number[] = [];
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
 
   const tint = new THREE.Color();
 
@@ -54,11 +54,11 @@ function makeShoreGeometry() {
 
   for (let layer = 0; layer < layers.length - 1; layer++) {
     for (let i = 0; i < SEGMENTS; i++) {
-      const a = layer * (SEGMENTS + 1) + i,
-        b = a + 1;
+      const a = layer * (SEGMENTS + 1) + i;
+      const b = a + 1;
 
-      const c = a + SEGMENTS + 1,
-        d = c + 1;
+      const c = a + SEGMENTS + 1;
+      const d = c + 1;
 
       indices.push(a, b, c, b, d, c);
     }
@@ -97,13 +97,14 @@ for (let i = 0; i < 160; i++) {
       x * radius > -WORLD_HALF - 50 &&
       Math.abs(z * radius - HARBOR.z) < 7;
 
-    if (!atGangway)
+    if (!atGangway) {
       ROCKS.push({
         position: [x * radius, -0.35 + size * 0.38, z * radius],
         rotation: [0.18 * Math.sin(i), angle, 0.12 * Math.cos(i)],
         scale: [size * 1.6, size * 0.8, size],
         color: ["#71837f", "#8c9182", "#a0a18c"][i % 3]!,
       });
+    }
   }
 
   if (i % 3 === 0 && Math.sin(angle * 7) > -0.5) {
@@ -119,8 +120,8 @@ for (let i = 0; i < 160; i++) {
   if (i % 8 === 2 && Math.abs(angle - 2.71) > 0.22) {
     const radius = THREE.MathUtils.lerp(inner, outer, 0.28);
 
-    const px = x * radius,
-      pz = z * radius;
+    const px = x * radius;
+    const pz = z * radius;
 
     const height = 6.6 + (i % 5) * 0.3;
     PALM_TRUNKS.push({
@@ -161,8 +162,8 @@ const POSTS: StaticInstance[] = [];
 const REFLECTORS: StaticInstance[] = [];
 
 for (const box of COAST_ROAD_ENDS) {
-  const x = (box.minX + box.maxX) / 2,
-    z = (box.minZ + box.maxZ) / 2;
+  const x = (box.minX + box.maxX) / 2;
+  const z = (box.minZ + box.maxZ) / 2;
 
   const alongX = box.maxX - box.minX > box.maxZ - box.minZ;
   const width = Math.max(box.maxX - box.minX, box.maxZ - box.minZ);
@@ -199,7 +200,9 @@ export function Coast() {
   const shore = useMemo(() => makeShoreGeometry(), []);
   useEffect(() => () => shore.dispose(), [shore]);
   useFrame(({ clock }) => {
-    if (water.current) water.current.position.y = -1.2 + Math.sin(clock.elapsedTime * 0.45) * 0.08;
+    if (water.current) {
+      water.current.position.y = -1.2 + Math.sin(clock.elapsedTime * 0.45) * 0.08;
+    }
   });
 
   return (

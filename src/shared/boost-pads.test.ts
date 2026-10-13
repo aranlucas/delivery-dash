@@ -36,8 +36,8 @@ test("the strip footprint and direction rotate with all four road headings", () 
         pad.z + along * Math.cos(yaw) - across * Math.sin(yaw),
       ] as const;
 
-    const from = point(-5),
-      to = point(-2);
+    const from = point(-5);
+    const to = point(-2);
 
     assert.equal(crossesBoostPad(rotated, ...from, ...to, 0, 30), true);
     assert.equal(crossesBoostPad(rotated, ...point(5), ...point(2), 0, 30), false);

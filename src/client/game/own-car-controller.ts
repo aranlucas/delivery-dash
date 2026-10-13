@@ -111,11 +111,17 @@ const resetTelemetry = () => {
 };
 
 const driftCallout = (score: number) => {
-  if (score >= 600) return "CRAZY DRIFT!";
+  if (score >= 600) {
+    return "CRAZY DRIFT!";
+  }
 
-  if (score >= 300) return "WILD DRIFT!";
+  if (score >= 300) {
+    return "WILD DRIFT!";
+  }
 
-  if (score >= 120) return "NICE DRIFT!";
+  if (score >= 120) {
+    return "NICE DRIFT!";
+  }
 
   return "DRIFT!";
 };
@@ -125,28 +131,35 @@ const driftCallout = (score: number) => {
  * a guardrail or a bridge column would otherwise wedge it there forever.
  */
 function unstick(city: City, pose: { x: number; z: number }, height: number, step: number) {
-  for (const radius of [2.5, 5, 9])
+  for (const radius of [2.5, 5, 9]) {
     for (let a = 0; a < 8; a++) {
       const angle = (a / 8) * Math.PI * 2;
 
-      const dx = Math.cos(angle),
-        dz = Math.sin(angle);
+      const dx = Math.cos(angle);
+      const dz = Math.sin(angle);
 
-      if (blocked(city, pose.x + dx * radius, pose.z + dz * radius, height)) continue;
+      if (blocked(city, pose.x + dx * radius, pose.z + dz * radius, height)) {
+        continue;
+      }
       const distance = Math.min(radius, step);
       pose.x += dx * distance;
       pose.z += dz * distance;
 
       return true;
     }
+  }
 
   return false;
 }
 
 const airCallout = (seconds: number) => {
-  if (seconds >= 1.7) return "INSANE AIR!";
+  if (seconds >= 1.7) {
+    return "INSANE AIR!";
+  }
 
-  if (seconds >= 1.1) return "HUGE AIR!";
+  if (seconds >= 1.1) {
+    return "HUGE AIR!";
+  }
 
   return "BIG AIR!";
 };
@@ -174,11 +187,18 @@ export function useOwnCarController({
   const forwardVectorRef = useRef<THREE.Vector2>(null);
   const rightVectorRef = useRef<THREE.Vector2>(null);
 
-  if (velocityRef.current === null) velocityRef.current = new THREE.Vector2();
+  if (velocityRef.current === null) {
+    velocityRef.current = new THREE.Vector2();
+  }
 
-  if (forwardVectorRef.current === null) forwardVectorRef.current = new THREE.Vector2();
+  if (forwardVectorRef.current === null) {
+    forwardVectorRef.current = new THREE.Vector2();
+  }
 
-  if (rightVectorRef.current === null) rightVectorRef.current = new THREE.Vector2();
+  if (rightVectorRef.current === null) {
+    rightVectorRef.current = new THREE.Vector2();
+  }
+
   const driftGrace = useRef(0);
   const driftHold = useRef(0);
   const rewardCalloutHold = useRef(0);
@@ -229,7 +249,10 @@ export function useOwnCarController({
       padCooldown.current = 0;
       resetTelemetry();
 
-      if (!refillBoost) drivingTelemetry.boost = boost;
+      if (!refillBoost) {
+        drivingTelemetry.boost = boost;
+      }
+
       drivingTelemetry.recoverySequence++;
     },
     [spawnX, spawnZ, spawnYaw],
@@ -249,17 +272,26 @@ export function useOwnCarController({
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         (target instanceof HTMLElement && target.isContentEditable)
-      )
+      ) {
         return;
+      }
+
       const key = event.key.toLowerCase();
 
-      if (!CONTROL_KEYS.has(key)) return;
+      if (!CONTROL_KEYS.has(key)) {
+        return;
+      }
 
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
       event.preventDefault();
 
       if (key === "r") {
-        if (!event.repeat) requestCarRecovery();
+        if (!event.repeat) {
+          requestCarRecovery();
+        }
 
         return;
       }
@@ -279,7 +311,9 @@ export function useOwnCarController({
     };
 
     const clearHiddenKeys = () => {
-      if (document.hidden) clearKeys();
+      if (document.hidden) {
+        clearKeys();
+      }
     };
 
     window.addEventListener("keydown", keyDown);
@@ -315,7 +349,9 @@ export function useOwnCarController({
     rewardCalloutHold.current = Math.max(0, rewardCalloutHold.current - d);
     rush.current.remaining = Math.max(0, rush.current.remaining - d);
 
-    if (rush.current.remaining === 0) rush.current.tier = 0;
+    if (rush.current.remaining === 0) {
+      rush.current.tier = 0;
+    }
 
     if (seenRecovery.current !== drivingRequests.recovery) {
       seenRecovery.current = drivingRequests.recovery;
@@ -330,8 +366,8 @@ export function useOwnCarController({
     }
 
     if (driving) {
-      const previousX = ownPose.x,
-        previousZ = ownPose.z;
+      const previousX = ownPose.x;
+      const previousZ = ownPose.z;
 
       const throttle =
         pressed.has("w") || pressed.has("arrowup")
@@ -402,8 +438,9 @@ export function useOwnCarController({
         longitudinal = approachZero(longitudinal, COAST_DECELERATION * d);
       }
 
-      if (handbrake && !flying)
+      if (handbrake && !flying) {
         longitudinal = approachZero(longitudinal, HANDBRAKE_DECELERATION * d);
+      }
 
       if (longitudinal >= 0) {
         longitudinal =
@@ -429,13 +466,14 @@ export function useOwnCarController({
         velocity.setLength(easedLimit);
       }
 
-      if (boosting)
+      if (boosting) {
         drivingTelemetry.boost = Math.max(0, drivingTelemetry.boost - BOOST_DRAIN_PER_SECOND * d);
-      else
+      } else {
         drivingTelemetry.boost = Math.min(
           100,
           drivingTelemetry.boost + BOOST_RECHARGE_PER_SECOND * d,
         );
+      }
 
       const travelX = safeTravel(
         city,
@@ -488,8 +526,9 @@ export function useOwnCarController({
       if (
         blocked(city, ownPose.x, ownPose.z, surface.current) &&
         unstick(city, ownPose, surface.current, 14 * d)
-      )
+      ) {
         velocity.multiplyScalar(0.4);
+      }
 
       // A close traffic pass pays only after the player exits cleanly. Contact
       // still shoves the taxi and invalidates that pass.
@@ -499,22 +538,29 @@ export function useOwnCarController({
         for (let index = 0; index < trafficCars.length; index++) {
           const car = trafficCars[index]!;
 
-          const dx = ownPose.x - car.x,
-            dz = ownPose.z - car.z;
+          const dx = ownPose.x - car.x;
+          const dz = ownPose.z - car.z;
 
           const distance = Math.hypot(dx, dz);
           const existingPass = nearMisses.current.get(index);
 
           // A distant car cannot reach the reward zone in one valid sweep.
           // Avoid allocating tracker results for most of the city traffic.
-          if (!existingPass && distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP) continue;
+          if (!existingPass && distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP) {
+            continue;
+          }
+
           const trafficPass = updateNearMissPass(existingPass, dx, dz, velocity.length());
 
-          if (!trafficPass.tracker.pass && distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP)
+          if (!trafficPass.tracker.pass && distance > NEAR_MISS_EXIT_RADIUS + MAX_TRAFFIC_SWEEP) {
             nearMisses.current.delete(index);
-          else nearMisses.current.set(index, trafficPass.tracker);
+          } else {
+            nearMisses.current.set(index, trafficPass.tracker);
+          }
 
-          if (trafficPass.awarded) nearMissAwards++;
+          if (trafficPass.awarded) {
+            nearMissAwards++;
+          }
 
           if (trafficPass.contacted) {
             velocity.multiplyScalar(0.82);
@@ -524,11 +570,14 @@ export function useOwnCarController({
             drivingTelemetry.impactPulse = Math.max(drivingTelemetry.impactPulse, 0.45);
           }
 
-          if (distance > TRAFFIC_CONTACT_RADIUS || distance < 0.001) continue;
+          if (distance > TRAFFIC_CONTACT_RADIUS || distance < 0.001) {
+            continue;
+          }
+
           const push = TRAFFIC_CONTACT_RADIUS - distance;
 
-          const pushX = (dx / distance) * push,
-            pushZ = (dz / distance) * push;
+          const pushX = (dx / distance) * push;
+          const pushZ = (dz / distance) * push;
 
           ownPose.x +=
             pushX *
@@ -537,12 +586,14 @@ export function useOwnCarController({
             pushZ *
             safeTravel(city, ownPose.x, ownPose.z, 0, pushZ, surface.current, !airborne.current);
         }
-      } else nearMisses.current.clear();
+      } else {
+        nearMisses.current.clear();
+      }
 
       // Boost strips: full tank plus a shove, so a pad into a ramp is the big jump.
       padCooldown.current = Math.max(0, padCooldown.current - d);
 
-      if (!airborne.current && padCooldown.current === 0)
+      if (!airborne.current && padCooldown.current === 0) {
         for (let index = 0; index < city.boostPads.length; index++) {
           const pad = city.boostPads[index]!;
 
@@ -556,8 +607,9 @@ export function useOwnCarController({
               surface.current,
               velocity.length(),
             )
-          )
+          ) {
             continue;
+          }
           padCooldown.current = 0.6;
           drivingTelemetry.padPulse = 0.9;
           drivingTelemetry.boostPadIndex = index;
@@ -570,17 +622,20 @@ export function useOwnCarController({
           rewardCalloutHold.current = 0.55;
           driftGrace.current = 0.5;
 
-          const sin = Math.sin(pad.yaw),
-            cos = Math.cos(pad.yaw);
+          const sin = Math.sin(pad.yaw);
+          const cos = Math.cos(pad.yaw);
 
           const along = velocity.x * sin + velocity.y * cos;
           const impulse = Math.max(0, Math.min(BOOST_PAD_IMPULSE, BOOST_PAD_MAX_SPEED - along));
           velocity.x += sin * impulse;
           velocity.y += cos * impulse;
 
-          if (velocity.length() > BOOST_PAD_MAX_SPEED) velocity.setLength(BOOST_PAD_MAX_SPEED);
+          if (velocity.length() > BOOST_PAD_MAX_SPEED) {
+            velocity.setLength(BOOST_PAD_MAX_SPEED);
+          }
           break;
         }
+      }
 
       // Vertical pass: ride the surface, launch off a lip, fall off an edge, land.
       const ground = groundHeightAt(
@@ -625,7 +680,7 @@ export function useOwnCarController({
         const rise = ground - surface.current;
         let climbingRamp = false;
 
-        if (rise > LEDGE_SNAP)
+        if (rise > LEDGE_SNAP) {
           for (const ramp of city.ramps) {
             const rampGround = rampSurface(ramp, ownPose.x, ownPose.z);
 
@@ -634,6 +689,7 @@ export function useOwnCarController({
               break;
             }
           }
+        }
 
         // A long frame on a steep launch still stores its climb rate. Only an
         // actual ledge should discard it and snap the wheels up without a jump.
@@ -658,8 +714,8 @@ export function useOwnCarController({
       drivingTelemetry.airborne = airborne.current;
 
       // Nose follows the slope on the ground and the arc in the air.
-      const aheadX = ownPose.x + Math.sin(ownPose.yaw) * 2.6,
-        aheadZ = ownPose.z + Math.cos(ownPose.yaw) * 2.6;
+      const aheadX = ownPose.x + Math.sin(ownPose.yaw) * 2.6;
+      const aheadZ = ownPose.z + Math.cos(ownPose.yaw) * 2.6;
 
       pitch.current = airborne.current
         ? -THREE.MathUtils.clamp(vertical.current / 30, -0.4, 0.4)
@@ -712,7 +768,9 @@ export function useOwnCarController({
         driftCharge.current = addDriftCharge(driftCharge.current, finalLateral, finalSpeed, d);
       }
 
-      if (airborne.current) driftCharge.current = 0;
+      if (airborne.current) {
+        driftCharge.current = 0;
+      }
 
       // Releasing Space cashes a controlled drift into a short, free burst.
       // The tiers make holding a clean line a risk/reward choice instead of

@@ -17,8 +17,8 @@ export function rampHeight(ramp: Pick<Ramp, "kind" | "height">, t: number): numb
   const sample = Math.max(0, Math.min(1, t)) * segments;
   const index = Math.min(segments - 1, Math.floor(sample));
 
-  const a = profile(ramp.kind, index / segments),
-    b = profile(ramp.kind, (index + 1) / segments);
+  const a = profile(ramp.kind, index / segments);
+  const b = profile(ramp.kind, (index + 1) / segments);
 
   return ramp.height * (a + (b - a) * (sample - index));
 }
@@ -32,17 +32,18 @@ export const rampBarrierHeight = (ramp: Pick<Ramp, "kind" | "length">, t: number
   ramp.kind === "grade" ? RAMP_BARRIER_HEIGHT * Math.max(0, Math.min(1, (t * ramp.length) / 4)) : 0;
 
 export function rampSurface(ramp: Ramp, x: number, z: number): number | undefined {
-  const dx = x - ramp.x,
-    dz = z - ramp.z;
+  const dx = x - ramp.x;
+  const dz = z - ramp.z;
 
-  const sin = Math.sin(ramp.yaw),
-    cos = Math.cos(ramp.yaw);
+  const sin = Math.sin(ramp.yaw);
+  const cos = Math.cos(ramp.yaw);
 
-  const along = dx * sin + dz * cos,
-    across = dx * cos - dz * sin;
+  const along = dx * sin + dz * cos;
+  const across = dx * cos - dz * sin;
 
-  if (Math.abs(along) > ramp.length / 2 + 1e-8 || Math.abs(across) > ramp.width / 2 + 1e-8)
+  if (Math.abs(along) > ramp.length / 2 + 1e-8 || Math.abs(across) > ramp.width / 2 + 1e-8) {
     return undefined;
+  }
 
   return rampHeight(ramp, along / ramp.length + 0.5);
 }
@@ -55,29 +56,36 @@ export function rampBlocks(
   height: number,
   stepUp: number,
 ): boolean {
-  const dx = x - ramp.x,
-    dz = z - ramp.z;
+  const dx = x - ramp.x;
+  const dz = z - ramp.z;
 
-  const sin = Math.sin(ramp.yaw),
-    cos = Math.cos(ramp.yaw);
+  const sin = Math.sin(ramp.yaw);
+  const cos = Math.cos(ramp.yaw);
 
-  const along = dx * sin + dz * cos,
-    across = dx * cos - dz * sin;
+  const along = dx * sin + dz * cos;
+  const across = dx * cos - dz * sin;
 
-  const halfLength = ramp.length / 2,
-    halfWidth = ramp.width / 2;
+  const halfLength = ramp.length / 2;
+  const halfWidth = ramp.width / 2;
 
   const margin = 2;
 
-  if (Math.abs(along) > halfLength + margin || Math.abs(across) > halfWidth + margin) return false;
+  if (Math.abs(along) > halfLength + margin || Math.abs(across) > halfWidth + margin) {
+    return false;
+  }
+
   const t = along / ramp.length + 0.5;
   const surface = rampHeight(ramp, t);
 
   // The same soffit is rendered by makeRampGeometry. Include the roof of the car
   // so a low approach still blocks it, while a raised span can be driven under.
-  if (height + 1.4 <= rampUnderside(ramp, t - margin / ramp.length)) return false;
+  if (height + 1.4 <= rampUnderside(ramp, t - margin / ramp.length)) {
+    return false;
+  }
 
-  if (ramp.kind === "grade" && height < surface - 0.45) return true;
+  if (ramp.kind === "grade" && height < surface - 0.45) {
+    return true;
+  }
 
   if (
     ramp.kind === "grade" &&
@@ -86,8 +94,10 @@ export function rampBlocks(
     Math.abs(across) > halfWidth - RAMP_BARRIER_WIDTH - margin &&
     height < surface + rampBarrierHeight(ramp, t) - 0.15 &&
     height > surface - 1.4
-  )
+  ) {
     return true;
+  }
+
   const outsideFace = Math.abs(across) > halfWidth || along > halfLength;
 
   return surface > height + (outsideFace ? 0.45 : stepUp);

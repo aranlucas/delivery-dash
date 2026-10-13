@@ -14,8 +14,9 @@ test("worldBearing matches the three.js rotation convention", () => {
     [10, 0, HALF_PI],
     [0, -10, Math.PI],
     [-10, 0, -HALF_PI],
-  ] as const)
+  ] as const) {
     near(worldBearing(0, 0, tx, tz), expected, `bearing to (${tx}, ${tz})`);
+  }
 });
 
 function screenX(yaw: number, tx: number, tz: number): number {

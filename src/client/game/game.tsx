@@ -36,8 +36,8 @@ function Sun({ inspecting }: { inspecting: boolean }) {
         ? controls.target
         : undefined;
 
-    const x = focus?.x ?? ownPose.x,
-      z = focus?.z ?? ownPose.z;
+    const x = focus?.x ?? ownPose.x;
+    const z = focus?.z ?? ownPose.z;
 
     target.position.set(x, 0, z);
     target.updateMatrixWorld();
@@ -68,16 +68,19 @@ function Sun({ inspecting }: { inspecting: boolean }) {
 }
 
 function Scene({ seed, city, orders }: { seed: number; city: CityData; orders: Order[] }) {
-  const players = useGameStore((s) => s.players),
-    selfId = useGameStore((s) => s.selfId),
-    phase = useGameStore((s) => s.phase);
+  const players = useGameStore((s) => s.players);
+  const selfId = useGameStore((s) => s.selfId);
+  const phase = useGameStore((s) => s.phase);
 
   const mode = useGameStore((s) => s.mode);
   const cameraMode = useGameStore((s) => s.cameraMode);
   const inspecting = cameraMode === "city" && phase === "racing";
   const self = ownPlayer({ players, selfId });
 
-  if (!self) return null;
+  if (!self) {
+    return null;
+  }
+
   const target = getObjective(mode, city, orders, self);
 
   return (

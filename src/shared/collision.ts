@@ -22,7 +22,7 @@ const rowOf = (grid: SpatialGrid, z: number) =>
   clampInt(Math.floor((z - grid.minZ) / grid.cell), 0, grid.rows - 1);
 
 export function buildGrid(boxes: AABB[], cell = 50): SpatialGrid {
-  if (boxes.length === 0)
+  if (boxes.length === 0) {
     return {
       cell,
       cols: 1,
@@ -33,6 +33,7 @@ export function buildGrid(boxes: AABB[], cell = 50): SpatialGrid {
       bucketItems: new Int32Array(0),
       boxes,
     };
+  }
 
   let minX = Infinity;
   let minZ = Infinity;
@@ -60,11 +61,16 @@ export function buildGrid(boxes: AABB[], cell = 50): SpatialGrid {
     const rowEnd = clampInt(Math.floor((box.maxZ - minZ) / cell), 0, rows - 1);
     spans.set([colStart, colEnd, rowStart, rowEnd], index * 4);
 
-    for (let row = rowStart; row <= rowEnd; row++)
-      for (let col = colStart; col <= colEnd; col++) bucketStart[row * cols + col + 1]!++;
+    for (let row = rowStart; row <= rowEnd; row++) {
+      for (let col = colStart; col <= colEnd; col++) {
+        bucketStart[row * cols + col + 1]!++;
+      }
+    }
   }
 
-  for (let index = 0; index < cellCount; index++) bucketStart[index + 1]! += bucketStart[index]!;
+  for (let index = 0; index < cellCount; index++) {
+    bucketStart[index + 1]! += bucketStart[index]!;
+  }
 
   const bucketItems = new Int32Array(bucketStart[cellCount]!);
   const cursor = Int32Array.from(bucketStart.subarray(0, cellCount));
@@ -75,9 +81,11 @@ export function buildGrid(boxes: AABB[], cell = 50): SpatialGrid {
     const rowStart = spans[index * 4 + 2]!;
     const rowEnd = spans[index * 4 + 3]!;
 
-    for (let row = rowStart; row <= rowEnd; row++)
-      for (let col = colStart; col <= colEnd; col++)
+    for (let row = rowStart; row <= rowEnd; row++) {
+      for (let col = colStart; col <= colEnd; col++) {
         bucketItems[cursor[row * cols + col]!++] = index;
+      }
+    }
   }
 
   return { cell, cols, rows, minX, minZ, bucketStart, bucketItems, boxes };
@@ -101,7 +109,7 @@ export function queryRange(
   const rowEnd = rowOf(grid, maxZ);
   let count = 0;
 
-  for (let row = rowStart; row <= rowEnd; row++)
+  for (let row = rowStart; row <= rowEnd; row++) {
     for (let col = colStart; col <= colEnd; col++) {
       const bucket = row * grid.cols + col;
       const end = grid.bucketStart[bucket + 1]!;
@@ -110,18 +118,24 @@ export function queryRange(
         const boxIndex = grid.bucketItems[cursor]!;
         const box = grid.boxes[boxIndex]!;
 
-        if (box.maxX < minX || box.minX > maxX || box.maxZ < minZ || box.minZ > maxZ) continue;
+        if (box.maxX < minX || box.minX > maxX || box.maxZ < minZ || box.minZ > maxZ) {
+          continue;
+        }
         let duplicate = false;
 
-        for (let index = 0; index < count; index++)
+        for (let index = 0; index < count; index++) {
           if (out[index] === boxIndex) {
             duplicate = true;
             break;
           }
+        }
 
-        if (!duplicate) out[count++] = boxIndex;
+        if (!duplicate) {
+          out[count++] = boxIndex;
+        }
       }
     }
+  }
 
   return count;
 }

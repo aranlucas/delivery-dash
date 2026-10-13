@@ -33,16 +33,21 @@ export function CityViewOverlay() {
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         (target instanceof HTMLElement && target.isContentEditable)
-      )
+      ) {
         return;
+      }
+
       const state = useGameStore.getState();
       const key = event.key.toLowerCase();
 
       if (state.phase === "racing" && key === "v") {
         event.preventDefault();
 
-        if (state.cameraMode === "city") returnToDriving();
-        else focusCityView();
+        if (state.cameraMode === "city") {
+          returnToDriving();
+        } else {
+          focusCityView();
+        }
       } else if (state.cameraMode === "city") {
         if (key === "escape") {
           event.preventDefault();
@@ -59,7 +64,9 @@ export function CityViewOverlay() {
     return () => window.removeEventListener("keydown", keyDown);
   }, []);
 
-  if (cameraMode !== "city" || phase !== "racing") return null;
+  if (cameraMode !== "city" || phase !== "racing") {
+    return null;
+  }
 
   return (
     <div className="city-view-overlay">

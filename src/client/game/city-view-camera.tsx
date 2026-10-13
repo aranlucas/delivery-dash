@@ -12,7 +12,10 @@ function updateClipping(camera: THREE.PerspectiveCamera, distance: number) {
   // A street-level near plane loses ground/water precision when viewing the island from kilometres away.
   const near = THREE.MathUtils.clamp(distance / 20, 0.35, 100);
 
-  if (Math.abs(camera.near - near) < 0.01) return;
+  if (Math.abs(camera.near - near) < 0.01) {
+    return;
+  }
+
   camera.near = near;
   camera.updateProjectionMatrix();
 }
@@ -25,14 +28,19 @@ export function CityViewCamera() {
   useFrame(({ camera, size }) => {
     const orbit = controls.current;
 
-    if (!orbit) return;
+    if (!orbit) {
+      return;
+    }
+
     const { cityViewFocus, cityViewSequence } = useGameStore.getState();
     const entireCity = cityViewFocus === "overview" || cityViewFocus === "overhead";
 
     const resized =
       lastSize.current.width !== size.width || lastSize.current.height !== size.height;
 
-    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    if (!(camera instanceof THREE.PerspectiveCamera)) {
+      return;
+    }
 
     const perspective = camera;
 
@@ -69,8 +77,12 @@ export function CityViewCamera() {
       distance = Math.max(135, zone.height * 2.1);
     }
 
-    if (cityViewFocus === "overhead") camera.position.set(0, distance + 2, -0.01);
-    else camera.position.copy(orbit.target).addScaledVector(offset, distance);
+    if (cityViewFocus === "overhead") {
+      camera.position.set(0, distance + 2, -0.01);
+    } else {
+      camera.position.copy(orbit.target).addScaledVector(offset, distance);
+    }
+
     orbit.saveState();
     orbit.reset();
     camera.lookAt(orbit.target);

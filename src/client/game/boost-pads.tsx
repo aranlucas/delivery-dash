@@ -23,9 +23,9 @@ export function BoostPads({ city }: { city: City }) {
   );
 
   const details = useMemo(() => {
-    const housings: StaticInstance[] = [],
-      lights: StaticInstance[] = [],
-      bolts: StaticInstance[] = [];
+    const housings: StaticInstance[] = [];
+    const lights: StaticInstance[] = [];
+    const bolts: StaticInstance[] = [];
 
     for (const pad of city.boostPads) {
       const at = (
@@ -62,15 +62,23 @@ export function BoostPads({ city }: { city: City }) {
   const lightMaterial = useRef<THREE.MeshStandardMaterial>(null);
   const pulse = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
-    if (lightMaterial.current)
+    if (lightMaterial.current) {
       lightMaterial.current.emissiveIntensity = 0.85 + Math.sin(clock.elapsedTime * 3) * 0.15;
+    }
+
     const ring = pulse.current;
 
-    if (!ring) return;
+    if (!ring) {
+      return;
+    }
+
     const pad = city.boostPads[drivingTelemetry.boostPadIndex];
     ring.visible = !!pad && drivingTelemetry.padPulse > 0;
 
-    if (!pad || !ring.visible) return;
+    if (!pad || !ring.visible) {
+      return;
+    }
+
     ring.position.set(pad.x, pad.y + 0.16, pad.z);
     const progress = 1 - drivingTelemetry.padPulse / 0.9;
     ring.scale.setScalar(2.3 + progress * 5);
