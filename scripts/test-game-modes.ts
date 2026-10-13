@@ -94,7 +94,7 @@ class Client {
         this.waiters.delete(waiter);
         clearTimeout(waiter.timer);
         waiter.resolve(message);
-      } else this.inbox.push(message);
+      } else {this.inbox.push(message);}
     });
     socket.addEventListener("error", () => this.fail(new Error("WebSocket error")));
     socket.addEventListener("close", () => this.fail(new Error("WebSocket closed")));
@@ -151,10 +151,11 @@ class Client {
     description: string,
     milliseconds = 10_000,
   ): Promise<WireMessage> {
-    if (this.failure) throw this.failure;
+    if (this.failure) {throw this.failure;}
+
     const queuedIndex = this.inbox.findIndex(predicate);
 
-    if (queuedIndex >= 0) return this.inbox.splice(queuedIndex, 1)[0]!;
+    if (queuedIndex >= 0) {return this.inbox.splice(queuedIndex, 1)[0]!;}
 
     return new Promise<WireMessage>((resolve, reject) => {
       const waiter = {
@@ -176,9 +177,9 @@ class Client {
     description: string,
     milliseconds: number,
   ) {
-    if (this.failure) throw this.failure;
+    if (this.failure) {throw this.failure;}
 
-    if (this.inbox.some(predicate)) throw new Error(`unexpected ${description}`);
+    if (this.inbox.some(predicate)) {throw new Error(`unexpected ${description}`);}
 
     return new Promise<void>((resolve, reject) => {
       const waiter = {
@@ -187,7 +188,7 @@ class Client {
           this.waiters.delete(waiter);
           reject(new Error(`unexpected ${description}`));
         },
-        reject: () => undefined,
+        reject: () => {},
         timer: setTimeout(() => {
           this.waiters.delete(waiter);
           resolve();
@@ -199,7 +200,8 @@ class Client {
   }
 
   async close() {
-    if (this.socket.readyState === WebSocket.CLOSED) return;
+    if (this.socket.readyState === WebSocket.CLOSED) {return;}
+
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, timeout(1_000));
       this.socket.addEventListener(
@@ -247,7 +249,7 @@ function messageMode(message: WireMessage): WireMode {
 async function join(client: Client, name: string, mode?: WireMode): Promise<WireMessage> {
   const message: OutboundMessage = { t: "join", name };
 
-  if (mode !== undefined) message.mode = mode;
+  if (mode !== undefined) {message.mode = mode;}
 
   client.send(message);
 
@@ -268,7 +270,8 @@ function assertWelcome(message: WireMessage, mode: WireMode) {
 }
 
 async function readyAndRace(clients: Client[]): Promise<WireMessage> {
-  for (const client of clients) client.send({ t: "ready", ready: true });
+  for (const client of clients) {client.send({ t: "ready", ready: true });}
+
   const countdownObservedAt = Date.now();
 
   const countdown = await clients[0]!.waitFor(
@@ -340,7 +343,7 @@ async function completeDelivery(
   if (expectWin) {
     await progressFor(client, id, orderIndex + 1, 0);
     await client.waitFor((message) => hasType(message, "win"), "delivery win");
-  } else await progressFor(client, id, orderIndex + 1, 0);
+  } else {await progressFor(client, id, orderIndex + 1, 0);}
 }
 
 async function testCreatorModeAndRush(): Promise<void> {
@@ -378,7 +381,8 @@ async function testCreatorModeAndRush(): Promise<void> {
     const orders = generateOrders(creatorInfo.seed);
 
     for (let index = 0; index < 7; index++)
-      await completeDelivery(creator, creatorInfo.id, city, orders, index);
+      {await completeDelivery(creator, creatorInfo.id, city, orders, index);}
+
     assert.equal(
       creator.socket.readyState,
       WebSocket.OPEN,
@@ -417,7 +421,7 @@ async function testDeliveryRace(): Promise<void> {
     const orders = generateOrders(seed);
 
     for (let index = 0; index < 3; index++)
-      await completeDelivery(creator, id, city, orders, index, index === 2);
+      {await completeDelivery(creator, id, city, orders, index, index === 2);}
 
     const finished = await creator.waitFor(
       (message) => hasType(message, "phase") && message.phase === "finished",
@@ -515,7 +519,8 @@ async function testFreeDrive(): Promise<void> {
     const orders = generateOrders(seed);
 
     for (let index = 0; index < 3; index++)
-      await completeFreeDriveRoute(creator, city, orders[index % orders.length]!);
+      {await completeFreeDriveRoute(creator, city, orders[index % orders.length]!);}
+
     await creator.waitForNo(
       (message) =>
         hasType(message, "progress") ||
@@ -550,7 +555,8 @@ async function testInvalidMode(): Promise<void> {
 }
 
 async function testReconnectAndNextRound(): Promise<void> {
-  if (process.env.TEST_GAME_RECONNECT !== "1") return;
+  if (process.env.TEST_GAME_RECONNECT !== "1") {return;}
+
   const room = roomCode("RC");
   const client = await Client.open(room);
 

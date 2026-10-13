@@ -19,7 +19,7 @@ const finish = (element: HTMLCanvasElement, repeat = 1) => {
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.anisotropy = 4;
 
-  if (repeat !== 1) texture.repeat.set(repeat, repeat);
+  if (repeat !== 1) {texture.repeat.set(repeat, repeat);}
 
   return texture;
 };
@@ -68,8 +68,8 @@ export function makeFacade(style: FacadeStyle) {
   glow.fillStyle = "#000";
   glow.fillRect(0, 0, size, size);
 
-  const bayW = size / style.columns,
-    bayH = size / style.rows;
+  const bayW = size / style.columns;
+    const bayH = size / style.rows;
 
   // Storey bands: a slightly darker spandrel under every floor line.
   for (let r = 0; r < style.rows; r++) {
@@ -78,18 +78,18 @@ export function makeFacade(style: FacadeStyle) {
   }
 
   if (style.banded)
-    for (let r = 0; r < style.rows; r++) {
+    {for (let r = 0; r < style.rows; r++) {
       map.fillStyle = style.frame;
       map.fillRect(0, r * bayH + bayH * 0.1, size, bayH * 0.02);
-    }
+    }}
 
   for (let c = 0; c < style.columns; c++)
-    for (let r = 0; r < style.rows; r++) {
-      const w = bayW * style.fill[0],
-        h = bayH * style.fill[1];
+    {for (let r = 0; r < style.rows; r++) {
+      const w = bayW * style.fill[0];
+        const h = bayH * style.fill[1];
 
-      const x = c * bayW + (bayW - w) / 2,
-        y = r * bayH + (bayH - h) / 2;
+      const x = c * bayW + (bayW - w) / 2;
+        const y = r * bayH + (bayH - h) / 2;
 
       const lit = rng() < 0.34;
       map.fillStyle = style.frame;
@@ -104,7 +104,7 @@ export function makeFacade(style: FacadeStyle) {
         glow.fillStyle = `rgb(255, ${196 + Math.floor(rng() * 44)}, ${120 + Math.floor(rng() * 50)})`;
         glow.fillRect(x, y, w, h);
       }
-    }
+    }}
 
   grain(map, rng, size, 900, 0.05);
 
@@ -162,8 +162,8 @@ export function makeAsphaltTexture() {
   for (let i = 0; i < 14; i++) {
     ctx.fillStyle = `rgba(${18 + rng() * 26},${20 + rng() * 26},${24 + rng() * 26},0.55)`;
 
-    const w = 30 + rng() * 70,
-      h = 20 + rng() * 60;
+    const w = 30 + rng() * 70;
+      const h = 20 + rng() * 60;
 
     ctx.beginPath();
     ctx.roundRect(rng() * size, rng() * size, w, h, 8);
@@ -174,8 +174,8 @@ export function makeAsphaltTexture() {
   ctx.lineWidth = 1.2;
 
   for (let i = 0; i < 9; i++) {
-    let x = rng() * size,
-      y = rng() * size;
+    let x = rng() * size;
+      let y = rng() * size;
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -196,8 +196,8 @@ export function makeAsphaltTexture() {
 
 /** Paving slabs for the block surfaces, with joints and a little colour drift per slab. */
 export function makePavingTexture() {
-  const size = 256,
-    cells = 6;
+  const size = 256;
+    const cells = 6;
 
   const [element, ctx] = canvas(size);
   const rng = mulberry32(23);
@@ -206,11 +206,11 @@ export function makePavingTexture() {
   const step = size / cells;
 
   for (let c = 0; c < cells; c++)
-    for (let r = 0; r < cells; r++) {
+    {for (let r = 0; r < cells; r++) {
       const shade = 208 + Math.floor(rng() * 26);
       ctx.fillStyle = `rgb(${shade},${shade - 12},${shade - 32})`;
       ctx.fillRect(c * step + 1.5, r * step + 1.5, step - 3, step - 3);
-    }
+    }}
 
   grain(ctx, rng, size, 1400, 0.06);
 

@@ -25,15 +25,16 @@ const cameraCandidates: number[] = [];
 
 function obstructed(x: number, y: number, z: number, grid: SpatialGrid, ramps: Ramp[]) {
   for (const ramp of ramps) {
-    const sin = Math.sin(ramp.yaw),
-      cos = Math.cos(ramp.yaw);
+    const sin = Math.sin(ramp.yaw);
+      const cos = Math.cos(ramp.yaw);
 
     const along = (x - ramp.x) * sin + (z - ramp.z) * cos;
     const across = (x - ramp.x) * cos - (z - ramp.z) * sin;
 
     // Give the lens clearance at thin faces and the launch lip, where point samples can miss a wall.
     if (Math.abs(along) > ramp.length / 2 + 0.45 || Math.abs(across) > ramp.width / 2 + 0.45)
-      continue;
+      {continue;}
+
     const t = THREE.MathUtils.clamp(along / ramp.length + 0.5, 0, 1);
 
     const barrier =
@@ -41,7 +42,7 @@ function obstructed(x: number, y: number, z: number, grid: SpatialGrid, ramps: R
         ? rampBarrierHeight(ramp, t)
         : 0;
 
-    if (y <= rampHeight(ramp, t) + barrier + 0.25 && y > rampUnderside(ramp, t) - 0.25) return true;
+    if (y <= rampHeight(ramp, t) + barrier + 0.25 && y > rampUnderside(ramp, t) - 0.25) {return true;}
   }
 
   const count = queryRange(grid, x - 1.2, z - 1.2, x + 1.2, z + 1.2, cameraCandidates);
@@ -57,7 +58,7 @@ function obstructed(x: number, y: number, z: number, grid: SpatialGrid, ramps: R
       z > box.minZ - 1.2 &&
       z < box.maxZ + 1.2
     )
-      return true;
+      {return true;}
   }
 
   return false;
@@ -131,8 +132,8 @@ export function ChaseCamera({ grid, ramps }: { grid: SpatialGrid; ramps: Ramp[] 
       desired.y += Math.cos(clock.elapsedTime * 59) * shake * 0.6;
     }
 
-    if (recovered) camera.position.copy(desired);
-    else camera.position.lerp(desired, 1 - Math.exp(-d * (6.5 + speedRatio * 2.5)));
+    if (recovered) {camera.position.copy(desired);}
+    else {camera.position.lerp(desired, 1 - Math.exp(-d * (6.5 + speedRatio * 2.5)));}
 
     // A close camera aims at the body; looking far up the road would crop the rear of the car.
     const openView = THREE.MathUtils.smoothstep(safeT, 0.6, 1);
@@ -156,11 +157,11 @@ export function ChaseCamera({ grid, ramps }: { grid: SpatialGrid; ramps: Ramp[] 
     // the horizon by 90 degrees at some headings, so apply drift lean around the local view axis.
     camera.rotateZ(roll.current);
 
-    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    if (!(camera instanceof THREE.PerspectiveCamera)) {return;}
 
     const perspective = camera;
 
-    if (recovered) perspective.near = 0.35;
+    if (recovered) {perspective.near = 0.35;}
 
     const targetFov =
       62 + speedRatio * 11 + (drivingTelemetry.boosting || drivingTelemetry.padPulse > 0 ? 4 : 0);

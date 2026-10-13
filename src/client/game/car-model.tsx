@@ -65,14 +65,14 @@ function AnimatedWheel({ position, tyre, rim, radius, steerable }: WheelProps) {
   const steering = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
-    if (spin.current) spin.current.rotation.x -= (wheelDrive.speed / radius) * dt;
+    if (spin.current) {spin.current.rotation.x -= (wheelDrive.speed / radius) * dt;}
 
     if (steerable && steering.current)
-      steering.current.rotation.y = THREE.MathUtils.lerp(
+      {steering.current.rotation.y = THREE.MathUtils.lerp(
         steering.current.rotation.y,
         drivingTelemetry.steer * 0.46,
         Math.min(1, dt * 14),
-      );
+      );}
   });
 
   return (
@@ -141,9 +141,9 @@ export function CarModel({
   const spec = CAR_SPECS[kind];
 
   if (lod === "box")
-    return (
+    {return (
       <mesh geometry={boxGeometry} material={bodyMaterial} position={[0, -0.05, 0]} castShadow />
-    );
+    );}
 
   return (
     <>

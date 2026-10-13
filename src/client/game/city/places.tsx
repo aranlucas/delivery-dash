@@ -1,6 +1,6 @@
 import { Text } from "@react-three/drei";
 import { Suspense, useMemo, useRef } from "react";
-import * as THREE from "three";
+import type * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
   BLOCK_SIZE,
@@ -76,15 +76,15 @@ function PlaceProps({ city }: { city: CityData }) {
       windows.push({
         pos: placeOffset(place.pos, yaw, -1.8, 1.6, 3.02),
         rotY: yaw,
-      });
-      windows.push({
+      }, {
         pos: placeOffset(place.pos, yaw, 1.8, 1.6, 3.02),
         rotY: yaw,
       });
     });
 
     city.restaurants.forEach((place, index) => {
-      if (storefrontModel(place.name)) return;
+      if (storefrontModel(place.name)) {return;}
+
       const yaw = outwardYaw(place.pos);
       restaurantShells.push({
         pos: [place.pos[0], 1.9, place.pos[1]],

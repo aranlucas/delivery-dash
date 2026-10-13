@@ -24,7 +24,7 @@ const rotation = (pitch: number, yaw: number): [number, number, number] => {
 function merge(parts: THREE.BufferGeometry[]) {
   const geometry = mergeGeometries(parts)!;
 
-  for (const part of parts) part.dispose();
+  for (const part of parts) {part.dispose();}
 
   return geometry;
 }
@@ -60,10 +60,10 @@ export function Ramps({ city }: { city: City }) {
           const paint: THREE.BufferGeometry[] = [];
 
           for (const side of [-1, 1])
-            paint.push(makeRampRibbonGeometry(ramp, side * (ramp.width / 2 - 0.75), 0.16));
+            {paint.push(makeRampRibbonGeometry(ramp, side * (ramp.width / 2 - 0.75), 0.16));}
 
           for (let along = 2; along < ramp.length - 2; along += 7)
-            paint.push(
+            {paint.push(
               makeRampRibbonGeometry(
                 ramp,
                 0,
@@ -71,7 +71,7 @@ export function Ramps({ city }: { city: City }) {
                 along / ramp.length,
                 Math.min(1, (along + 3) / ramp.length),
               ),
-            );
+            );}
 
           const barriers = [-1, 1].map((side) =>
             makeRampRibbonGeometry(
@@ -101,7 +101,8 @@ export function Ramps({ city }: { city: City }) {
     const lips: StaticInstance[] = [];
 
     for (const r of city.ramps) {
-      if (r.kind !== "kicker") continue;
+      if (r.kind !== "kicker") {continue;}
+
       kickers.push({
         position: [r.x, 0, r.z],
         rotation: [0, r.yaw, 0],
@@ -134,7 +135,8 @@ export function Ramps({ city }: { city: City }) {
             rotation: [0, r.yaw, 0],
           });
 
-          if (i === 0) continue;
+          if (i === 0) {continue;}
+
           const previous = stations[i - 1]!;
           const dz = (t - previous) * r.length;
           ribs.push({
@@ -163,7 +165,7 @@ export function Ramps({ city }: { city: City }) {
       resources.kicker.dispose();
 
       for (const material of [...resources.gradeMaterials, ...resources.kickerMaterials])
-        material.dispose();
+        {material.dispose();}
     },
     [resources],
   );

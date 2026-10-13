@@ -139,12 +139,13 @@ async function setup(t: TestContext, mode: GameMode = "rush") {
     const scheduled = storage.alarmAt;
 
     // The runtime consumes a due alarm, but retries its delivery if the handler fails.
-    if (scheduled !== null && now >= scheduled) storage.alarmAt = null;
+    if (scheduled !== null && now >= scheduled) {storage.alarmAt = null;}
 
     try {
       await room.alarm();
     } catch (error) {
-      if (storage.alarmAt === null) storage.alarmAt = scheduled;
+      if (storage.alarmAt === null) {storage.alarmAt = scheduled;}
+
       throw error;
     }
   };
@@ -217,13 +218,14 @@ for (const failure of ["setAlarm", "commit"] as const) {
     assert.equal(game.storage.room().phase, "lobby");
     assert.equal(game.storage.alarmAt, null);
 
-    for (const socket of game.sockets) assert.deepEqual(phases(socket), []);
+    for (const socket of game.sockets) {assert.deepEqual(phases(socket), []);}
+
     // Same live object must still accept readiness after the failed transition.
     await game.send(1, { t: "ready", ready: true });
     assert.equal(game.storage.room().phase, "countdown");
     assert.equal(game.storage.alarmAt, 1_000_000 + COUNTDOWN_MS);
 
-    for (const socket of game.sockets) assert.deepEqual(phases(socket), ["countdown"]);
+    for (const socket of game.sockets) {assert.deepEqual(phases(socket), ["countdown"]);}
   });
 }
 
@@ -232,14 +234,14 @@ test("clients see phase changes only after the state and alarm commit, including
   const observations: { phase: string; storedPhase: string; alarm: number | null }[] = [];
 
   for (const socket of game.sockets)
-    socket.onSend = (message) => {
+    {socket.onSend = (message) => {
       if (message.t === "phase")
-        observations.push({
+        {observations.push({
           phase: message.phase,
           storedPhase: game.storage.room().phase,
           alarm: game.storage.alarmAt,
-        });
-    };
+        });}
+    };}
 
   game.storage.retryNext = true;
   await game.send(0, { t: "ready", ready: true });
@@ -276,7 +278,7 @@ test("countdown survives eviction and cannot start early or lose the Rush deadli
   game.evict();
   await game.alarm();
 
-  for (const socket of game.sockets) assert.deepEqual(phases(socket), ["racing"]);
+  for (const socket of game.sockets) {assert.deepEqual(phases(socket), ["racing"]);}
 });
 
 for (const first of ["alarm", "pose"] as const) {
@@ -315,9 +317,9 @@ for (const first of ["alarm", "pose"] as const) {
     assert.equal(game.storage.alarmAt, null);
 
     for (const player of Object.values(game.storage.room().players))
-      assert.equal(player.ready, false);
+      {assert.equal(player.ready, false);}
 
-    for (const socket of game.sockets) assert.deepEqual(phases(socket), ["finished", "lobby"]);
+    for (const socket of game.sockets) {assert.deepEqual(phases(socket), ["finished", "lobby"]);}
   });
 }
 
@@ -331,7 +333,8 @@ test("failed finish scheduling leaves Rush racing and emits no winner until retr
   assert.equal(game.storage.room().phase, "racing");
   assert.equal(game.storage.alarmAt, end);
 
-  for (const socket of game.sockets) assert.deepEqual(socket.messages, []);
+  for (const socket of game.sockets) {assert.deepEqual(socket.messages, []);}
+
   await game.alarm();
   assert.equal(game.storage.room().phase, "finished");
   assert.equal(game.storage.alarmAt, end + FINISH_LINGER_MS);
@@ -344,7 +347,8 @@ for (const mode of ["delivery", "checkpoint"] as const) {
     assert.equal(game.storage.alarmAt, null);
     const steps = mode === "delivery" ? DELIVERIES_TO_WIN * 2 : CHECKPOINT_COUNT;
 
-    for (let index = 0; index < steps - 1; index++) await game.score();
+    for (let index = 0; index < steps - 1; index++) {await game.score();}
+
     const before = game.storage.room();
     game.clear();
     game.storage.failNext = "setAlarm";
@@ -352,7 +356,8 @@ for (const mode of ["delivery", "checkpoint"] as const) {
     assert.deepEqual(game.storage.room(), before);
 
     for (const socket of game.sockets)
-      assert.equal(socket.messages.filter((message) => message.t !== "pos").length, 0);
+      {assert.equal(socket.messages.filter((message) => message.t !== "pos").length, 0);}
+
     await game.score();
     assert.equal(game.storage.room().phase, "finished");
     assert.equal(
@@ -379,7 +384,8 @@ test("failed rematch alarm deletion preserves finished scores and retries after 
   await assert.rejects(game.alarm(), /injected/);
   assert.deepEqual(game.storage.room(), finished);
 
-  for (const socket of game.sockets) assert.deepEqual(socket.messages, []);
+  for (const socket of game.sockets) {assert.deepEqual(socket.messages, []);}
+
   game.evict();
   await game.alarm();
   assert.equal(game.storage.room().phase, "lobby");

@@ -12,7 +12,7 @@ const RIVAL_KINDS: CarKind[] = ["sedan", "hatch", "sports", "van"];
 const kindFor = (id: string) => {
   let hash = 0;
 
-  for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) | 0;
+  for (let index = 0; index < id.length; index++) {hash = (hash * 31 + id.charCodeAt(index)) | 0;}
 
   return RIVAL_KINDS[Math.abs(hash) % RIVAL_KINDS.length]!;
 };
@@ -41,10 +41,10 @@ export function RemoteCar({
   const [lod, setLod] = useState<CarLod>("full");
   const kind = useMemo(() => kindFor(id), [id]);
   useFrame(({ camera }, dt) => {
-    const target = remotePositions.get(id),
-      node = root.current;
+    const target = remotePositions.get(id);
+      const node = root.current;
 
-    if (!node) return;
+    if (!node) {return;}
 
     if (!target) {
       node.position.set(spawn[0], 0.8, spawn[1]);

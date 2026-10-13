@@ -22,7 +22,7 @@ function getOverlayVisible() {
 function toggleOverlay() {
   overlayVisible = !overlayVisible;
 
-  for (const listener of overlayListeners) listener();
+  for (const listener of overlayListeners) {listener();}
 }
 
 function usePerfOverlayVisible() {
@@ -66,7 +66,8 @@ export function PerfOverlay() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "F3") return;
+      if (event.key !== "F3") {return;}
+
       event.preventDefault();
       toggleOverlay();
     };
@@ -77,13 +78,15 @@ export function PerfOverlay() {
   }, []);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {return;}
+
     const timer = window.setInterval(tick, 250);
 
     return () => window.clearInterval(timer);
   }, [visible]);
 
-  if (!visible) return null;
+  if (!visible) {return null;}
+
   const overBudget = perfStats.frameMs > 16.6 || perfStats.calls > 60;
 
   return (

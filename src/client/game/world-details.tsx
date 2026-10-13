@@ -48,8 +48,8 @@ const WORLD_PLACEMENTS: Record<WorldModel, StaticInstance[]> = {
 };
 
 for (const zone of CITY_ZONES)
-  for (const placement of RELATIVE_PLACEMENTS[zone.id])
-    WORLD_PLACEMENTS[placement.model].push({
+  {for (const placement of RELATIVE_PLACEMENTS[zone.id])
+    {WORLD_PLACEMENTS[placement.model].push({
       position: [
         zone.x + placement.position[0],
         placement.position[1],
@@ -57,7 +57,7 @@ for (const zone of CITY_ZONES)
       ],
       rotation: placement.rotation,
       scale: placement.scale,
-    });
+    });}}
 
 function ModelBatch({ name, items }: { name: WorldModel; items: StaticInstance[] }) {
   const { scene } = useGLTF(assetUrl(name));
@@ -119,4 +119,4 @@ export function WorldDetails() {
   );
 }
 
-for (const name of ["market", "harbor", "plaza"] as const) useGLTF.preload(assetUrl(name));
+for (const name of ["market", "harbor", "plaza"] as const) {useGLTF.preload(assetUrl(name));}

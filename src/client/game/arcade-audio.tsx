@@ -39,7 +39,7 @@ export function ArcadeAudio() {
 
     const start = () => {
       if (context) {
-        if (context.state === "suspended") void context.resume();
+        if (context.state === "suspended") {void context.resume();}
 
         return;
       }
@@ -68,7 +68,8 @@ export function ArcadeAudio() {
 
       timer = window.setInterval(() => {
         if (!context || !master || !engine || !engineGain || !engineFilter || !tire || !tireGain)
-          return;
+          {return;}
+
         const now = context.currentTime;
         const speedRatio = Math.min(1, ownPose.speed / 52);
         const currentPhase = useGameStore.getState().phase;

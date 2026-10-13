@@ -60,9 +60,10 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
       }
 
       if (zone.radius)
-        assert.equal(blocked(city, zone.x, zone.z, 0), true, "landmark must be solid");
+        {assert.equal(blocked(city, zone.x, zone.z, 0), true, "landmark must be solid");}
 
-      if (zone.id !== "stunt" && zone.id !== "freight") continue;
+      if (zone.id !== "stunt" && zone.id !== "freight") {continue;}
+
       const x = zone.x + (zone.id === "freight" ? 24 : 0);
 
       for (const direction of [-1, 1]) {

@@ -158,4 +158,4 @@ export function LandmarkCity() {
 }
 
 for (const name of ["ferris", "lighthouse", "rocket", "crane", "portal"])
-  useGLTF.preload(assetUrl(name));
+  {useGLTF.preload(assetUrl(name));}

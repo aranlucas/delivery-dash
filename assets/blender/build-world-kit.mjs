@@ -19,7 +19,7 @@ globalThis.FileReader = class {
   }
 };
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const ROOT = resolve(import.meta.dirname, "../..");
 
 const OUT = resolve(ROOT, "public/models/world");
 
@@ -171,13 +171,13 @@ for (const [x, material] of [
   cone(market, material, [x, 4.42, -2.15], 2.65, 0.52);
 
   for (const angle of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4])
-    beam(
+    {beam(
       market,
       "cream",
       [x, 4.5, -2.15],
       [x + Math.cos(angle) * 2.2, 4.18, -2.15 + Math.sin(angle) * 2.2],
       0.055,
-    );
+    );}
 }
 
 for (const [x, z] of [
@@ -186,7 +186,7 @@ for (const [x, z] of [
   [-9.8, 1.15],
   [9.8, 1.15],
 ])
-  box(market, "gold", [x, 0.55, z], [1.1, 1.1, 1.1]);
+  {box(market, "gold", [x, 0.55, z], [1.1, 1.1, 1.1]);}
 
 box(market, "wood", [0, 0.75, -2], [3.4, 0.38, 1.4]);
 
@@ -199,7 +199,7 @@ for (const [x, material] of [
   [0, "gold"],
   [1.0, "teal"],
 ])
-  sphere(market, material, [x, 1.12, -2.0], [0.28, 0.28, 0.28]);
+  {sphere(market, material, [x, 1.12, -2.0], [0.28, 0.28, 0.28]);}
 
 await exportModel("market", market);
 
@@ -209,7 +209,7 @@ const boatZ = -7;
 
 box(harbor, "wood", [0, 0.35, 0], [26, 0.7, 10]);
 
-for (let x = -12; x <= 12; x += 3) box(harbor, "pale", [x, 0.78, 0], [2.55, 0.12, 9.8]);
+for (let x = -12; x <= 12; x += 3) {box(harbor, "pale", [x, 0.78, 0], [2.55, 0.12, 9.8]);}
 
 for (const x of [-11.5, 11.5]) {
   cylinder(harbor, "navy", [x, 1.8, -3.8], 0.3, 3.1);
@@ -257,10 +257,10 @@ for (const [x, material] of [
 ]) {
   box(harbor, material, [x, 2.2, 2.5], [2.3, 2.7, 3.3]);
 
-  for (const y of [1.2, 2, 2.8, 3.2]) box(harbor, "navy", [x, y, 0.82], [1.9, 0.055, 0.06]);
+  for (const y of [1.2, 2, 2.8, 3.2]) {box(harbor, "navy", [x, y, 0.82], [1.9, 0.055, 0.06]);}
 }
 
-for (const x of [-9, -6, -3, 9]) box(harbor, "gold", [x, 1.25, -2.5], [1.4, 1.4, 1.4]);
+for (const x of [-9, -6, -3, 9]) {box(harbor, "gold", [x, 1.25, -2.5], [1.4, 1.4, 1.4]);}
 
 await exportModel("harbor", harbor);
 
@@ -272,7 +272,7 @@ for (const x of [-6.5, 0, 6.5]) {
   box(plaza, "wood", [x, 1, -2], [4.2, 0.3, 0.85]);
   box(plaza, "wood", [x, 1.9, -2.35], [4.2, 1.5, 0.28]);
 
-  for (const lx of [x - 1.45, x + 1.45]) beam(plaza, "navy", [lx, 0.8, -2], [lx, 0.25, -2], 0.12);
+  for (const lx of [x - 1.45, x + 1.45]) {beam(plaza, "navy", [lx, 0.8, -2], [lx, 0.25, -2], 0.12);}
 }
 
 for (const x of [-7.5, 7.5]) {

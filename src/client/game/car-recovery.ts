@@ -18,7 +18,7 @@ export function isRecoverySpotClear(
   z: number,
   traffic: readonly NearbyCar[],
 ) {
-  if (traffic.some((car) => Math.hypot(car.x - x, car.z - z) < 7)) return false;
+  if (traffic.some((car) => Math.hypot(car.x - x, car.z - z) < 7)) {return false;}
 
   for (const [dx, dz] of [
     [0, 0],
@@ -27,9 +27,9 @@ export function isRecoverySpotClear(
     [2, -2],
     [2, 2],
   ]) {
-    if (blocked(city, x + dx!, z + dz!, 0)) return false;
+    if (blocked(city, x + dx!, z + dz!, 0)) {return false;}
 
-    if (groundHeightAt(city, x + dx!, z + dz!, 0) > 0.05) return false;
+    if (groundHeightAt(city, x + dx!, z + dz!, 0) > 0.05) {return false;}
   }
 
   return true;
@@ -61,7 +61,8 @@ export function findCarRecovery(
         const z = axis === "z" ? along + offset : cross;
         const cost = Math.hypot(x - pose.x, z - pose.z) + (1 - Math.abs(heading)) * 3;
 
-        if (cost >= bestCost || !isRecoverySpotClear(city, x, z, traffic)) continue;
+        if (cost >= bestCost || !isRecoverySpotClear(city, x, z, traffic)) {continue;}
+
         best = { x, z, yaw };
         bestCost = cost;
       }

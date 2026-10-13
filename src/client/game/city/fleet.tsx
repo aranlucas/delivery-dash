@@ -50,12 +50,12 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
     [parts],
   );
 
-  const painted = useRef<THREE.InstancedMesh>(null),
-    glass = useRef<THREE.InstancedMesh>(null),
-    trim = useRef<THREE.InstancedMesh>(null),
-    heads = useRef<THREE.InstancedMesh>(null),
-    tails = useRef<THREE.InstancedMesh>(null),
-    toppers = useRef<THREE.InstancedMesh>(null);
+  const painted = useRef<THREE.InstancedMesh>(null);
+    const glass = useRef<THREE.InstancedMesh>(null);
+    const trim = useRef<THREE.InstancedMesh>(null);
+    const heads = useRef<THREE.InstancedMesh>(null);
+    const tails = useRef<THREE.InstancedMesh>(null);
+    const toppers = useRef<THREE.InstancedMesh>(null);
 
   const fleet = useMemo(
     () => [painted, glass, trim, heads, tails, ...(kind === "taxi" ? [toppers] : [])] as const,
@@ -63,27 +63,29 @@ function useCarFleet(kind: CarKind, colors: string[]): CarFleet {
   );
 
   useLayoutEffect(() => {
-    if (!painted.current) return;
+    if (!painted.current) {return;}
+
     colors.forEach((color, i) => painted.current!.setColorAt(i, tint.set(color)));
 
-    if (painted.current.instanceColor) painted.current.instanceColor.needsUpdate = true;
+    if (painted.current.instanceColor) {painted.current.instanceColor.needsUpdate = true;}
   }, [colors]);
 
   const write = useCallback(
     (index: number, x: number, z: number, yaw: number) => {
       matrix.compose(position.set(x, 0, z), quaternion.setFromAxisAngle(UP, yaw), ONE);
 
-      for (const ref of fleet) ref.current?.setMatrixAt(index, matrix);
+      for (const ref of fleet) {ref.current?.setMatrixAt(index, matrix);}
     },
     [fleet],
   );
 
   const flush = useCallback(
     (count = colors.length) => {
-      if (!count) return;
+      if (!count) {return;}
 
       for (const ref of fleet) {
-        if (!ref.current) continue;
+        if (!ref.current) {continue;}
+
         queueMatrixUpload(ref.current, count);
       }
     },
@@ -180,7 +182,7 @@ export function FleetCars({ city }: { city: CityData }) {
       groups[kind].forEach((slot, localIndex) => {
         const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
 
-        if (car) fleet.write(localIndex, car.x, car.z, car.yaw);
+        if (car) {fleet.write(localIndex, car.x, car.z, car.yaw);}
       });
       fleet.flush();
     }
@@ -197,7 +199,8 @@ export function FleetCars({ city }: { city: CityData }) {
       while (movingCount < slots.length && slots[movingCount]!.moving) {
         const car = trafficCars[slots[movingCount]!.index];
 
-        if (car) fleet.write(movingCount, car.x, car.z, car.yaw);
+        if (car) {fleet.write(movingCount, car.x, car.z, car.yaw);}
+
         movingCount++;
       }
 

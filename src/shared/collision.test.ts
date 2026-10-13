@@ -54,10 +54,10 @@ test("queryRange exactly matches a brute-force XZ query", () => {
 });
 
 const bruteBlocked = (city: City, x: number, z: number, height: number) => {
-  if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) return true;
+  if (Math.abs(x) > WORLD_HALF - 5 || Math.abs(z) > WORLD_HALF - 5) {return true;}
 
   for (const ramp of city.ramps) {
-    if (rampBlocks(ramp, x, z, height, STEP_UP)) return true;
+    if (rampBlocks(ramp, x, z, height, STEP_UP)) {return true;}
   }
 
   return city.buildingAABBs.some(
@@ -89,6 +89,7 @@ test("current city buckets keep candidate sets small", () => {
   let largest = 0;
 
   for (let index = 0; index < grid.cols * grid.rows; index++)
-    largest = Math.max(largest, grid.bucketStart[index + 1]! - grid.bucketStart[index]!);
+    {largest = Math.max(largest, grid.bucketStart[index + 1]! - grid.bucketStart[index]!);}
+
   assert.ok(largest < 30, `largest bucket contains ${largest} boxes`);
 });

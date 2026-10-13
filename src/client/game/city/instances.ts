@@ -14,7 +14,8 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
   useLayoutEffect(() => {
     const mesh = ref.current;
 
-    if (!mesh) return;
+    if (!mesh) {return;}
+
     const matrix = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const tilt = new THREE.Quaternion();
@@ -26,16 +27,18 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
       const sv = Array.isArray(s) ? new THREE.Vector3(...s) : new THREE.Vector3(s, s, s);
       q.setFromAxisAngle(up, it.rotY ?? 0);
 
-      if (it.rotX) q.multiply(tilt.setFromAxisAngle(right, it.rotX));
+      if (it.rotX) {q.multiply(tilt.setFromAxisAngle(right, it.rotX));}
+
       matrix.compose(new THREE.Vector3(...it.pos), q, sv);
       mesh.setMatrixAt(i, matrix);
 
-      if (it.color) mesh.setColorAt(i, color.set(it.color));
+      if (it.color) {mesh.setColorAt(i, color.set(it.color));}
     });
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
 
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (mesh.instanceColor) {mesh.instanceColor.needsUpdate = true;}
+
     mesh.computeBoundingBox();
     mesh.computeBoundingSphere();
   }, [ref, items]);

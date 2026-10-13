@@ -99,20 +99,22 @@ export class RaceRoomCore {
   /** The city is large enough that regenerating it per position update would dominate the tick. */
   private route(seed: number) {
     if (this.world?.seed !== seed)
-      this.world = {
+      {this.world = {
         seed,
         city: generateCity(seed),
         orders: generateOrders(seed),
-      };
+      };}
 
     return this.world;
   }
 
   private async load(): Promise<RoomState | undefined> {
-    if (this.state) return this.state;
+    if (this.state) {return this.state;}
+
     const state = await this.ctx.storage.get("state");
 
-    if (!state) return undefined;
+    if (!state) {return undefined;}
+
     let migrated = false;
 
     if (!isGameMode(state.mode)) {
@@ -129,19 +131,19 @@ export class RaceRoomCore {
 
     this.state = state;
 
-    if (migrated) await this.ctx.storage.put("state", state);
+    if (migrated) {await this.ctx.storage.put("state", state);}
 
     return this.state;
   }
   private async save() {
-    if (this.state) await this.ctx.storage.put("state", this.state);
+    if (this.state) {await this.ctx.storage.put("state", this.state);}
   }
   private alarmAt(state: RoomState): number | undefined {
-    if (state.phase === "countdown") return state.countdownEndsAt;
+    if (state.phase === "countdown") {return state.countdownEndsAt;}
 
-    if (state.phase === "racing") return state.raceEndsAt;
+    if (state.phase === "racing") {return state.raceEndsAt;}
 
-    if (state.phase === "finished") return state.rematchAt;
+    if (state.phase === "finished") {return state.rematchAt;}
 
     return undefined;
   }
@@ -151,8 +153,8 @@ export class RaceRoomCore {
     await this.ctx.storage.transaction(async (txn) => {
       await txn.put("state", next);
 
-      if (alarmAt !== undefined) await txn.setAlarm(alarmAt);
-      else await txn.deleteAlarm();
+      if (alarmAt !== undefined) {await txn.setAlarm(alarmAt);}
+      else {await txn.deleteAlarm();}
     });
     // Callers build a new state so a failed transaction cannot change the live phase.
     this.state = next;
@@ -174,7 +176,7 @@ export class RaceRoomCore {
   }
   private broadcast(message: ServerMessage, exceptId?: string) {
     for (const socket of this.sockets())
-      if (this.playerId(socket) !== exceptId) this.send(socket, message);
+      {if (this.playerId(socket) !== exceptId) {this.send(socket, message);}}
   }
   private roster(state = this.state): PlayerPub[] {
     return Object.entries(state?.players ?? {}).map(([id, player]) => ({
@@ -223,7 +225,8 @@ export class RaceRoomCore {
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
-      return new Response("Expected WebSocket", { status: 426 });
+      {return new Response("Expected WebSocket", { status: 426 });}
+
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
@@ -275,7 +278,8 @@ export class RaceRoomCore {
     }
 
     if (parsed.t === "ready") {
-      if (this.state.phase !== "lobby") return;
+      if (this.state.phase !== "lobby") {return;}
+
       this.state.players[playerId].ready = Boolean(parsed.ready);
       await this.save();
       this.broadcast({ t: "roster", players: this.roster() });
@@ -283,7 +287,7 @@ export class RaceRoomCore {
     } else if (parsed.t === "pos") {
       const position = positionSchema.safeParse(parsed);
 
-      if (position.success) await this.position(playerId, position.data);
+      if (position.success) {await this.position(playerId, position.data);}
     }
   }
 
@@ -301,7 +305,7 @@ export class RaceRoomCore {
       // Prune players whose sockets are gone (dev reload, crashed connections) so rooms don't fill with ghosts.
       const alive = new Set(this.sockets().map((s) => this.playerId(s)));
 
-      for (const id of Object.keys(state.players)) if (!alive.has(id)) delete state.players[id];
+      for (const id of Object.keys(state.players)) {if (!alive.has(id)) {delete state.players[id];}}
 
       if (!Object.keys(state.players).length && state.phase !== "lobby") {
         const next: RoomState = {
@@ -352,7 +356,8 @@ export class RaceRoomCore {
     const used = new Set(Object.values(state.players).map((p) => p.spawnIndex));
     let spawnIndex = 0;
 
-    while (used.has(spawnIndex)) spawnIndex++;
+    while (used.has(spawnIndex)) {spawnIndex++;}
+
     state.players[playerId] = {
       name,
       ready: lateFreeJoin,
@@ -373,7 +378,8 @@ export class RaceRoomCore {
     const state = this.state!;
     const players = Object.values(state.players);
 
-    if (state.phase !== "lobby" || !players.length || !players.every((p) => p.ready)) return;
+    if (state.phase !== "lobby" || !players.length || !players.every((p) => p.ready)) {return;}
+
     await this.transition({
       ...state,
       phase: "countdown",
@@ -393,7 +399,7 @@ export class RaceRoomCore {
       !Number.isFinite(update.yaw) ||
       !Number.isFinite(update.speed)
     )
-      return;
+      {return;}
 
     // A position arriving after the authoritative Rush Hour deadline cannot score a target.
     if (state.phase === "racing" && state.raceEndsAt && Date.now() >= state.raceEndsAt) {
@@ -415,23 +421,25 @@ export class RaceRoomCore {
       id,
     );
 
-    if (state.phase !== "racing") return; // lobby/countdown: free-roam relay only, no delivery progress
+    if (state.phase !== "racing") {return;} // lobby/countdown: free-roam relay only, no delivery progress
+
     const player = { ...state.players[id]! };
     const { city, orders } = this.route(state.seed);
     const target = getObjective(state.mode, city, orders, player);
 
-    if (!target) return; // Free Drive intentionally has no objective or progress.
+    if (!target) {return;} // Free Drive intentionally has no objective or progress.
 
-    if (Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) > TARGET_RADIUS) return;
+    if (Math.hypot(update.x - target.stop[0], update.z - target.stop[1]) > TARGET_RADIUS) {return;}
+
     // Never let a car score a ground-level target from an elevated deck or while airborne.
     const targetGround = groundHeightAt(city, target.stop[0], target.stop[1], 0);
     const carSurface = Math.max(0, update.y - 0.8);
 
-    if (targetGround <= 0.4 && carSurface > 0.5) return;
+    if (targetGround <= 0.4 && carSurface > 0.5) {return;}
 
     if (state.mode === "checkpoint") {
       player.checkpointIndex++;
-    } else if (player.leg === "pickup") player.leg = "dropoff";
+    } else if (player.leg === "pickup") {player.leg = "dropoff";}
     else {
       player.deliveries++;
       player.orderIndex++;
@@ -462,7 +470,8 @@ export class RaceRoomCore {
   }
 
   private async finish(state = this.state!, progress?: Extract<ServerMessage, { t: "progress" }>) {
-    if (state.phase === "finished") return;
+    if (state.phase === "finished") {return;}
+
     const standings = this.standings(state);
     await this.transition({
       ...state,
@@ -472,7 +481,8 @@ export class RaceRoomCore {
       standings,
     });
 
-    if (progress) this.broadcast(progress);
+    if (progress) {this.broadcast(progress);}
+
     this.broadcast(this.phaseMessage());
     this.broadcast({ t: "win", standings });
   }
@@ -486,7 +496,8 @@ export class RaceRoomCore {
   private async remove(id?: string) {
     const state = await this.load();
 
-    if (!state || !id || !state.players[id]) return;
+    if (!state || !id || !state.players[id]) {return;}
+
     delete state.players[id];
 
     if (!Object.keys(state.players).length) {
@@ -500,13 +511,14 @@ export class RaceRoomCore {
     await this.save();
     this.broadcast({ t: "roster", players: this.roster() });
 
-    if (state.phase === "lobby") await this.maybeCountdown();
+    if (state.phase === "lobby") {await this.maybeCountdown();}
   }
 
   async alarm(): Promise<void> {
     const state = await this.load();
 
-    if (!state) return;
+    if (!state) {return;}
+
     const now = Date.now();
     const alarmAt = this.alarmAt(state);
 
@@ -545,13 +557,14 @@ export class RaceRoomCore {
       next.rematchAt = undefined;
 
       for (const player of Object.values(next.players))
-        Object.assign(player, {
+        {Object.assign(player, {
           ready: false,
           deliveries: 0,
           orderIndex: 0,
           leg: "pickup",
           checkpointIndex: 0,
-        });
+        });}
+
       await this.transition(next);
       this.broadcast(this.phaseMessage());
       this.broadcast({ t: "roster", players: this.roster() });
