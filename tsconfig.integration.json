@@ -4,6 +4,6 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.integration.tsbuildinfo",
     "allowImportingTsExtensions": true
   },
-  "include": ["scripts/test-game-modes.ts", "src/shared"],
-  "exclude": ["**/*.test.ts"]
+  "include": ["test/integration/game-modes.test.ts", "src/shared"],
+  "exclude": ["src/**/*.test.ts"]
 }

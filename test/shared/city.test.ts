@@ -9,8 +9,8 @@ import {
   rampSurface,
   zoneAt,
   type Ramp,
-} from "./city.ts";
-import { TARGET_RADIUS } from "./protocol.ts";
+} from "@/shared/city.ts";
+import { TARGET_RADIUS } from "@/shared/protocol.ts";
 
 for (const seed of [1, 99, 777, 2026, 12345]) {
   test(`seed ${seed} has reachable curbside delivery targets`, () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import * as THREE from "three";
-import { relativeBearing, worldBearing } from "./nav.ts";
+import { relativeBearing, worldBearing } from "@/shared/nav.ts";
 
 const HALF_PI = Math.PI / 2;
 

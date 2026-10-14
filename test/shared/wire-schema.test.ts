@@ -5,8 +5,8 @@ import {
   clientEnvelopeSchema,
   decodeServerMessage,
   positionSchema,
-} from "./wire-schema.ts";
-import type { ServerMessage } from "./protocol.ts";
+} from "@/shared/wire-schema.ts";
+import type { ServerMessage } from "@/shared/protocol.ts";
 
 test("server message decoding retains the valid protocol and omitted deadlines", () => {
   const message: ServerMessage = {

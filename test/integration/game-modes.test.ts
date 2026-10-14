@@ -1,7 +1,7 @@
 /**
  * Live mode contract test. Run the Vite worker first, then:
  *
- *   node --experimental-strip-types scripts/test-game-modes.ts
+ *   node --experimental-strip-types test/integration/game-modes.test.ts
  *
  * TEST_GAME_URL points at the Vite origin (it defaults to http://localhost:5173).
  * TEST_GAME_RUSH_TIMER=1 additionally waits for the real 180 second rush deadline.
@@ -9,16 +9,16 @@
  */
 import { strict as assert } from "node:assert";
 import { z } from "zod";
-import { decodeServerMessage } from "../src/shared/wire-schema.ts";
-import type { ServerMessage } from "../src/shared/protocol.ts";
+import { decodeServerMessage } from "../../src/shared/wire-schema.ts";
+import type { ServerMessage } from "../../src/shared/protocol.ts";
 import {
   generateCity,
   generateOrders,
   type City,
   type Order,
   type Place,
-} from "../src/shared/city.ts";
-import { CHECKPOINT_COUNT, RUSH_DURATION_MS, getCheckpoints } from "../src/shared/game-modes.ts";
+} from "../../src/shared/city.ts";
+import { CHECKPOINT_COUNT, RUSH_DURATION_MS, getCheckpoints } from "../../src/shared/game-modes.ts";
 
 type WireMessage = ServerMessage;
 
