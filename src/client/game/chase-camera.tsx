@@ -56,7 +56,7 @@ function obstructed(x: number, y: number, z: number, grid: SpatialGrid, ramps: R
   const count = queryRange(grid, x - 1.2, z - 1.2, x + 1.2, z + 1.2, cameraCandidates);
 
   for (let index = 0; index < count; index++) {
-    const box = grid.boxes[cameraCandidates[index]!]!;
+    const box = grid.boxes[cameraCandidates[index]];
 
     if (
       y < box.top &&

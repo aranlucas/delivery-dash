@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { blocked, COAST_ROAD_ENDS, generateCity, safeTravel, WORLD_HALF } from "./city.ts";
 import { buildGrid } from "./collision.ts";
 
-test("waterfront rails stop a boost-speed approach at every street end", () => {
+await test("waterfront rails stop a boost-speed approach at every street end", () => {
   const city = generateCity(42);
   // Isolate the rails so parking, shops, and landmark collisions cannot mask a missing barrier.
   city.buildingAABBs = COAST_ROAD_ENDS;
@@ -33,7 +33,7 @@ test("waterfront rails stop a boost-speed approach at every street end", () => {
   }
 });
 
-test("waterfront rails enter the shared collision grid without blocking the starting grid", () => {
+await test("waterfront rails enter the shared collision grid without blocking the starting grid", () => {
   for (const seed of [1, 99, 777, 2026, 12345]) {
     const city = generateCity(seed);
 

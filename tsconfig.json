@@ -18,6 +18,9 @@
     },
     {
       "path": "./tsconfig.integration.json"
+    },
+    {
+      "path": "./tsconfig.scripts.json"
     }
   ]
 }

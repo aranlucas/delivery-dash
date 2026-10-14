@@ -9,14 +9,31 @@ import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-globalThis.FileReader = class {
-  readAsArrayBuffer(blob) {
-    return blob.arrayBuffer().then((result) => {
-      this.result = result;
+/** @typedef {[number, number, number]} Vector */
+/** @typedef {THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>} WorldMesh */
+/** @typedef {[number, string]} MaterialPlacement */
+
+// GLTFExporter only needs the asynchronous Blob-to-ArrayBuffer FileReader operation in Node.
+Object.defineProperty(globalThis, "FileReader", {
+  value: class {
+    /** @type {ArrayBuffer | null} */
+    result = null;
+    /** @type {(() => void) | undefined} */
+    onloadend;
+    /** @param {Blob} blob */
+    async readAsArrayBuffer(blob) {
+      this.result = await blob.arrayBuffer();
       this.onloadend?.();
-    });
-  }
-};
+    }
+  },
+  configurable: true,
+  writable: true,
+});
+
+/** @param {MaterialPlacement[]} positions */
+function materialPositions(positions) {
+  return positions;
+}
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
@@ -47,6 +64,14 @@ const materials = Object.fromEntries(
   ]),
 );
 
+/**
+ * @param {WorldMesh[]} list
+ * @param {THREE.BufferGeometry} geometry
+ * @param {string} material
+ * @param {Vector} position
+ * @param {Vector} rotation
+ * @param {Vector} scale
+ */
 function add(
   list,
   geometry,
@@ -65,18 +90,42 @@ function add(
   return mesh;
 }
 
+/** @param {WorldMesh[]} list
+ * @param {string} material
+ * @param {Vector} position
+ * @param {Vector} size
+ */
 function box(list, material, position, size) {
   return add(list, new THREE.BoxGeometry(...size), material, position);
 }
 
+/** @param {WorldMesh[]} list
+ * @param {string} material
+ * @param {Vector} position
+ * @param {number} radius
+ * @param {number} height
+ * @param {number} segments
+ * @param {number} top
+ */
 function cylinder(list, material, position, radius, height, segments = 12, top = radius) {
   return add(list, new THREE.CylinderGeometry(top, radius, height, segments), material, position);
 }
 
+/** @param {WorldMesh[]} list
+ * @param {string} material
+ * @param {Vector} position
+ * @param {Vector} scale
+ */
 function sphere(list, material, position, scale) {
   return add(list, new THREE.SphereGeometry(1, 16, 8), material, position, [0, 0, 0], scale);
 }
 
+/** @param {WorldMesh[]} list
+ * @param {string} material
+ * @param {Vector} position
+ * @param {number} radius
+ * @param {number} height
+ */
 function cone(list, material, position, radius, height) {
   return add(
     list,
@@ -88,6 +137,13 @@ function cone(list, material, position, radius, height) {
   );
 }
 
+/** @param {WorldMesh[]} list
+ * @param {string} material
+ * @param {Vector} start
+ * @param {Vector} end
+ * @param {number} radius
+ * @param {number} segments
+ */
 function beam(list, material, start, end, radius, segments = 10) {
   const a = new THREE.Vector3(...start);
   const b = new THREE.Vector3(...end);
@@ -96,7 +152,7 @@ function beam(list, material, start, end, radius, segments = 10) {
   const mesh = cylinder(
     list,
     material,
-    a.clone().add(b).multiplyScalar(0.5),
+    a.clone().add(b).multiplyScalar(0.5).toArray(),
     radius,
     delta.length(),
     segments,
@@ -108,11 +164,18 @@ function beam(list, material, start, end, radius, segments = 10) {
   return mesh;
 }
 
+/** @param {WorldMesh[]} list */
 function mergedScene(list) {
+  /** @type {Map<string, THREE.BufferGeometry[]>} */
   const byMaterial = new Map();
 
   for (const mesh of list) {
     const material = Object.entries(materials).find(([, value]) => value === mesh.material)?.[0];
+
+    if (material === undefined) {
+      throw new Error("World mesh uses an unknown material");
+    }
+
     const geometries = byMaterial.get(material) ?? [];
     geometries.push(mesh.geometry.clone().applyMatrix4(mesh.matrix));
     byMaterial.set(material, geometries);
@@ -122,6 +185,11 @@ function mergedScene(list) {
 
   for (const [name, geometries] of byMaterial) {
     const geometry = mergeGeometries(geometries, false);
+
+    if (!geometry) {
+      throw new Error(`Could not merge world geometry for ${name}`);
+    }
+
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, materials[name]);
     mesh.name = name;
@@ -131,23 +199,29 @@ function mergedScene(list) {
   return scene;
 }
 
+/** @param {string} name
+ * @param {WorldMesh[]} list
+ */
 async function exportModel(name, list) {
   const exporter = new GLTFExporter();
 
-  const result = await new Promise((resolveResult, _reject) => {
-    exporter.parse(mergedScene(list), resolveResult, undefined, { binary: true });
-  });
+  const result = await exporter.parseAsync(mergedScene(list), { binary: true });
+
+  if (!(result instanceof ArrayBuffer)) {
+    throw new TypeError("The binary world exporter must return an ArrayBuffer");
+  }
 
   await writeFile(resolve(OUT, `${name}.glb`), Buffer.from(result));
 }
 
+/** @type {WorldMesh[]} */
 const market = [];
 
-for (const [x, material] of [
+for (const [x, material] of materialPositions([
   [-7.5, "coral"],
   [0, "teal"],
   [7.5, "gold"],
-]) {
+])) {
   box(market, "wood", [x, 1.15, 0], [6.4, 0.38, 3.4]);
   box(market, "wood", [x, 2.55, 1.25], [6.4, 2.8, 0.28]);
   box(market, material, [x, 4.1, 1.05], [6.8, 0.34, 2.9]);
@@ -162,10 +236,10 @@ for (const [x, material] of [
   }
 }
 
-for (const [x, material] of [
+for (const [x, material] of materialPositions([
   [-7.5, "coral"],
   [7.5, "teal"],
-]) {
+])) {
   cylinder(market, "navy", [x, 2.2, -2.15], 0.09, 4.4);
   cone(market, material, [x, 4.42, -2.15], 2.65, 0.52);
 
@@ -195,16 +269,17 @@ sphere(market, "teal", [0, 1.75, -2], [1.45, 0.55, 0.42]);
 
 beam(market, "coral", [-1.25, 1.75, -2], [-2.1, 2.35, -2], 0.16);
 
-for (const [x, material] of [
+for (const [x, material] of materialPositions([
   [-1.0, "coral"],
   [0, "gold"],
   [1.0, "teal"],
-]) {
+])) {
   sphere(market, material, [x, 1.12, -2.0], [0.28, 0.28, 0.28]);
 }
 
 await exportModel("market", market);
 
+/** @type {WorldMesh[]} */
 const harbor = [];
 
 const boatZ = -7;
@@ -254,11 +329,11 @@ for (const part of harbor.slice(boatPartsStart)) {
   part.updateMatrix();
 }
 
-for (const [x, material] of [
+for (const [x, material] of materialPositions([
   [-8, "teal"],
   [-5.4, "coral"],
   [-2.8, "gold"],
-]) {
+])) {
   box(harbor, material, [x, 2.2, 2.5], [2.3, 2.7, 3.3]);
 
   for (const y of [1.2, 2, 2.8, 3.2]) {
@@ -272,6 +347,7 @@ for (const x of [-9, -6, -3, 9]) {
 
 await exportModel("harbor", harbor);
 
+/** @type {WorldMesh[]} */
 const plaza = [];
 
 box(plaza, "pale", [0, 0.25, 0], [20, 0.5, 12]);

@@ -24,6 +24,7 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
     const up = new THREE.Vector3(0, 1, 0);
     const right = new THREE.Vector3(1, 0, 0);
     const color = new THREE.Color();
+
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       const s = it.scale ?? 1;
@@ -41,6 +42,7 @@ export function useInstances(ref: RefObject<THREE.InstancedMesh | null>, items: 
         mesh.setColorAt(i, color.set(it.color));
       }
     }
+
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
 

@@ -20,26 +20,20 @@ const awningColors = ["#ff4f2e", "#00aeea", "#25bd69", "#f03363", "#9b62e7", "#f
 const houseColors = ["#ffd28f", "#8bd1ea", "#ff9e96", "#9ddd85", "#d7a2ee"];
 
 /** Yaw that turns a place's +z front toward the street corner it sits in. */
-function outwardYaw([x, z]: Pos2) {
-  const grid = (v: number) =>
-    blockCenter(
-      Math.max(
-        0,
-        Math.min(GRID_SIZE - 1, Math.round((v + WORLD_HALF - ROAD_WIDTH - BLOCK_SIZE / 2) / PITCH)),
-      ),
-    );
+const grid = (v: number) =>
+  blockCenter(
+    Math.max(
+      0,
+      Math.min(GRID_SIZE - 1, Math.round((v + WORLD_HALF - ROAD_WIDTH - BLOCK_SIZE / 2) / PITCH)),
+    ),
+  );
 
+function outwardYaw([x, z]: Pos2) {
   return Math.atan2(Math.sign(x - grid(x)) || 1, Math.sign(z - grid(z)) || 1);
 }
 
 /** Convert an offset inside a yawed place group to an instance in world space. */
-function placeOffset(
-  [px, pz]: Pos2,
-  yaw: number,
-  x: number,
-  y: number,
-  z: number,
-): [number, number, number] {
+function placeOffset([px, pz]: Pos2, yaw: number, x: number, y: number, z: number): Vec3 {
   const cosine = Math.cos(yaw);
   const sine = Math.sin(yaw);
 
@@ -94,6 +88,7 @@ function PlaceProps({ city }: PlacePropsProps) {
 
     for (let index = 0; index < city.restaurants.length; index++) {
       const place = city.restaurants[index];
+
       if (storefrontModel(place.name)) {
         continue;
       }

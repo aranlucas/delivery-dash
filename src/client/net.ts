@@ -21,27 +21,27 @@ export function connect(code: string, name: string, mode: GameMode = DEFAULT_MOD
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const current = new WebSocket(`${protocol}://${location.host}/api/room/${code}/ws`);
   socket = current;
-  current.onopen = () => {
+  current.addEventListener("open", () => {
     if (socket !== current) {
       return;
     }
 
     send({ t: "join", name, mode });
-  };
+  });
 
-  current.onmessage = (event) => {
+  current.addEventListener("message", (event) => {
     if (socket === current) {
       handle(decodeServerMessage(String(event.data)));
     }
-  };
+  });
 
-  current.onerror = () => {
+  current.addEventListener("error", () => {
     if (socket === current) {
       useGameStore.getState().set({ lastError: "Connection error. Please try again." });
     }
-  };
+  });
 
-  current.onclose = () => {
+  current.addEventListener("close", () => {
     if (socket !== current) {
       return;
     }
@@ -57,7 +57,7 @@ export function connect(code: string, name: string, mode: GameMode = DEFAULT_MOD
     }
 
     socket = undefined;
-  };
+  });
 }
 
 export function close() {

@@ -13,7 +13,7 @@ import {
   isGameMode,
 } from "./game-modes.ts";
 
-test("game mode registry has the stable public modes", () => {
+await test("game mode registry has the stable public modes", () => {
   assert.deepEqual(GAME_MODE_IDS, ["delivery", "rush", "checkpoint", "free"]);
   assert.equal(DEFAULT_MODE, "delivery");
   assert.equal(RUSH_DURATION_MS, 180_000);
@@ -31,7 +31,9 @@ test("game mode registry has the stable public modes", () => {
 });
 
 for (const seed of [1, 99, 777, 2026, 12345]) {
-  test(`checkpoint route is deterministic and reachable for seed ${seed}`, () => {
+  // Run each generated case through its full node:test lifecycle before starting the next.
+  // oxlint-disable-next-line eslint/no-await-in-loop
+  await test(`checkpoint route is deterministic and reachable for seed ${seed}`, () => {
     const city = generateCity(seed);
     const checkpoints = getCheckpoints(city);
     assert.equal(checkpoints.length, CHECKPOINT_COUNT);
@@ -53,8 +55,8 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
     for (let index = 1; index < checkpoints.length; index++) {
       assert.ok(
         Math.hypot(
-          checkpoints[index]!.stop[0] - checkpoints[index - 1]!.stop[0],
-          checkpoints[index]!.stop[1] - checkpoints[index - 1]!.stop[1],
+          checkpoints[index].stop[0] - checkpoints[index - 1].stop[0],
+          checkpoints[index].stop[1] - checkpoints[index - 1].stop[1],
         ) >= 20,
         "consecutive checkpoints must not overlap their target radii",
       );
@@ -62,23 +64,23 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
   });
 }
 
-test("delivery and rush objectives follow their distinct order rules", () => {
+await test("delivery and rush objectives follow their distinct order rules", () => {
   const city = generateCity(2026);
   const orders = generateOrders(2026);
   const pickup = { orderIndex: 0, leg: "pickup" as const, checkpointIndex: 0 };
   assert.equal(
     getObjective("delivery", city, orders, pickup),
-    city.restaurants[orders[0]!.restaurantId],
+    city.restaurants[orders[0].restaurantId],
   );
   assert.equal(
     getObjective("rush", city, orders, { ...pickup, orderIndex: orders.length }),
-    city.restaurants[orders[0]!.restaurantId],
+    city.restaurants[orders[0].restaurantId],
   );
   assert.equal(getObjective("free", city, orders, pickup), undefined);
   assert.equal(getObjective("checkpoint", city, orders, pickup), getCheckpoints(city)[0]);
 });
 
-test("mode standings rank progress and keep timed ties honest", () => {
+await test("mode standings rank progress and keep timed ties honest", () => {
   const a = { id: "a", deliveries: 2, orderIndex: 3, checkpointIndex: 0 };
   const b = { id: "b", deliveries: 1, orderIndex: 4, checkpointIndex: 0 };
   assert.ok(comparePlayers("delivery", a, b) < 0);

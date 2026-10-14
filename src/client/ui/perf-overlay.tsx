@@ -83,7 +83,9 @@ export function PerfOverlay() {
 
   useEffect(() => {
     if (!visible) {
-      return;
+      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined;
     }
 
     const timer = window.setInterval(tick, 250);

@@ -18,6 +18,7 @@ const paths = execFileSync(
   { encoding: "utf8" },
 );
 
+/** @type {Map<string, Set<string>>} */
 const directories = new Map();
 
 const violations = [...new Set(paths.split("\0"))].filter((path) => {
@@ -27,12 +28,15 @@ const violations = [...new Set(paths.split("\0"))].filter((path) => {
 
   const directory = dirname(path);
 
-  if (!directories.has(directory)) {
-    directories.set(directory, new Set(readdirSync(directory)));
+  let names = directories.get(directory);
+
+  if (!names) {
+    names = new Set(readdirSync(directory));
+    directories.set(directory, names);
   }
 
   // Deleted index entries still resolve after a case-only rename on macOS. Check the real name.
-  if (!directories.get(directory).has(basename(path))) {
+  if (!names.has(basename(path))) {
     return false;
   }
 
@@ -44,8 +48,10 @@ const violations = [...new Set(paths.split("\0"))].filter((path) => {
 });
 
 if (violations.length) {
-  console.error(`Use kebab-case filenames:\n${violations.toSorted().join("\n")}`);
+  process.stderr.write(`Use kebab-case filenames:\n${violations.toSorted().join("\n")}\n`);
   process.exitCode = 1;
 } else {
-  console.log("All project filenames use kebab-case (reserved tooling names preserved).");
+  process.stdout.write(
+    "All project filenames use kebab-case (reserved tooling names preserved).\n",
+  );
 }

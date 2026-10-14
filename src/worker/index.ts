@@ -11,7 +11,7 @@ export class RaceRoom extends DurableObject<Env> {
   }
 
   fetch(request: Request): Promise<Response> {
-    return this.room.fetch(request);
+    return Promise.resolve(this.room.fetch(request));
   }
 
   webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -32,7 +32,7 @@ export class RaceRoom extends DurableObject<Env> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  fetch(request: Request, env: Env): Response | Promise<Response> {
     const match = new URL(request.url).pathname.match(/^\/api\/room\/([A-Z]{4})\/ws$/);
 
     if (!match) {
@@ -43,6 +43,6 @@ export default {
       return new Response("WebSocket upgrade required", { status: 426 });
     }
 
-    return env.RACE_ROOM.getByName(match[1]!).fetch(request);
+    return env.RACE_ROOM.getByName(match[1]).fetch(request);
   },
 } satisfies ExportedHandler<Env>;

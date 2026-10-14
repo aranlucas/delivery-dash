@@ -18,12 +18,7 @@ import {
   type Order,
   type Place,
 } from "../src/shared/city.ts";
-import {
-  CHECKPOINT_COUNT,
-  RUSH_DURATION_MS,
-  getCheckpoints,
-  type GameMode,
-} from "../src/shared/game-modes.ts";
+import { CHECKPOINT_COUNT, RUSH_DURATION_MS, getCheckpoints } from "../src/shared/game-modes.ts";
 
 type WireMessage = ServerMessage;
 
@@ -31,7 +26,7 @@ interface OutboundMessage {
   [field: string]: string | number | boolean | null;
 }
 
-type WireMode = GameMode | string;
+type WireMode = string;
 
 const origin = process.env.TEST_GAME_URL ?? "http://localhost:5173";
 
@@ -56,22 +51,30 @@ function roomCode(label: string): string {
 
   const suffix = [roomCounter.value - 1].map(
     (value) =>
-      String.fromCharCode(65 + (Math.floor(value / 26) % 26)) +
-      String.fromCharCode(65 + (value % 26)),
-  )[0]!;
+      String.fromCodePoint(65 + (Math.floor(value / 26) % 26)) +
+      String.fromCodePoint(65 + (value % 26)),
+  )[0];
 
   return `${label.slice(0, 2).toUpperCase()}${suffix}`;
 }
 
+interface MessageWaiter {
+  predicate: (message: WireMessage) => boolean;
+  resolve: (message: WireMessage) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+interface MessageTag<T> {
+  t: T;
+}
+
+type ModeTest = [string, () => Promise<void>];
+
 class Client {
   readonly socket: WebSocket;
   private readonly inbox: WireMessage[] = [];
-  private readonly waiters = new Set<{
-    predicate: (message: WireMessage) => boolean;
-    resolve: (message: WireMessage) => void;
-    reject: (error: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
-  }>();
+  private readonly waiters = new Set<MessageWaiter>();
   private failure?: Error;
 
   private constructor(socket: WebSocket) {
@@ -148,19 +151,19 @@ class Client {
     this.socket.send(JSON.stringify(message));
   }
 
-  async waitFor(
+  waitFor(
     predicate: (message: WireMessage) => boolean,
     description: string,
     milliseconds = 10_000,
   ): Promise<WireMessage> {
     if (this.failure) {
-      throw this.failure;
+      return Promise.reject(this.failure);
     }
 
     const queuedIndex = this.inbox.findIndex(predicate);
 
     if (queuedIndex >= 0) {
-      return this.inbox.splice(queuedIndex, 1)[0]!;
+      return Promise.resolve(this.inbox.splice(queuedIndex, 1)[0]);
     }
 
     return new Promise<WireMessage>((resolve, reject) => {
@@ -178,17 +181,17 @@ class Client {
     });
   }
 
-  async waitForNo(
+  waitForNo(
     predicate: (message: WireMessage) => boolean,
     description: string,
     milliseconds: number,
   ) {
     if (this.failure) {
-      throw this.failure;
+      return Promise.reject(this.failure);
     }
 
     if (this.inbox.some(predicate)) {
-      throw new Error(`unexpected ${description}`);
+      return Promise.reject(new Error(`unexpected ${description}`));
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -232,12 +235,12 @@ class Client {
 function hasType<T extends WireMessage["t"]>(
   message: WireMessage,
   t: T,
-): message is Extract<WireMessage, { t: T }> {
+): message is Extract<WireMessage, MessageTag<T>> {
   return message.t === t;
 }
 
 function numberField(message: WireMessage, key: string): number {
-  const field = Object.entries(message).find(([name]) => name === key)?.[1];
+  const field: unknown = Object.entries(message).find(([name]) => name === key)?.[1];
   const parsed = z.number().safeParse(field);
 
   assert.ok(parsed.success, `${key} should be a finite number in ${message.t}`);
@@ -246,7 +249,7 @@ function numberField(message: WireMessage, key: string): number {
 }
 
 function stringField(message: WireMessage, key: string): string {
-  const field = Object.entries(message).find(([name]) => name === key)?.[1];
+  const field: unknown = Object.entries(message).find(([name]) => name === key)?.[1];
   const parsed = z.string().safeParse(field);
 
   assert.ok(parsed.success, `${key} should be a string in ${message.t}`);
@@ -258,7 +261,7 @@ function messageMode(message: WireMessage): WireMode {
   return stringField(message, "mode");
 }
 
-async function join(client: Client, name: string, mode?: WireMode): Promise<WireMessage> {
+function join(client: Client, name: string, mode?: WireMode): Promise<WireMessage> {
   const message: OutboundMessage = { t: "join", name };
 
   if (mode !== undefined) {
@@ -268,7 +271,7 @@ async function join(client: Client, name: string, mode?: WireMode): Promise<Wire
   client.send(message);
 
   return client.waitFor(
-    (message) => hasType(message, "welcome") || hasType(message, "error"),
+    (response) => hasType(response, "welcome") || hasType(response, "error"),
     "join response",
   );
 }
@@ -290,7 +293,7 @@ async function readyAndRace(clients: Client[]): Promise<WireMessage> {
 
   const countdownObservedAt = Date.now();
 
-  const countdown = await clients[0]!.waitFor(
+  const countdown = await clients[0].waitFor(
     (message) => hasType(message, "phase") && message.phase === "countdown",
     "countdown phase",
   );
@@ -298,7 +301,7 @@ async function readyAndRace(clients: Client[]): Promise<WireMessage> {
   const countdownEndsAt = numberField(countdown, "countdownEndsAt");
   assert.ok(countdownEndsAt > Date.now(), "countdown deadline is in the future");
 
-  const race = await clients[0]!.waitFor(
+  const race = await clients[0].waitFor(
     (message) => hasType(message, "phase") && message.phase === "racing",
     "racing phase",
     8_000,
@@ -351,10 +354,10 @@ async function completeDelivery(
   orderIndex: number,
   expectWin = false,
 ) {
-  const order = orders[orderIndex % orders.length]!;
-  position(client, city.restaurants[order.restaurantId]!);
+  const order = orders[orderIndex % orders.length];
+  position(client, city.restaurants[order.restaurantId]);
   await progressFor(client, id, orderIndex, 0);
-  position(client, city.houses[order.houseId]!);
+  position(client, city.houses[order.houseId]);
 
   if (expectWin) {
     await progressFor(client, id, orderIndex + 1, 0);
@@ -399,6 +402,8 @@ async function testCreatorModeAndRush(): Promise<void> {
     const orders = generateOrders(creatorInfo.seed);
 
     for (let index = 0; index < 7; index++) {
+      // Protocol scenarios advance shared room state in order; parallel execution changes the test.
+      // oxlint-disable-next-line eslint/no-await-in-loop
       await completeDelivery(creator, creatorInfo.id, city, orders, index);
     }
 
@@ -440,6 +445,8 @@ async function testDeliveryRace(): Promise<void> {
     const orders = generateOrders(seed);
 
     for (let index = 0; index < 3; index++) {
+      // Protocol scenarios advance shared room state in order; parallel execution changes the test.
+      // oxlint-disable-next-line eslint/no-await-in-loop
       await completeDelivery(creator, id, city, orders, index, index === 2);
     }
 
@@ -501,7 +508,9 @@ async function testCheckpointRace(): Promise<void> {
     assert.equal(checkpoints.length, CHECKPOINT_COUNT, "shared checkpoint route has eight targets");
 
     for (let index = 0; index < CHECKPOINT_COUNT; index++) {
-      position(creator, checkpoints[index]!);
+      position(creator, checkpoints[index]);
+      // Protocol scenarios advance shared room state in order; parallel execution changes the test.
+      // oxlint-disable-next-line eslint/no-await-in-loop
       const progress = await progressFor(creator, id, 0, index + 1);
       assert.equal(progress.orderIndex, 0, "checkpoint mode does not advance delivery orders");
       assert.equal(progress.deliveries, 0, "checkpoint mode does not award delivery score");
@@ -539,7 +548,7 @@ async function testFreeDrive(): Promise<void> {
     const orders = generateOrders(seed);
 
     for (let index = 0; index < 3; index++) {
-      await completeFreeDriveRoute(creator, city, orders[index % orders.length]!);
+      completeFreeDriveRoute(creator, city, orders[index % orders.length]);
     }
 
     await creator.waitForNo(
@@ -558,9 +567,9 @@ async function testFreeDrive(): Promise<void> {
   }
 }
 
-async function completeFreeDriveRoute(client: Client, city: City, order: Order) {
-  position(client, city.restaurants[order.restaurantId]!);
-  position(client, city.houses[order.houseId]!);
+function completeFreeDriveRoute(client: Client, city: City, order: Order) {
+  position(client, city.restaurants[order.restaurantId]);
+  position(client, city.houses[order.houseId]);
 }
 
 async function testInvalidMode(): Promise<void> {
@@ -608,7 +617,7 @@ async function testReconnectAndNextRound(): Promise<void> {
 }
 
 async function main() {
-  const tests: Array<[string, () => Promise<void>]> = [
+  const tests: ModeTest[] = [
     ["creator mode adoption, duplicate join, rush routes", testCreatorModeAndRush],
     ["delivery first-to-three race", testDeliveryRace],
     ["checkpoint sequence", testCheckpointRace],
@@ -619,14 +628,18 @@ async function main() {
 
   for (const [name, test] of tests) {
     const started = Date.now();
+    // Protocol scenarios advance shared room state in order; parallel execution changes the test.
+    // oxlint-disable-next-line eslint/no-await-in-loop
     await test();
-    console.log(`ok - ${name} (${Date.now() - started}ms)`);
+    process.stdout.write(`ok - ${name} (${Date.now() - started}ms)\n`);
   }
 
-  console.log(`game modes integration passed (${origin})`);
+  process.stdout.write(`game modes integration passed (${origin})\n`);
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack : error);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

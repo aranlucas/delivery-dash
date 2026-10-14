@@ -21,10 +21,7 @@ interface RelativePlacement {
  * landmark footprint, and approach portals remain open for driving.
  * These are visual props only, so no city collision contract is needed.
  */
-const RELATIVE_PLACEMENTS: Record<
-  (typeof CITY_ZONES)[number]["id"],
-  RelativePlacement[]
-> = {
+const RELATIVE_PLACEMENTS: Record<(typeof CITY_ZONES)[number]["id"], RelativePlacement[]> = {
   festival: [
     { model: "market", position: [-32, 0, 36], rotation: [0, -0.18, 0], scale: [0.8, 0.8, 0.8] },
     {
@@ -74,7 +71,17 @@ function ModelBatch({ name, items }: ModelBatchProps) {
   return <GltfInstances scene={scene} items={items} shadows batchKey={name} />;
 }
 
-const HARBOR = CITY_ZONES.find((zone) => zone.id === "harbor")!;
+function harborZone() {
+  const zone = CITY_ZONES.find((candidate) => candidate.id === "harbor");
+
+  if (!zone) {
+    throw new Error("The city must define its harbor zone");
+  }
+
+  return zone;
+}
+
+const HARBOR = harborZone();
 
 const GANGWAY_POSTS: StaticInstance[] = [-14, -5, 5, 14].flatMap((x) =>
   [-1.15, 1.15].map((z) => ({ position: [x, 0.45, z], scale: [0.18, 1.35, 0.18] })),

@@ -4,7 +4,7 @@ import { connect } from "../net";
 import { useGameStore } from "../store";
 
 const randomCode = () =>
-  Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join(
+  Array.from({ length: 4 }, () => String.fromCodePoint(65 + Math.floor(Math.random() * 26))).join(
     "",
   );
 
@@ -16,7 +16,11 @@ function modeStyle(id: (typeof GAME_MODE_IDS)[number]): ModeStyle {
   return { "--mode-color": GAME_MODES[id].color };
 }
 
-export function Menu({ onGameIntent }: { onGameIntent: () => void }) {
+interface MenuProps {
+  onGameIntent: () => void;
+}
+
+export function Menu({ onGameIntent }: MenuProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [mode, setMode] = useState<GameMode>(DEFAULT_MODE);

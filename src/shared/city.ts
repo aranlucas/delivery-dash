@@ -665,8 +665,18 @@ function buildExpressways() {
   return { ramps, decks, pillars: standing, rails, boostPads };
 }
 
+interface RoadStructures {
+  ramps: Ramp[];
+  decks: Deck[];
+}
+
+interface PlaceCorner {
+  pos: Pos2;
+  stops: Pos2[];
+}
+
 /** Seeded jump ramps on the street grid, each with a boost strip on its approach. */
-function scatterStunts(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }) {
+function scatterStunts(seed: number, structures: RoadStructures) {
   const random = mulberry32(seed ^ 0x2b3c1d);
   const kickers: Ramp[] = [];
   const boostPads: BoostPad[] = [];
@@ -781,11 +791,7 @@ const carColors = [
 ];
 
 /** True when an expressway deck or approach ramp runs along this road line. */
-function roadHasStructure(
-  structures: { ramps: Ramp[]; decks: Deck[] },
-  axis: "x" | "z",
-  cross: number,
-) {
+function roadHasStructure(structures: RoadStructures, axis: "x" | "z", cross: number) {
   for (const deck of structures.decks) {
     const alongX = deck.maxX - deck.minX > deck.maxZ - deck.minZ;
 
@@ -837,7 +843,7 @@ export const PARKED_CAR_HALF_LENGTH = 2.3;
 export const PARKED_CAR_HALF_WIDTH = 1.25;
 
 /** A lane of moving traffic on every ordinary road line — the streets should look inhabited. */
-function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }): TrafficRoute[] {
+function buildTraffic(seed: number, structures: RoadStructures): TrafficRoute[] {
   const random = mulberry32(seed ^ 0x1c0ffee);
   const routes: TrafficRoute[] = [];
 
@@ -855,6 +861,7 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
       ) {
         continue;
       }
+
       const direction = i % 2 ? 1 : -1;
 
       for (let n = 0; n < 2; n++) {
@@ -876,7 +883,7 @@ function buildTraffic(seed: number, structures: { ramps: Ramp[]; decks: Deck[] }
 /** Kerb parking down one side of each road line, skipping anything a driver has to reach. */
 function buildParking(
   seed: number,
-  structures: { ramps: Ramp[]; decks: Deck[] },
+  structures: RoadStructures,
   ramps: Ramp[],
   boostPads: BoostPad[],
   stops: Pos2[],
@@ -886,6 +893,44 @@ function buildParking(
 
   const slots = [-10, -3, 4, 11];
 
+  const addRoadSlots = (axis: "x" | "z", cross: number) => {
+    for (let j = 0; j < GRID_SIZE; j++) {
+      for (const slot of slots) {
+        if (random() < 0.35) {
+          continue;
+        }
+
+        const along = blockCenter(j) + slot;
+
+        const x = axis === "x" ? along : cross;
+        const z = axis === "x" ? cross : along;
+
+        if (zoneAt(x, z, 6)) {
+          continue;
+        }
+
+        if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) {
+          continue;
+        }
+
+        if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) {
+          continue;
+        }
+
+        if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) {
+          continue;
+        }
+
+        cars.push({
+          x,
+          z,
+          yaw: axis === "x" ? Math.PI / 2 : 0,
+          color: carColors[randomInt(random, carColors.length)],
+        });
+      }
+    }
+  };
+
   for (const axis of ["x", "z"] as const) {
     for (let i = 0; i < GRID_SIZE; i++) {
       const road = roadCenter(i);
@@ -893,41 +938,10 @@ function buildParking(
       if (isSpawnRoad(axis, i) || roadHasStructure(structures, axis, road)) {
         continue;
       }
+
       const cross = road + parkingSide(i) * PARKING_OFFSET;
 
-      for (let j = 0; j < GRID_SIZE; j++) {
-        for (const slot of slots) {
-          if (random() < 0.35) {
-            continue;
-          }
-          const along = blockCenter(j) + slot;
-
-          const x = axis === "x" ? along : cross;
-          const z = axis === "x" ? cross : along;
-
-          if (zoneAt(x, z, 6)) {
-            continue;
-          }
-
-          if (stops.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 10)) {
-            continue;
-          }
-
-          if (ramps.some((r) => Math.hypot(r.x - x, r.z - z) < r.length / 2 + 10)) {
-            continue;
-          }
-
-          if (boostPads.some((p) => Math.hypot(p.x - x, p.z - z) < 8)) {
-            continue;
-          }
-          cars.push({
-            x,
-            z,
-            yaw: axis === "x" ? Math.PI / 2 : 0,
-            color: carColors[randomInt(random, carColors.length)],
-          });
-        }
-      }
+      addRoadSlots(axis, cross);
     }
   }
 
@@ -943,9 +957,11 @@ export function generateCity(seed: number): City {
   // They sit between traffic lanes, so drivers choose the shortcut rather than being forced onto it.
   for (const id of ["stunt", "freight"] as const) {
     const foundZone = CITY_ZONES.find((z) => z.id === id);
+
     if (!foundZone) {
       continue;
     }
+
     const x = foundZone.x + (id === "freight" ? 24 : 0);
 
     for (const direction of [-1, 1]) {
@@ -984,7 +1000,7 @@ export function generateCity(seed: number): City {
 
   // Places pull from their own random stream so buildings can avoid their footprints.
   // Positions sit just inside block corners, adjacent to the surrounding roads.
-  const corners: { pos: Pos2; stops: Pos2[] }[] = [];
+  const corners: PlaceCorner[] = [];
 
   for (let x = 0; x < GRID_SIZE; x++) {
     for (let z = 0; z < GRID_SIZE; z++) {
@@ -1062,54 +1078,61 @@ export function generateCity(seed: number): City {
   const buildings: Building[] = [];
   const parks: Pos2[] = [];
 
+  const addBlockBuildings = (gx: number, gz: number) => {
+    const cx = blockCenter(gx);
+    const cz = blockCenter(gz);
+
+    if (zoneAt(cx, cz)) {
+      return;
+    }
+
+    const district = districtAt(gx, gz);
+    const outline = districtBuilding[district];
+
+    if (random() < outline.park) {
+      parks.push([cx, cz]);
+
+      return;
+    }
+
+    const count = 1 + randomInt(random, outline.count);
+
+    for (let n = 0; n < count; n++) {
+      const w = outline.size + random() * outline.spread;
+      const d = outline.size + random() * outline.spread;
+
+      let placed = false;
+
+      for (let attempt = 0; attempt < 8 && !placed; attempt++) {
+        const x = cx + (random() - 0.5) * (BLOCK_SIZE - w - 3);
+        const z = cz + (random() - 0.5) * (BLOCK_SIZE - d - 3);
+
+        if (
+          placePoints.some(
+            ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
+          )
+        ) {
+          continue;
+        }
+
+        const palette = districtColors[district];
+        buildings.push({
+          x,
+          z,
+          w,
+          d,
+          h: outline.base + random() * outline.rise,
+          color: palette[randomInt(random, palette.length)],
+          district,
+        });
+        placed = true;
+      }
+    }
+  };
+
   for (let gx = 0; gx < GRID_SIZE; gx++) {
     for (let gz = 0; gz < GRID_SIZE; gz++) {
-      const cx = blockCenter(gx);
-      const cz = blockCenter(gz);
-
-      if (zoneAt(cx, cz)) {
-        continue;
-      }
-      const district = districtAt(gx, gz);
-      const outline = districtBuilding[district];
-
-      if (random() < outline.park) {
-        parks.push([cx, cz]);
-        continue;
-      }
-
-      const count = 1 + randomInt(random, outline.count);
-
-      for (let n = 0; n < count; n++) {
-        const w = outline.size + random() * outline.spread;
-        const d = outline.size + random() * outline.spread;
-
-        let placed = false;
-
-        for (let attempt = 0; attempt < 8 && !placed; attempt++) {
-          const x = cx + (random() - 0.5) * (BLOCK_SIZE - w - 3);
-          const z = cz + (random() - 0.5) * (BLOCK_SIZE - d - 3);
-
-          if (
-            placePoints.some(
-              ([px, pz]) => Math.abs(px - x) < w / 2 + 6 && Math.abs(pz - z) < d / 2 + 6,
-            )
-          ) {
-            continue;
-          }
-          const palette = districtColors[district];
-          buildings.push({
-            x,
-            z,
-            w,
-            d,
-            h: outline.base + random() * outline.rise,
-            color: palette[randomInt(random, palette.length)],
-            district,
-          });
-          placed = true;
-        }
-      }
+      addBlockBuildings(gx, gz);
     }
   }
 
