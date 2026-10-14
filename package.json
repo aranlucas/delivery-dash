@@ -15,9 +15,10 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "check": "pnpm typecheck",
-    "test": "node --test 'src/**/*.test.ts'",
+    "test": "vitest run",
     "cf-typegen": "cf workers types",
-    "typecheck": "pnpm cf-typegen && tsc -b"
+    "typecheck": "pnpm cf-typegen && tsc -b",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -43,7 +44,8 @@
     "oxlint-tsgolint": "^7.0.2004",
     "portless": "0.15.7",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "5.0.3"
   },
   "engines": {
     "node": ">=24 <27",

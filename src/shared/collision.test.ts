@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "./city.ts";
 import { rampBlocks } from "./ramps.ts";
 import { buildGrid, queryRange } from "./collision.ts";
@@ -26,7 +26,7 @@ function randomBoxes(seed: number, count: number): AABB[] {
   });
 }
 
-await test("queryRange exactly matches a brute-force XZ query", () => {
+test("queryRange exactly matches a brute-force XZ query", () => {
   const boxes = randomBoxes(777, 300);
   const grid = buildGrid(boxes);
   const random = mulberry32(555);
@@ -75,7 +75,7 @@ const bruteBlocked = (city: City, x: number, z: number, height: number) => {
   );
 };
 
-await test("altitude-aware grid collision matches a brute-force solid scan", async () => {
+test("altitude-aware grid collision matches a brute-force solid scan", async () => {
   const { blocked } = await import("./city.ts");
   const city = generateCity(42);
   const random = mulberry32(4242);
@@ -88,7 +88,7 @@ await test("altitude-aware grid collision matches a brute-force solid scan", asy
   }
 });
 
-await test("current city buckets keep candidate sets small", () => {
+test("current city buckets keep candidate sets small", () => {
   const grid = generateCity(42).collisionGrid;
   let largest = 0;
 

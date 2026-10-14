@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { blocked, generateCity, groundHeightAt, roadCenter } from "../../shared/city.ts";
 import { findCarRecovery, isRecoverySpotClear } from "./car-recovery.ts";
 
-await test("recovery from buildings, ramps, roofs and map edges finds a flat clear nearby street", () => {
+test("recovery from buildings, ramps, roofs and map edges finds a flat clear nearby street", () => {
   for (const seed of [1, 99, 777, 2026, 12345]) {
     const city = generateCity(seed);
     const spawn = city.spawns[0];
@@ -26,7 +26,7 @@ await test("recovery from buildings, ramps, roofs and map edges finds a flat cle
   }
 });
 
-await test("a clear street preserves the driving direction and avoids nearby traffic", () => {
+test("a clear street preserves the driving direction and avoids nearby traffic", () => {
   const city = generateCity(99);
   const pose = { x: roadCenter(3), z: roadCenter(4), yaw: Math.PI / 2 };
   const recovered = findCarRecovery(city, pose, pose);

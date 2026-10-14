@@ -1,7 +1,7 @@
 import { z as schema } from "zod";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { test } from "node:test";
+import { test } from "vitest";
 import { generateCity, blocked, safeTravel, CITY_ZONES } from "./city.ts";
 import {
   modelColliders,
@@ -26,7 +26,7 @@ const gltfSchema = schema.object({
   accessors: schema.array(schema.object({ count: schema.number().int().nonnegative() })),
 });
 
-await test("authored storefronts keep pickup stops and their approach clear across seeds", () => {
+test("authored storefronts keep pickup stops and their approach clear across seeds", () => {
   for (let seed = 1; seed <= 32; seed++) {
     const city = generateCity(seed);
     const shops = city.restaurants.filter((p) => storefrontModel(p.name));
@@ -47,7 +47,7 @@ await test("authored storefronts keep pickup stops and their approach clear acro
   }
 });
 
-await test("jump gate posts and overhead beam are solid while the whole jump lane stays open", () => {
+test("jump gate posts and overhead beam are solid while the whole jump lane stays open", () => {
   const city = generateCity(2026);
 
   for (const zone of CITY_ZONES.filter(
@@ -66,7 +66,7 @@ await test("jump gate posts and overhead beam are solid while the whole jump lan
   }
 });
 
-await test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
+test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
   const names = ["sushi", "pizza", "depot", "jump-gate", "landing-target"] as const;
 
   const results = await Promise.all(
@@ -106,7 +106,7 @@ await test("shipping Blender kit stays within its geometry, material and texture
   assert.ok(totalBytes < 450_000, `kit is ${totalBytes} bytes`);
 });
 
-await test("storefront lookup leaves unauthored restaurants without a model", () => {
+test("storefront lookup leaves unauthored restaurants without a model", () => {
   assert.equal(storefrontModel("Sushi Express"), "sushi");
   assert.equal(storefrontModel("Pizza Planet"), "pizza");
   assert.equal(storefrontModel("Dumpling Depot"), "depot");
