@@ -72,7 +72,12 @@ export function CityViewCamera() {
       orbit.target.set(ownPose.x, ownPose.y, ownPose.z);
       distance = 50;
     } else {
-      const zone = CITY_ZONES.find((entry) => entry.id === cityViewFocus)!;
+      const zone = CITY_ZONES.find((entry) => entry.id === cityViewFocus);
+
+      if (!zone) {
+        return;
+      }
+
       orbit.target.set(zone.x, zone.height * 0.16, zone.z);
       distance = Math.max(135, zone.height * 2.1);
     }

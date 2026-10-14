@@ -114,8 +114,8 @@ function Scene({ seed, city, orders }: SceneProps) {
       <Sun inspecting={inspecting} />
       <City city={city} seed={seed} />
       <OwnCar
-        spawn={city.spawns[self.spawnIndex]!.pos}
-        spawnYaw={city.spawns[self.spawnIndex]!.yaw}
+        spawn={city.spawns[self.spawnIndex].pos}
+        spawnYaw={city.spawns[self.spawnIndex].yaw}
         city={city}
         phase={phase}
         color={self.color}
@@ -130,7 +130,7 @@ function Scene({ seed, city, orders }: SceneProps) {
             color={p.color}
             name={p.name}
             carrying={p.leg === "dropoff"}
-            spawn={city.spawns[p.spawnIndex]!.pos}
+            spawn={city.spawns[p.spawnIndex].pos}
           />
         ),
       )}

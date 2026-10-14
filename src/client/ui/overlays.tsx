@@ -61,13 +61,18 @@ export function Lobby() {
       </div>
       {connected ? (
         <button
+          type="button"
           className="arcade-button arcade-button-primary lobby-ready"
           onClick={() => self && send({ t: "ready", ready: !self.ready })}
         >
           {self?.ready ? "CANCEL READY" : mode === "free" ? "READY TO EXPLORE" : "READY TO RACE"}
         </button>
       ) : (
-        <button className="arcade-button arcade-button-primary lobby-ready" onClick={rejoin}>
+        <button
+          type="button"
+          className="arcade-button arcade-button-primary lobby-ready"
+          onClick={rejoin}
+        >
           REJOIN RACE
         </button>
       )}
@@ -77,7 +82,7 @@ export function Lobby() {
           {error}
         </p>
       ) : null}
-      <button className="leave-room" onClick={leaveRoom}>
+      <button type="button" className="leave-room" onClick={leaveRoom}>
         LEAVE ROOM
       </button>
     </aside>
@@ -86,18 +91,22 @@ export function Lobby() {
 
 const MINIMAP_SIZE = 190;
 
-/** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
-function Minimap({
-  city,
-  target,
-  dropoff,
-  checkpoint = false,
-}: {
+interface MinimapProps {
   city: City;
-  target?: [number, number];
+  target?: City["parks"][number];
   dropoff: boolean;
   checkpoint?: boolean;
-}) {
+}
+
+interface HudProps {
+  city?: City;
+  orders?: Order[];
+}
+
+const EMPTY_ORDERS: Order[] = [];
+
+/** Top-down city plan with the expressways, the jump ramps, the target, and every driver. */
+function Minimap({ city, target, dropoff, checkpoint = false }: MinimapProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const players = useGameStore((state) => state.players);
   const selfId = useGameStore((state) => state.selfId);
@@ -106,13 +115,17 @@ function Minimap({
     const element = canvas.current;
 
     if (!element) {
-      return;
+      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined;
     }
 
     const context = element.getContext("2d");
 
     if (!context) {
-      return;
+      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined;
     }
 
     const ratio = Math.min(2, window.devicePixelRatio || 1);
@@ -176,7 +189,7 @@ function Minimap({
         context.fillStyle = zone.color;
         context.font = "bold 8px sans-serif";
         context.textAlign = "center";
-        context.fillText(zone.id === "stunt" ? "JUMP" : zone.name.split(" ")[0]!, x, z + 3);
+        context.fillText(zone.id === "stunt" ? "JUMP" : zone.name.split(" ")[0], x, z + 3);
       }
 
       context.strokeStyle = "#ff9d33";
@@ -328,7 +341,7 @@ interface MeterStyle extends React.CSSProperties {
   "--charge"?: string;
 }
 
-export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
+export function HUD({ city, orders = EMPTY_ORDERS }: HudProps) {
   const phase = useGameStore((state) => state.phase);
   const players = useGameStore((state) => state.players);
   const self = useGameStore(ownPlayer);
@@ -341,7 +354,9 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
 
   useEffect(() => {
     if (phase !== "racing" || cameraMode === "city") {
-      return;
+      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined;
     }
 
     const timer = window.setInterval(() => setNow(Date.now()), 50);
@@ -378,7 +393,7 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
     (zone) => Math.hypot(ownPose.x - zone.x, ownPose.z - zone.z) < 85,
   );
 
-  const sortedPlayers = [...players].sort((a, b) => comparePlayers(mode, a, b));
+  const sortedPlayers = players.toSorted((a, b) => comparePlayers(mode, a, b));
 
   const fast =
     ownPose.speed > 26 ||
@@ -430,7 +445,7 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
         )}
       </section>
 
-      <button className="hud-leave" onClick={leaveRoom}>
+      <button type="button" className="hud-leave" onClick={leaveRoom}>
         ← CHANGE MODE / LEAVE
       </button>
 
@@ -517,6 +532,7 @@ export function HUD({ city, orders = [] }: { city?: City; orders?: Order[] }) {
         checkpoint={checkpoint}
       />
       <button
+        type="button"
         className="recovery-button"
         disabled={drivingTelemetry.recoverySeconds > 0}
         onClick={(event) => {
@@ -581,10 +597,10 @@ function Reconnect() {
       <section className="arcade-panel reconnect-panel">
         <h2>CONNECTION LOST</h2>
         <p>Your taxi is waiting at the curb.</p>
-        <button className="arcade-button arcade-button-primary" onClick={rejoin}>
+        <button type="button" className="arcade-button arcade-button-primary" onClick={rejoin}>
           REJOIN RACE
         </button>
-        <button className="leave-room" onClick={leaveRoom}>
+        <button type="button" className="leave-room" onClick={leaveRoom}>
           RETURN TO MODES
         </button>
       </section>
@@ -630,7 +646,7 @@ export function WinnerScreen() {
           </div>
         ))}
         <small>RETURNING TO THE GRID…</small>
-        <button className="leave-room" onClick={leaveRoom}>
+        <button type="button" className="leave-room" onClick={leaveRoom}>
           CHOOSE ANOTHER MODE
         </button>
       </section>

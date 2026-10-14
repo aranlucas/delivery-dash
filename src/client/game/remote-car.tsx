@@ -13,6 +13,8 @@ const kindFor = (id: string) => {
   let hash = 0;
 
   for (let index = 0; index < id.length; index++) {
+    // Rival IDs are hashed by UTF-16 code unit; changing this would change existing car assignments.
+    // oxlint-disable-next-line unicorn/prefer-code-point
     hash = Math.trunc(hash * 31 + id.charCodeAt(index));
   }
 

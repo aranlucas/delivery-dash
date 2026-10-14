@@ -10,7 +10,13 @@ const canvas = (size: number) => {
   const element = document.createElement("canvas");
   element.width = element.height = size;
 
-  return [element, element.getContext("2d")!] as const;
+  const context = element.getContext("2d");
+
+  if (!context) {
+    throw new Error("A 2D canvas context is required to create world textures");
+  }
+
+  return [element, context] as const;
 };
 
 const finish = (element: HTMLCanvasElement, repeat = 1) => {

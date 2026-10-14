@@ -1,3 +1,4 @@
+import { z as schema } from "zod";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
@@ -9,27 +10,23 @@ import {
   jumpGatePosition,
 } from "./delivery-assets.ts";
 
-interface Mesh {
-  primitives: Primitive[];
-}
+const gltfSchema = schema.object({
+  materials: schema.array(schema.unknown()),
+  textures: schema.array(schema.unknown()).optional(),
+  meshes: schema.array(
+    schema.object({
+      primitives: schema.array(
+        schema.object({
+          indices: schema.number().int().nonnegative(),
+          attributes: schema.record(schema.string(), schema.number()),
+        }),
+      ),
+    }),
+  ),
+  accessors: schema.array(schema.object({ count: schema.number().int().nonnegative() })),
+});
 
-interface Primitive {
-  indices: number;
-  attributes: Record<string, number>;
-}
-
-interface Accessor {
-  count: number;
-}
-
-interface GLTF {
-  materials: unknown[];
-  textures?: unknown[];
-  meshes: Mesh[];
-  accessors: Accessor[];
-}
-
-test("authored storefronts keep pickup stops and their approach clear across seeds", () => {
+await test("authored storefronts keep pickup stops and their approach clear across seeds", () => {
   for (let seed = 1; seed <= 32; seed++) {
     const city = generateCity(seed);
     const shops = city.restaurants.filter((p) => storefrontModel(p.name));
@@ -37,7 +34,9 @@ test("authored storefronts keep pickup stops and their approach clear across see
 
     for (const p of shops) {
       assert.equal(blocked(city, ...p.stop, 0), false, `${seed}: ${p.name} pickup blocked`);
-      const boxes = modelColliders(storefrontModel(p.name)!, ...p.pos, storefrontYaw(p));
+      const model = storefrontModel(p.name);
+      assert.ok(model);
+      const boxes = modelColliders(model, ...p.pos, storefrontYaw(p));
       assert.ok(
         boxes.every((box) =>
           city.buildingAABBs.some((b) => JSON.stringify(b) === JSON.stringify(box)),
@@ -48,10 +47,12 @@ test("authored storefronts keep pickup stops and their approach clear across see
   }
 });
 
-test("jump gate posts and overhead beam are solid while the whole jump lane stays open", () => {
+await test("jump gate posts and overhead beam are solid while the whole jump lane stays open", () => {
   const city = generateCity(2026);
 
-  for (const zone of CITY_ZONES.filter((z) => z.id === "stunt" || z.id === "freight")) {
+  for (const zone of CITY_ZONES.filter(
+    (candidate) => candidate.id === "stunt" || candidate.id === "freight",
+  )) {
     const [x, z] = jumpGatePosition(zone);
     assert.equal(blocked(city, x + 10, z, 0), true);
     assert.equal(blocked(city, x - 10, z, 0), true);
@@ -65,13 +66,15 @@ test("jump gate posts and overhead beam are solid while the whole jump lane stay
   }
 });
 
-test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
+await test("shipping Blender kit stays within its geometry, material and texture budgets", async () => {
   const names = ["sushi", "pizza", "depot", "jump-gate", "landing-target"] as const;
+
   const results = await Promise.all(
     names.map(async (name) => {
       const bytes = await readFile(
         new URL(`../../public/models/delivery/${name}.glb`, import.meta.url),
       );
+
       return { name, bytes };
     }),
   );
@@ -81,16 +84,17 @@ test("shipping Blender kit stays within its geometry, material and texture budge
   for (const { name, bytes } of results) {
     totalBytes += bytes.length;
     assert.equal(bytes.toString("utf8", 0, 4), "glTF");
-    const json = JSON.parse(bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12))) as GLTF;
+
+    const json = gltfSchema.parse(
+      JSON.parse(bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12))),
+    );
+
     assert.equal(json.materials.length, 1, `${name} has extra materials`);
     assert.equal(json.textures?.length ?? 0, 0, `${name} unexpectedly downloads textures`);
     const primitives = json.meshes.flatMap((m) => m.primitives);
     assert.equal(primitives.length, 1, `${name} needs more than one draw call`);
 
-    const triangles = primitives.reduce(
-      (sum, p) => sum + json.accessors[p.indices].count / 3,
-      0,
-    );
+    const triangles = primitives.reduce((sum, p) => sum + json.accessors[p.indices].count / 3, 0);
 
     assert.ok(triangles < 3000, `${name} has ${triangles} triangles`);
     assert.ok(
@@ -100,4 +104,11 @@ test("shipping Blender kit stays within its geometry, material and texture budge
   }
 
   assert.ok(totalBytes < 450_000, `kit is ${totalBytes} bytes`);
+});
+
+await test("storefront lookup leaves unauthored restaurants without a model", () => {
+  assert.equal(storefrontModel("Sushi Express"), "sushi");
+  assert.equal(storefrontModel("Pizza Planet"), "pizza");
+  assert.equal(storefrontModel("Dumpling Depot"), "depot");
+  assert.equal(storefrontModel("Unknown storefront"), undefined);
 });

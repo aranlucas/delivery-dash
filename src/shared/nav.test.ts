@@ -8,7 +8,7 @@ const HALF_PI = Math.PI / 2;
 const near = (actual: number, expected: number, message: string) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: got ${actual}, want ${expected}`);
 
-test("worldBearing matches the three.js rotation convention", () => {
+await test("worldBearing matches the three.js rotation convention", () => {
   for (const [tx, tz, expected] of [
     [0, 10, 0],
     [10, 0, HALF_PI],
@@ -28,7 +28,7 @@ function screenX(yaw: number, tx: number, tz: number): number {
   return new THREE.Vector3(tx, 1, tz).project(camera).x;
 }
 
-test("relativeBearing agrees with three.js screen placement", () => {
+await test("relativeBearing agrees with three.js screen placement", () => {
   for (const [yaw, tx, tz] of [
     [0, 30, 0],
     [0, -30, 0],
@@ -46,7 +46,7 @@ test("relativeBearing agrees with three.js screen placement", () => {
   }
 });
 
-test("relativeBearing is stable after accumulated spins", () => {
+await test("relativeBearing is stable after accumulated spins", () => {
   for (const yaw of [-9 * Math.PI, -Math.PI, 0, Math.PI, 7 * Math.PI]) {
     const bearing = relativeBearing(0, 0, yaw, 10, 3);
     assert.ok(bearing > -Math.PI - 1e-9 && bearing <= Math.PI + 1e-9);

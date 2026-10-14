@@ -86,6 +86,24 @@ export interface RaceRoomContext {
   acceptWebSocket(socket: WebSocket): void;
 }
 
+interface RoomWorld {
+  seed: number;
+  city: City;
+  orders: Order[];
+}
+
+type PositionMessage = Extract<ClientMessage, PositionTag>;
+
+interface PositionTag {
+  t: "pos";
+}
+
+interface ProgressTag {
+  t: "progress";
+}
+
+type ProgressMessage = Extract<ServerMessage, ProgressTag>;
+
 export class RaceRoomCore {
   private readonly ctx: RaceRoomContext;
 
@@ -94,7 +112,7 @@ export class RaceRoomCore {
   }
 
   private state?: RoomState;
-  private world?: { seed: number; city: City; orders: Order[] };
+  private world?: RoomWorld;
 
   /** The city is large enough that regenerating it per position update would dominate the tick. */
   private route(seed: number) {
@@ -205,8 +223,17 @@ export class RaceRoomCore {
       ...player,
     }));
   }
+  private requireState(): RoomState {
+    const state = this.state;
+
+    if (!state) {
+      throw new Error("Room state must be initialized before handling an active game");
+    }
+
+    return state;
+  }
   private phaseMessage(): ServerMessage {
-    const s = this.state!;
+    const s = this.requireState();
 
     return {
       t: "phase",
@@ -218,9 +245,9 @@ export class RaceRoomCore {
       standings: s.standings,
     };
   }
-  private standings(state = this.state!): Standing[] {
+  private standings(state = this.requireState()): Standing[] {
     return this.roster(state)
-      .sort((a, b) => comparePlayers(state.mode, a, b))
+      .toSorted((a, b) => comparePlayers(state.mode, a, b))
       .map(({ id, name, deliveries, checkpointIndex }) => ({
         id,
         name,
@@ -230,7 +257,7 @@ export class RaceRoomCore {
   }
 
   private sendWelcome(socket: RoomSocket, id: string) {
-    const state = this.state!;
+    const state = this.requireState();
     this.send(socket, {
       t: "welcome",
       id,
@@ -244,7 +271,7 @@ export class RaceRoomCore {
     });
   }
 
-  async fetch(request: Request): Promise<Response> {
+  fetch(request: Request): Response {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Expected WebSocket", { status: 426 });
     }
@@ -353,14 +380,13 @@ export class RaceRoomCore {
       }
     }
 
-    if (!state) {
-      state = this.state = {
-        seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
-        mode: requestedMode ?? DEFAULT_MODE,
-        phase: "lobby",
-        players: {},
-      };
-    }
+    state ??= {
+      seed: crypto.getRandomValues(new Uint32Array(1))[0],
+      mode: requestedMode ?? DEFAULT_MODE,
+      phase: "lobby",
+      players: {},
+    };
+    this.state = state;
 
     const lateFreeJoin = state.phase === "racing" && state.mode === "free";
 
@@ -393,7 +419,7 @@ export class RaceRoomCore {
     state.players[playerId] = {
       name,
       ready: lateFreeJoin,
-      color: PALETTE[spawnIndex % PALETTE.length]!,
+      color: PALETTE[spawnIndex % PALETTE.length],
       deliveries: 0,
       orderIndex: 0,
       leg: "pickup",
@@ -407,7 +433,7 @@ export class RaceRoomCore {
   }
 
   private async maybeCountdown() {
-    const state = this.state!;
+    const state = this.requireState();
     const players = Object.values(state.players);
 
     if (state.phase !== "lobby" || !players.length || !players.every((p) => p.ready)) {
@@ -422,8 +448,8 @@ export class RaceRoomCore {
     this.broadcast(this.phaseMessage());
   }
 
-  private async position(id: string, update: Extract<ClientMessage, { t: "pos" }>) {
-    const state = this.state!;
+  private async position(id: string, update: PositionMessage) {
+    const state = this.requireState();
 
     if (
       state.phase === "finished" ||
@@ -460,7 +486,7 @@ export class RaceRoomCore {
       return;
     } // lobby/countdown: free-roam relay only, no delivery progress
 
-    const player = { ...state.players[id]! };
+    const player = { ...state.players[id] };
     const { city, orders } = this.route(state.seed);
     const target = getObjective(state.mode, city, orders, player);
 
@@ -492,7 +518,7 @@ export class RaceRoomCore {
 
     const next = { ...state, players: { ...state.players, [id]: player } };
 
-    const progress: Extract<ServerMessage, { t: "progress" }> = {
+    const progress: ProgressMessage = {
       t: "progress",
       id,
       orderIndex: player.orderIndex,
@@ -513,7 +539,7 @@ export class RaceRoomCore {
     }
   }
 
-  private async finish(state = this.state!, progress?: Extract<ServerMessage, { t: "progress" }>) {
+  private async finish(state = this.requireState(), progress?: ProgressMessage) {
     if (state.phase === "finished") {
       return;
     }

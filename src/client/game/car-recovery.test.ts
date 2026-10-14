@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { blocked, generateCity, groundHeightAt, roadCenter } from "../../shared/city.ts";
 import { findCarRecovery, isRecoverySpotClear } from "./car-recovery.ts";
 
-test("recovery from buildings, ramps, roofs and map edges finds a flat clear nearby street", () => {
+await test("recovery from buildings, ramps, roofs and map edges finds a flat clear nearby street", () => {
   for (const seed of [1, 99, 777, 2026, 12345]) {
     const city = generateCity(seed);
-    const spawn = city.spawns[0]!;
+    const spawn = city.spawns[0];
     const fallback = { x: spawn.pos[0], z: spawn.pos[1], yaw: spawn.yaw };
 
     const positions = [
@@ -26,7 +26,7 @@ test("recovery from buildings, ramps, roofs and map edges finds a flat clear nea
   }
 });
 
-test("a clear street preserves the driving direction and avoids nearby traffic", () => {
+await test("a clear street preserves the driving direction and avoids nearby traffic", () => {
   const city = generateCity(99);
   const pose = { x: roadCenter(3), z: roadCenter(4), yaw: Math.PI / 2 };
   const recovered = findCarRecovery(city, pose, pose);

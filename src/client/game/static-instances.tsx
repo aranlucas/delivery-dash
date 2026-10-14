@@ -36,6 +36,7 @@ export function StaticInstances({
 
     const transform = new THREE.Object3D();
     const color = new THREE.Color();
+
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
       transform.position.set(...item.position);
@@ -53,6 +54,7 @@ export function StaticInstances({
         mesh.setColorAt(index, color.set(item.color));
       }
     }
+
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
 
@@ -83,15 +85,10 @@ interface GltfInstancesProps {
 }
 
 /** Walk a GLB scene into instanced parts, sharing the cached model's buffers. */
-export function GltfInstances({
-  scene,
-  items,
-  shadows,
-  batchKey,
-}: GltfInstancesProps) {
+export function GltfInstances({ scene, items, shadows, batchKey }: GltfInstancesProps) {
   const parts = useMemo(() => {
     scene.updateMatrixWorld(true);
-    const meshes: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>[] = [];
+    const meshes: THREE.Mesh[] = [];
     scene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) {
         return;
@@ -102,7 +99,8 @@ export function GltfInstances({
         object.receiveShadow = true;
       }
 
-      meshes.push(object as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>);
+      // SAFETY: The Mesh guard identifies the standard GLTF geometry/material contract.
+      meshes.push(object as THREE.Mesh);
     });
 
     return meshes;

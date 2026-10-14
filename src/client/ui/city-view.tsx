@@ -5,6 +5,7 @@ import { focusCityView, returnToDriving, useGameStore } from "../store";
 export function CityViewButton() {
   return (
     <button
+      type="button"
       className="city-view-button"
       onClick={(event) => {
         focusCityView();
@@ -75,25 +76,30 @@ export function CityViewOverlay() {
           <strong>CITY VIEW</strong>
           <span>Your car is held in place · The session continues</span>
         </div>
-        <button onClick={returnToDriving}>
+        <button type="button" onClick={returnToDriving}>
           <kbd>ESC</kbd> BACK TO DRIVING
         </button>
       </header>
       <nav className="city-view-controls" aria-label="City camera views">
         <div className="city-view-presets">
-          <button aria-pressed={focus === "overview"} onClick={() => focusCityView()}>
+          <button type="button" aria-pressed={focus === "overview"} onClick={() => focusCityView()}>
             <kbd>HOME</kbd> WHOLE ISLAND
           </button>
-          <button aria-pressed={focus === "overhead"} onClick={() => focusCityView("overhead")}>
+          <button
+            type="button"
+            aria-pressed={focus === "overhead"}
+            onClick={() => focusCityView("overhead")}
+          >
             OVERHEAD
           </button>
-          <button aria-pressed={focus === "car"} onClick={() => focusCityView("car")}>
+          <button type="button" aria-pressed={focus === "car"} onClick={() => focusCityView("car")}>
             MY CAR
           </button>
         </div>
         <div className="city-view-landmarks">
           {CITY_ZONES.map((zone) => (
             <button
+              type="button"
               key={zone.id}
               aria-pressed={focus === zone.id}
               onClick={() => focusCityView(zone.id)}

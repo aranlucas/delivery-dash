@@ -164,6 +164,7 @@ export function FleetCars({ city }: FleetCarsProps) {
         moving: true,
       });
     }
+
     for (let index = 0; index < city.parkedCars.length; index++) {
       const car = city.parkedCars[index];
       output[FLEET_KINDS[(index + 2) % FLEET_KINDS.length]].push({
@@ -197,6 +198,7 @@ export function FleetCars({ city }: FleetCarsProps) {
 
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
+
       for (let localIndex = 0; localIndex < groups[kind].length; localIndex++) {
         const slot = groups[kind][localIndex];
         const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
@@ -205,6 +207,7 @@ export function FleetCars({ city }: FleetCarsProps) {
           fleet.write(localIndex, car.x, car.z, car.yaw);
         }
       }
+
       fleet.flush();
     }
   }, [city, fleets, groups]);

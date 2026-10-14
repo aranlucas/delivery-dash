@@ -130,7 +130,18 @@ const driftCallout = (score: number) => {
  * Nudge a car out of geometry it can only have reached by landing on it — a jump that ends inside
  * a guardrail or a bridge column would otherwise wedge it there forever.
  */
-function unstick(city: City, pose: { x: number; z: number }, height: number, step: number) {
+interface HorizontalPosition {
+  x: number;
+  z: number;
+}
+
+interface RushState {
+  remaining: number;
+  maxSpeed: number;
+  tier: RushTier;
+}
+
+function unstick(city: City, pose: HorizontalPosition, height: number, step: number) {
   for (const radius of [2.5, 5, 9]) {
     for (let a = 0; a < 8; a++) {
       const angle = (a / 8) * Math.PI * 2;
@@ -141,6 +152,7 @@ function unstick(city: City, pose: { x: number; z: number }, height: number, ste
       if (blocked(city, pose.x + dx * radius, pose.z + dz * radius, height)) {
         continue;
       }
+
       const distance = Math.min(radius, step);
       pose.x += dx * distance;
       pose.z += dz * distance;
@@ -163,6 +175,7 @@ function isClimbingRamp(city: City, x: number, z: number, ground: number): boole
       return true;
     }
   }
+
   return false;
 }
 
@@ -211,7 +224,7 @@ export function useOwnCarController({
   const driftCharge = useRef(0);
   const previousHandbrake = useRef(false);
 
-  const rush = useRef<{ remaining: number; maxSpeed: number; tier: RushTier }>({
+  const rush = useRef<RushState>({
     remaining: 0,
     maxSpeed: NORMAL_MAX_SPEED,
     tier: 0,
@@ -232,7 +245,7 @@ export function useOwnCarController({
 
   const reset = useCallback(
     (destination?: RecoveryPose, refillBoost = true) => {
-      const velocity = velocityRef.current!;
+      const velocity = (velocityRef.current ??= new THREE.Vector2());
       const boost = drivingTelemetry.boost;
       ownPose.x = destination?.x ?? spawnX;
       ownPose.z = destination?.z ?? spawnZ;
@@ -268,7 +281,9 @@ export function useOwnCarController({
     if (!controlsEnabled) {
       pressed.clear();
 
-      return;
+      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
+      // oxlint-disable-next-line unicorn/no-useless-undefined
+      return undefined;
     }
 
     const keyDown = (event: KeyboardEvent) => {
@@ -345,9 +360,9 @@ export function useOwnCarController({
     }
   }, [phase, reset]);
   useFrame((state, dt) => {
-    const velocity = velocityRef.current!;
-    const forwardVector = forwardVectorRef.current!;
-    const rightVector = rightVectorRef.current!;
+    const velocity = (velocityRef.current ??= new THREE.Vector2());
+    const forwardVector = (forwardVectorRef.current ??= new THREE.Vector2());
+    const rightVector = (rightVectorRef.current ??= new THREE.Vector2());
     const d = Math.min(dt, 0.05);
     drivingTelemetry.padPulse = Math.max(0, drivingTelemetry.padPulse - d);
     drivingTelemetry.recoverySeconds = Math.max(0, drivingTelemetry.recoverySeconds - d);
@@ -542,7 +557,7 @@ export function useOwnCarController({
 
       if (surface.current < 2) {
         for (let index = 0; index < trafficCars.length; index++) {
-          const car = trafficCars[index]!;
+          const car = trafficCars[index];
 
           const dx = ownPose.x - car.x;
           const dz = ownPose.z - car.z;
@@ -601,7 +616,7 @@ export function useOwnCarController({
 
       if (!airborne.current && padCooldown.current === 0) {
         for (let index = 0; index < city.boostPads.length; index++) {
-          const pad = city.boostPads[index]!;
+          const pad = city.boostPads[index];
 
           if (
             !crossesBoostPad(
@@ -616,6 +631,7 @@ export function useOwnCarController({
           ) {
             continue;
           }
+
           padCooldown.current = 0.6;
           drivingTelemetry.padPulse = 0.9;
           drivingTelemetry.boostPadIndex = index;
@@ -639,6 +655,7 @@ export function useOwnCarController({
           if (velocity.length() > BOOST_PAD_MAX_SPEED) {
             velocity.setLength(BOOST_PAD_MAX_SPEED);
           }
+
           break;
         }
       }
@@ -684,7 +701,9 @@ export function useOwnCarController({
         }
       } else {
         const rise = ground - surface.current;
-        const climbingRamp = rise > LEDGE_SNAP && isClimbingRamp(city, ownPose.x, ownPose.z, ground);
+
+        const climbingRamp =
+          rise > LEDGE_SNAP && isClimbingRamp(city, ownPose.x, ownPose.z, ground);
 
         // A long frame on a steep launch still stores its climb rate. Only an
         // actual ledge should discard it and snap the wheels up without a jump.

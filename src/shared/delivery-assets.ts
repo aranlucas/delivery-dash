@@ -1,4 +1,4 @@
-import type { AABB, Place } from "./city.ts";
+import type { AABB, Place, Pos2 } from "./city.ts";
 import { deliveryColliders } from "./delivery-colliders.ts";
 
 export type DeliveryModel = keyof typeof deliveryColliders;
@@ -15,6 +15,8 @@ export function storefrontModel(name: string): DeliveryModel | undefined {
   if (name === "Dumpling Depot") {
     return "depot";
   }
+
+  return undefined;
 }
 
 /** Cardinal frontage faces the pickup curb; keeps its authored solid boxes exact after rotation. */
@@ -61,6 +63,6 @@ interface ZonePosition {
   z: number;
 }
 
-export function jumpGatePosition(zone: ZonePosition): [number, number] {
+export function jumpGatePosition(zone: ZonePosition): Pos2 {
   return [zone.x + (zone.id === "freight" ? 24 : 0), zone.z];
 }

@@ -26,7 +26,7 @@ function randomBoxes(seed: number, count: number): AABB[] {
   });
 }
 
-test("queryRange exactly matches a brute-force XZ query", () => {
+await test("queryRange exactly matches a brute-force XZ query", () => {
   const boxes = randomBoxes(777, 300);
   const grid = buildGrid(boxes);
   const random = mulberry32(555);
@@ -75,7 +75,7 @@ const bruteBlocked = (city: City, x: number, z: number, height: number) => {
   );
 };
 
-test("altitude-aware grid collision matches a brute-force solid scan", async () => {
+await test("altitude-aware grid collision matches a brute-force solid scan", async () => {
   const { blocked } = await import("./city.ts");
   const city = generateCity(42);
   const random = mulberry32(4242);
@@ -88,12 +88,12 @@ test("altitude-aware grid collision matches a brute-force solid scan", async () 
   }
 });
 
-test("current city buckets keep candidate sets small", () => {
+await test("current city buckets keep candidate sets small", () => {
   const grid = generateCity(42).collisionGrid;
   let largest = 0;
 
   for (let index = 0; index < grid.cols * grid.rows; index++) {
-    largest = Math.max(largest, grid.bucketStart[index + 1]! - grid.bucketStart[index]!);
+    largest = Math.max(largest, grid.bucketStart[index + 1] - grid.bucketStart[index]);
   }
 
   assert.ok(largest < 30, `largest bucket contains ${largest} boxes`);

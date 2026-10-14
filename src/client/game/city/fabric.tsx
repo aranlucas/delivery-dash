@@ -128,6 +128,7 @@ function BuildingDistrict({ buildings, style }: BuildingDistrictProps) {
       );
       instanced.setColorAt(i, tint.set(b.color).multiplyScalar(1.22));
     }
+
     instanced.instanceMatrix.needsUpdate = true;
 
     if (instanced.instanceColor) {
@@ -170,7 +171,11 @@ interface BlocksProps {
 
 /** City blocks are all the same size, so the sidewalk slab and its surface instance cleanly. */
 export function Blocks({ city }: BlocksProps) {
-  const { slabs: slabInstances, parkTops: parkTopInstances, cityTops: cityTopInstances } = useMemo(() => {
+  const {
+    slabs: slabInstances,
+    parkTops: parkTopInstances,
+    cityTops: cityTopInstances,
+  } = useMemo(() => {
     const localSlabs: Instance[] = [];
     const localParkTops: Instance[] = [];
     const localCityTops: Instance[] = [];
@@ -183,6 +188,7 @@ export function Blocks({ city }: BlocksProps) {
         if (zoneAt(x, z)) {
           continue;
         }
+
         localSlabs.push({ pos: [x, 0.06, z] });
         const park = city.parks.some((p) => Math.abs(p[0] - x) < 1 && Math.abs(p[1] - z) < 1);
         (park ? localParkTops : localCityTops).push({ pos: [x, 0.2, z] });
@@ -224,7 +230,11 @@ export function Blocks({ city }: BlocksProps) {
 
   return (
     <>
-      <instancedMesh ref={slabMesh} args={[slabGeometry, undefined, slabInstances.length]} receiveShadow>
+      <instancedMesh
+        ref={slabMesh}
+        args={[slabGeometry, undefined, slabInstances.length]}
+        receiveShadow
+      >
         <meshStandardMaterial color="#ffd36e" roughness={0.86} />
       </instancedMesh>
       <instancedMesh

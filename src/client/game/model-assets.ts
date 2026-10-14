@@ -32,11 +32,16 @@ function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
 
   object.updateWorldMatrix(true, false);
 
-  return object as THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
+  // SAFETY: GLTF nodes are runtime Mesh instances with BufferGeometry and Material fields.
+  return object as THREE.Mesh;
 }
 
 /** Bake a Blender node into the asset root; repeated callers share the resulting buffer. */
-function geometry(nodes: Record<string, THREE.Object3D>, name: string, keepTranslation = true): THREE.BufferGeometry {
+function geometry(
+  nodes: Record<string, THREE.Object3D>,
+  name: string,
+  keepTranslation = true,
+): THREE.BufferGeometry {
   const object = mesh(nodes, name);
   const cache = keepTranslation ? bakedGeometry : localGeometry;
   const cached = cache.get(object);
@@ -90,14 +95,14 @@ export function useVehicleAsset(kind: CarKind): VehicleAsset {
   );
 }
 
+const elevated = (source: THREE.BufferGeometry) => {
+  const clone = source.clone();
+  clone.translate(0, CAR_ORIGIN_HEIGHT, 0);
+
+  return clone;
+};
+
 export function makeFleetGeometry(asset: VehicleAsset) {
-  const elevated = (source: THREE.BufferGeometry) => {
-    const clone = source.clone();
-    clone.translate(0, CAR_ORIGIN_HEIGHT, 0);
-
-    return clone;
-  };
-
   return {
     painted: elevated(asset.body),
     glass: elevated(asset.glass),
@@ -108,7 +113,7 @@ export function makeFleetGeometry(asset: VehicleAsset) {
   };
 }
 
-export function useStreetPropAssets(): {
+interface StreetPropAssets {
   hydrant: THREE.BufferGeometry;
   bin: THREE.BufferGeometry;
   bench: THREE.BufferGeometry;
@@ -116,7 +121,9 @@ export function useStreetPropAssets(): {
   streetlightLens: THREE.BufferGeometry;
   palmTrunk: THREE.BufferGeometry;
   palmFrond: THREE.BufferGeometry;
-} {
+}
+
+export function useStreetPropAssets(): StreetPropAssets {
   const { nodes } = useGLTF(STREET_PROPS_URL);
 
   return useMemo(
