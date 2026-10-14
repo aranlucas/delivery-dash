@@ -4,5 +4,12 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker-test.tsbuildinfo",
     "types": ["node", "./.cloudflare/types/index.d.ts"]
   },
-  "exclude": ["src/shared/**/*.test.ts"]
+  "exclude": [],
+  "include": [
+    "test/worker",
+    "src/worker",
+    "src/shared",
+    "cloudflare.config.ts",
+    ".cloudflare/types"
+  ]
 }

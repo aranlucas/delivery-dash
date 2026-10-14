@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import * as THREE from "three";
-import { generateCity, groundHeightAt, safeTravel, STEP_UP, type City, type Ramp } from "./city.ts";
-import { buildGrid } from "./collision.ts";
-import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "./ramps.ts";
-import { makeRampGeometry } from "../client/game/ramp-geometry.ts";
+import {
+  generateCity,
+  groundHeightAt,
+  safeTravel,
+  STEP_UP,
+  type City,
+  type Ramp,
+} from "../../src/shared/city.ts";
+import { buildGrid } from "../../src/shared/collision.ts";
+import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "../../src/shared/ramps.ts";
+import { makeRampGeometry } from "../../src/client/game/ramp-geometry.ts";
 
 type RampPoint = [number, number];
 

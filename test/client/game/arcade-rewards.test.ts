@@ -7,7 +7,7 @@ import {
   rushTierForCharge,
   updateNearMissPass,
   type NearMissTracker,
-} from "./arcade-rewards.ts";
+} from "../../../src/client/game/arcade-rewards.ts";
 
 test("drift charge requires speed and sideways momentum", () => {
   assert.equal(addDriftCharge(0, 8, 6, 1), 0);

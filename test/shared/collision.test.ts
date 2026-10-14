@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "./city.ts";
-import { rampBlocks } from "./ramps.ts";
-import { buildGrid, queryRange } from "./collision.ts";
-import { mulberry32 } from "./rng.ts";
+import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "../../src/shared/city.ts";
+import { rampBlocks } from "../../src/shared/ramps.ts";
+import { buildGrid, queryRange } from "../../src/shared/collision.ts";
+import { mulberry32 } from "../../src/shared/rng.ts";
 
 function randomBoxes(seed: number, count: number): AABB[] {
   const random = mulberry32(seed);
@@ -76,7 +76,7 @@ const bruteBlocked = (city: City, x: number, z: number, height: number) => {
 };
 
 test("altitude-aware grid collision matches a brute-force solid scan", async () => {
-  const { blocked } = await import("./city.ts");
+  const { blocked } = await import("../../src/shared/city.ts");
   const city = generateCity(42);
   const random = mulberry32(4242);
 

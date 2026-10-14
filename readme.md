@@ -69,8 +69,8 @@ build scripts regenerate these types first. Vite's duplicate root type generatio
 With the local server running, exercise the real room protocol and all four modes:
 
 ```bash
-node --experimental-strip-types scripts/test-game-modes.ts
-TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 node --experimental-strip-types scripts/test-game-modes.ts
+node --experimental-strip-types test/integration/game-modes.test.ts
+TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 node --experimental-strip-types test/integration/game-modes.test.ts
 ```
 
 The second command also waits for Rush Hour's actual three-minute server deadline. Set `TEST_GAME_URL` when testing a different local origin.

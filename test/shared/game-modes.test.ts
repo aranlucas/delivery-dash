@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { generateCity, generateOrders } from "./city.ts";
+import { generateCity, generateOrders } from "../../src/shared/city.ts";
 import {
   CHECKPOINT_COUNT,
   DEFAULT_MODE,
@@ -11,7 +11,7 @@ import {
   getCheckpoints,
   getObjective,
   isGameMode,
-} from "./game-modes.ts";
+} from "../../src/shared/game-modes.ts";
 
 test("game mode registry has the stable public modes", () => {
   assert.deepEqual(GAME_MODE_IDS, ["delivery", "rush", "checkpoint", "free"]);

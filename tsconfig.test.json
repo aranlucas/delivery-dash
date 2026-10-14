@@ -15,11 +15,11 @@
     "types": ["node"]
   },
   "include": [
-    "src/**/*.test.ts",
+    "test/**/*.test.ts",
     "src/shared",
     "src/client/game/arcade-rewards.ts",
     "src/client/game/car-recovery.ts",
     "src/client/game/ramp-geometry.ts"
   ],
-  "exclude": ["src/worker"]
+  "exclude": ["test/worker", "test/integration"]
 }

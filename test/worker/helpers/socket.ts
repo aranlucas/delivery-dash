@@ -1,6 +1,6 @@
-import type { Attachment } from "./room-core.ts";
-import type { ServerMessage } from "../shared/protocol.ts";
-import { decodeServerMessage } from "../shared/wire-schema.ts";
+import type { Attachment } from "../../../src/worker/room-core.ts";
+import type { ServerMessage } from "../../../src/shared/protocol.ts";
+import { decodeServerMessage } from "../../../src/shared/wire-schema.ts";
 
 export class Socket {
   attachment: Attachment | null = null;
