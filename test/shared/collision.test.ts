@@ -76,7 +76,7 @@ const bruteBlocked = (city: City, x: number, z: number, height: number) => {
 };
 
 test("altitude-aware grid collision matches a brute-force solid scan", async () => {
-  const { blocked } = await import("../../src/shared/city.ts");
+  const { blocked } = await import("#app/shared/city.ts");
   const city = generateCity(42);
   const random = mulberry32(4242);
 
