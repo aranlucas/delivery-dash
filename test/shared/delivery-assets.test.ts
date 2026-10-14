@@ -2,13 +2,13 @@ import { z as schema } from "zod";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
-import { generateCity, blocked, safeTravel, CITY_ZONES } from "../../src/shared/city.ts";
+import { generateCity, blocked, safeTravel, CITY_ZONES } from "@/shared/city.ts";
 import {
   modelColliders,
   storefrontModel,
   storefrontYaw,
   jumpGatePosition,
-} from "../../src/shared/delivery-assets.ts";
+} from "@/shared/delivery-assets.ts";
 
 const gltfSchema = schema.object({
   materials: schema.array(schema.unknown()),

@@ -1,21 +1,21 @@
 import assert from "node:assert/strict";
 import { test, vi, type TestContext } from "vitest";
-import { generateCity, generateOrders } from "../../src/shared/city.ts";
+import { generateCity, generateOrders } from "@/shared/city.ts";
 import {
   CHECKPOINT_COUNT,
   RUSH_DURATION_MS,
   getObjective,
   type GameMode,
-} from "../../src/shared/game-modes.ts";
+} from "@/shared/game-modes.ts";
 import {
   COUNTDOWN_MS,
   DELIVERIES_TO_WIN,
   FINISH_LINGER_MS,
   type ClientMessage,
-} from "../../src/shared/protocol.ts";
+} from "@/shared/protocol.ts";
 
-import { RaceRoomCore, type RoomState, type RoomTransaction } from "../../src/worker/room-core.ts";
-import { Socket } from "./helpers/socket.ts";
+import { RaceRoomCore, type RoomState, type RoomTransaction } from "@/worker/room-core.ts";
+import { Socket } from "@test/worker/helpers/socket.ts";
 
 interface PhaseObservation {
   phase: string;

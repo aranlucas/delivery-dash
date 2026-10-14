@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  blocked,
-  COAST_ROAD_ENDS,
-  generateCity,
-  safeTravel,
-  WORLD_HALF,
-} from "../../src/shared/city.ts";
-import { buildGrid } from "../../src/shared/collision.ts";
+import { blocked, COAST_ROAD_ENDS, generateCity, safeTravel, WORLD_HALF } from "@/shared/city.ts";
+import { buildGrid } from "@/shared/collision.ts";
 
 test("waterfront rails stop a boost-speed approach at every street end", () => {
   const city = generateCity(42);

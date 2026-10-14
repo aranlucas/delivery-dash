@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.worker.json",
+  "extends": ["./tsconfig.worker.json", "./tsconfig.test-paths.json"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker-test.tsbuildinfo",
     "types": ["node", "./.cloudflare/types/index.d.ts"]

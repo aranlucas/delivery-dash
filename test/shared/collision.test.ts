@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "../../src/shared/city.ts";
-import { rampBlocks } from "../../src/shared/ramps.ts";
-import { buildGrid, queryRange } from "../../src/shared/collision.ts";
-import { mulberry32 } from "../../src/shared/rng.ts";
+import { generateCity, STEP_UP, WORLD_HALF, type AABB, type City } from "@/shared/city.ts";
+import { rampBlocks } from "@/shared/ramps.ts";
+import { buildGrid, queryRange } from "@/shared/collision.ts";
+import { mulberry32 } from "@/shared/rng.ts";
 
 function randomBoxes(seed: number, count: number): AABB[] {
   const random = mulberry32(seed);

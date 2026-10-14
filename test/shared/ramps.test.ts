@@ -8,10 +8,10 @@ import {
   STEP_UP,
   type City,
   type Ramp,
-} from "../../src/shared/city.ts";
-import { buildGrid } from "../../src/shared/collision.ts";
-import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "../../src/shared/ramps.ts";
-import { makeRampGeometry } from "../../src/client/game/ramp-geometry.ts";
+} from "@/shared/city.ts";
+import { buildGrid } from "@/shared/collision.ts";
+import { rampSurface, rampBlocks, crossesLanding, rampUnderside } from "@/shared/ramps.ts";
+import { makeRampGeometry } from "@/client/game/ramp-geometry.ts";
 
 type RampPoint = [number, number];
 

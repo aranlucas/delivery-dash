@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 // Unit tests use Node; keep the app's Cloudflare/Vite plugins out of this runner.
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   test: {
     include: ["test/**/*.test.ts"],
     // These live-worker scenarios keep their dedicated Node entry point.

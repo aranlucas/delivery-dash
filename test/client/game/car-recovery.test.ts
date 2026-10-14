@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { blocked, generateCity, groundHeightAt, roadCenter } from "../../../src/shared/city.ts";
-import { findCarRecovery, isRecoverySpotClear } from "../../../src/client/game/car-recovery.ts";
+import { blocked, generateCity, groundHeightAt, roadCenter } from "@/shared/city.ts";
+import { findCarRecovery, isRecoverySpotClear } from "@/client/game/car-recovery.ts";
 
 test("recovery from buildings, ramps, roofs and map edges finds a flat clear nearby street", () => {
   for (const seed of [1, 99, 777, 2026, 12345]) {

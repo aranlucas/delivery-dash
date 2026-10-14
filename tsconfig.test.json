@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.test-paths.json",
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",

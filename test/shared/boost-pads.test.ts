@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { crossesBoostPad } from "../../src/shared/boost-pads.ts";
-import type { BoostPad } from "../../src/shared/city.ts";
+import { crossesBoostPad } from "@/shared/boost-pads.ts";
+import type { BoostPad } from "@/shared/city.ts";
 
 const pad: BoostPad = { x: 10, z: 20, y: 0, yaw: 0 };
 
