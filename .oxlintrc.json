@@ -3,7 +3,8 @@
   "extends": [
     "./node_modules/@aranlucas/oxforge/configs/recommended.json",
     "./node_modules/@aranlucas/oxforge/configs/react.json",
-    "./node_modules/@aranlucas/oxforge/configs/type-aware.json"
+    "./node_modules/@aranlucas/oxforge/configs/type-aware.json",
+    "./node_modules/@aranlucas/oxforge/configs/vitest.json"
   ],
   "plugins": ["jsx-a11y", "react", "typescript", "unicorn"],
   "categories": {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import {
   CITY_ZONES,
   blocked,
@@ -13,9 +13,7 @@ import {
 import { TARGET_RADIUS } from "./protocol.ts";
 
 for (const seed of [1, 99, 777, 2026, 12345]) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`seed ${seed} has reachable curbside delivery targets`, () => {
+  test(`seed ${seed} has reachable curbside delivery targets`, () => {
     const city = generateCity(seed);
 
     for (const place of [...city.restaurants, ...city.houses]) {
@@ -40,9 +38,7 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
 // Authored map features must remain driveable for every procedural building/parking seed.
 
 for (const seed of [1, 99, 777, 2026, 12345]) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`seed ${seed} preserves landmark plazas and clear stunt approaches`, () => {
+  test(`seed ${seed} preserves landmark plazas and clear stunt approaches`, () => {
     const city = generateCity(seed);
     assert.deepEqual(city, generateCity(seed), "client and worker generation must agree");
 
@@ -116,7 +112,7 @@ const layoutHashes = new Map<number, string>([
   [12345, "f1af6f9ce6d2b39cce0e45bb05c63f1ee90b8793d2f6f2bcec3cd59874cc320b"],
 ]);
 
-await test("seeded city layouts retain their complete deterministic output", () => {
+test("seeded city layouts retain their complete deterministic output", () => {
   for (const [seed, expected] of layoutHashes) {
     const digest = createHash("sha256")
       .update(JSON.stringify(generateCity(seed)))

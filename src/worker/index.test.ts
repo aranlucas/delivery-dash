@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test, type TestContext } from "node:test";
+import { test, vi, type TestContext } from "vitest";
 import { generateCity, generateOrders } from "../shared/city.ts";
 import {
   CHECKPOINT_COUNT,
@@ -105,7 +105,8 @@ class Storage {
 
 async function setup(t: TestContext, mode: GameMode = "rush") {
   let now = 1_000_000;
-  t.mock.method(Date, "now", () => now);
+  const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+  t.onTestFinished(() => clock.mockRestore());
   const storage = new Storage();
   const sockets = [new Socket(), new Socket()];
 
@@ -193,7 +194,7 @@ async function setup(t: TestContext, mode: GameMode = "rush") {
   };
 }
 
-await test("non-WebSocket requests preserve the upgrade error response", async () => {
+test("non-WebSocket requests preserve the upgrade error response", async () => {
   const room = new RaceRoomCore({
     storage: new Storage(),
     getWebSockets: () => [],
@@ -213,9 +214,7 @@ function phases(socket: Socket) {
 }
 
 for (const failure of ["setAlarm", "commit"] as const) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`countdown ${failure} failure preserves lobby and retries without a false phase`, async (t) => {
+  test(`countdown ${failure} failure preserves lobby and retries without a false phase`, async (t) => {
     const game = await setup(t);
     await game.send(0, { t: "ready", ready: true });
     game.storage.failNext = failure;
@@ -238,7 +237,7 @@ for (const failure of ["setAlarm", "commit"] as const) {
   });
 }
 
-await test("clients see phase changes only after the state and alarm commit, including transaction retries", async (t) => {
+test("clients see phase changes only after the state and alarm commit, including transaction retries", async (t) => {
   const game = await setup(t);
   const observations: PhaseObservation[] = [];
 
@@ -267,7 +266,7 @@ await test("clients see phase changes only after the state and alarm commit, inc
   );
 });
 
-await test("countdown survives eviction and cannot start early or lose the Rush deadline on failure", async (t) => {
+test("countdown survives eviction and cannot start early or lose the Rush deadline on failure", async (t) => {
   const game = await setup(t);
   await game.send(0, { t: "ready", ready: true });
   await game.send(1, { t: "ready", ready: true });
@@ -295,9 +294,7 @@ await test("countdown survives eviction and cannot start early or lose the Rush 
 });
 
 for (const first of ["alarm", "pose"] as const) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`Rush deadline with ${first} delivered first finishes once, without a late score or early rematch`, async (t) => {
+  test(`Rush deadline with ${first} delivered first finishes once, without a late score or early rematch`, async (t) => {
     const game = await setup(t);
     await game.start();
     const end = required(game.storage.room().raceEndsAt);
@@ -341,7 +338,7 @@ for (const first of ["alarm", "pose"] as const) {
   });
 }
 
-await test("failed finish scheduling leaves Rush racing and emits no winner until retry", async (t) => {
+test("failed finish scheduling leaves Rush racing and emits no winner until retry", async (t) => {
   const game = await setup(t);
   await game.start();
   const end = required(game.storage.room().raceEndsAt);
@@ -361,9 +358,7 @@ await test("failed finish scheduling leaves Rush racing and emits no winner unti
 });
 
 for (const mode of ["delivery", "checkpoint"] as const) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`${mode} winning score rolls back with a failed finish alarm and can be retried`, async (t) => {
+  test(`${mode} winning score rolls back with a failed finish alarm and can be retried`, async (t) => {
     const game = await setup(t, mode);
     await game.start();
     assert.equal(game.storage.alarmAt, null);
@@ -400,7 +395,7 @@ for (const mode of ["delivery", "checkpoint"] as const) {
   });
 }
 
-await test("failed rematch alarm deletion preserves finished scores and retries after eviction", async (t) => {
+test("failed rematch alarm deletion preserves finished scores and retries after eviction", async (t) => {
   const game = await setup(t);
   await game.start();
   await game.score();
@@ -429,7 +424,7 @@ await test("failed rematch alarm deletion preserves finished scores and retries 
   }
 });
 
-await test("legacy finished rooms without a stored rematch deadline still return to the lobby", async (t) => {
+test("legacy finished rooms without a stored rematch deadline still return to the lobby", async (t) => {
   const game = await setup(t);
   await game.start();
   game.advance(required(game.storage.room().raceEndsAt));
@@ -442,7 +437,7 @@ await test("legacy finished rooms without a stored rematch deadline still return
   assert.equal(game.storage.room().phase, "lobby");
 });
 
-await test("Free Drive stays untimed and permits late joins after repeated alarms", async (t) => {
+test("Free Drive stays untimed and permits late joins after repeated alarms", async (t) => {
   const game = await setup(t, "free");
   await game.start();
   assert.equal(game.storage.alarmAt, null);
@@ -454,7 +449,7 @@ await test("Free Drive stays untimed and permits late joins after repeated alarm
   assert.deepEqual(phases(game.sockets[0]), []);
 });
 
-await test("replacing a ghost room commits its lobby reset with alarm cancellation", async (t) => {
+test("replacing a ghost room commits its lobby reset with alarm cancellation", async (t) => {
   const game = await setup(t);
   await game.start();
   const racing = game.storage.room();

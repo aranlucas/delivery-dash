@@ -1,21 +1,23 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import * as THREE from "three";
 import { relativeBearing, worldBearing } from "./nav.ts";
 
 const HALF_PI = Math.PI / 2;
 
-const near = (actual: number, expected: number, message: string) =>
-  assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: got ${actual}, want ${expected}`);
-
-await test("worldBearing matches the three.js rotation convention", () => {
+test("worldBearing matches the three.js rotation convention", () => {
   for (const [tx, tz, expected] of [
     [0, 10, 0],
     [10, 0, HALF_PI],
     [0, -10, Math.PI],
     [-10, 0, -HALF_PI],
   ] as const) {
-    near(worldBearing(0, 0, tx, tz), expected, `bearing to (${tx}, ${tz})`);
+    const actual = worldBearing(0, 0, tx, tz);
+
+    assert.ok(
+      Math.abs(actual - expected) < 1e-9,
+      `bearing to (${tx}, ${tz}): got ${actual}, want ${expected}`,
+    );
   }
 });
 
@@ -28,7 +30,7 @@ function screenX(yaw: number, tx: number, tz: number): number {
   return new THREE.Vector3(tx, 1, tz).project(camera).x;
 }
 
-await test("relativeBearing agrees with three.js screen placement", () => {
+test("relativeBearing agrees with three.js screen placement", () => {
   for (const [yaw, tx, tz] of [
     [0, 30, 0],
     [0, -30, 0],
@@ -46,7 +48,7 @@ await test("relativeBearing agrees with three.js screen placement", () => {
   }
 });
 
-await test("relativeBearing is stable after accumulated spins", () => {
+test("relativeBearing is stable after accumulated spins", () => {
   for (const yaw of [-9 * Math.PI, -Math.PI, 0, Math.PI, 7 * Math.PI]) {
     const bearing = relativeBearing(0, 0, yaw, 10, 3);
     assert.ok(bearing > -Math.PI - 1e-9 && bearing <= Math.PI + 1e-9);

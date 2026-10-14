@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import * as THREE from "three";
 import { generateCity, groundHeightAt, safeTravel, STEP_UP, type City, type Ramp } from "./city.ts";
 import { buildGrid } from "./collision.ts";
@@ -22,9 +22,7 @@ function emptyCity(ramps: Ramp[]): City {
 }
 
 for (const yaw of [0, Math.PI / 2, Math.PI, -0.63]) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`ramp side/back collisions include the car footprint at yaw ${yaw}`, () => {
+  test(`ramp side/back collisions include the car footprint at yaw ${yaw}`, () => {
     const r = { ...ramp, yaw };
     assert.equal(rampBlocks(r, ...point(r, 0, -8), 0, STEP_UP), false, "entry must stay open");
     assert.equal(
@@ -50,7 +48,7 @@ for (const yaw of [0, Math.PI / 2, Math.PI, -0.63]) {
   });
 }
 
-await test("both ramp sizes and expressway grades render exactly where their collision surface is", () => {
+test("both ramp sizes and expressway grades render exactly where their collision surface is", () => {
   const unit = makeRampGeometry({ kind: "kicker", length: 1, width: 1, height: 1 });
   const material = new THREE.MeshBasicMaterial();
   const ray = new THREE.Raycaster();
@@ -90,7 +88,7 @@ await test("both ramp sizes and expressway grades render exactly where their col
   material.dispose();
 });
 
-await test("swept collision cannot skip a ramp side or a thin elevated guardrail", () => {
+test("swept collision cannot skip a ramp side or a thin elevated guardrail", () => {
   const city = emptyCity([ramp]);
   const t = safeTravel(city, 8, 1, -4, 0, 0);
   assert.ok(t < 1, "a single frame crossed the side face");
@@ -103,7 +101,7 @@ await test("swept collision cannot skip a ramp side or a thin elevated guardrail
   assert.equal(safeTravel(city, -5, 0, 10, 0, 0), 1, "ground-level cars must pass underneath");
 });
 
-await test("boost-speed approach can climb and leave the lip without a collision", () => {
+test("boost-speed approach can climb and leave the lip without a collision", () => {
   const city = emptyCity([ramp]);
 
   for (const step of [0.4, 1.6, 3.2]) {
@@ -116,7 +114,7 @@ await test("boost-speed approach can climb and leave the lip without a collision
   }
 });
 
-await test("raised approaches have a visible underside and allow cars through with roof clearance", () => {
+test("raised approaches have a visible underside and allow cars through with roof clearance", () => {
   const grade: Ramp = { ...ramp, length: 70, width: 13, height: 11, kind: "grade" };
   const geometry = makeRampGeometry(grade);
   const material = new THREE.MeshBasicMaterial();
@@ -145,7 +143,7 @@ await test("raised approaches have a visible underside and allow cars through wi
   material.dispose();
 });
 
-await test("expressway approaches remain clear to climb, descend and merge with their decks", () => {
+test("expressway approaches remain clear to climb, descend and merge with their decks", () => {
   const city = generateCity(2026);
 
   for (const r of city.ramps.filter((candidate) => candidate.kind === "grade")) {
@@ -175,12 +173,12 @@ await test("expressway approaches remain clear to climb, descend and merge with 
   }
 });
 
-await test("a sweep along a ramp cannot lift an airborne car into its side", () => {
+test("a sweep along a ramp cannot lift an airborne car into its side", () => {
   const city = emptyCity([ramp]);
   assert.ok(safeTravel(city, 8, 3, -8, 0, 0.5) < 1);
 });
 
-await test("airborne height queries and landings do not snap up to a ramp or deck", () => {
+test("airborne height queries and landings do not snap up to a ramp or deck", () => {
   const city = emptyCity([ramp]);
   city.decks = [{ minX: 20, maxX: 40, minZ: -10, maxZ: 10, height: 8 }];
   assert.equal(groundHeightAt(city, 30, 0, 7, 0), 0, "deck above airborne wheels must be ignored");
@@ -206,7 +204,7 @@ await test("airborne height queries and landings do not snap up to a ramp or dec
   );
 });
 
-await test("seeded stunts never overlap any starting-grid slot", () => {
+test("seeded stunts never overlap any starting-grid slot", () => {
   for (let seed = 1; seed <= 32; seed++) {
     const city = generateCity(seed);
 

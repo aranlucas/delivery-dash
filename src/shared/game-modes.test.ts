@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { generateCity, generateOrders } from "./city.ts";
 import {
   CHECKPOINT_COUNT,
@@ -13,7 +13,7 @@ import {
   isGameMode,
 } from "./game-modes.ts";
 
-await test("game mode registry has the stable public modes", () => {
+test("game mode registry has the stable public modes", () => {
   assert.deepEqual(GAME_MODE_IDS, ["delivery", "rush", "checkpoint", "free"]);
   assert.equal(DEFAULT_MODE, "delivery");
   assert.equal(RUSH_DURATION_MS, 180_000);
@@ -31,9 +31,7 @@ await test("game mode registry has the stable public modes", () => {
 });
 
 for (const seed of [1, 99, 777, 2026, 12345]) {
-  // Run each generated case through its full node:test lifecycle before starting the next.
-  // oxlint-disable-next-line eslint/no-await-in-loop
-  await test(`checkpoint route is deterministic and reachable for seed ${seed}`, () => {
+  test(`checkpoint route is deterministic and reachable for seed ${seed}`, () => {
     const city = generateCity(seed);
     const checkpoints = getCheckpoints(city);
     assert.equal(checkpoints.length, CHECKPOINT_COUNT);
@@ -64,7 +62,7 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
   });
 }
 
-await test("delivery and rush objectives follow their distinct order rules", () => {
+test("delivery and rush objectives follow their distinct order rules", () => {
   const city = generateCity(2026);
   const orders = generateOrders(2026);
   const pickup = { orderIndex: 0, leg: "pickup" as const, checkpointIndex: 0 };
@@ -80,7 +78,7 @@ await test("delivery and rush objectives follow their distinct order rules", () 
   assert.equal(getObjective("checkpoint", city, orders, pickup), getCheckpoints(city)[0]);
 });
 
-await test("mode standings rank progress and keep timed ties honest", () => {
+test("mode standings rank progress and keep timed ties honest", () => {
   const a = { id: "a", deliveries: 2, orderIndex: 3, checkpointIndex: 0 };
   const b = { id: "b", deliveries: 1, orderIndex: 4, checkpointIndex: 0 };
   assert.ok(comparePlayers("delivery", a, b) < 0);

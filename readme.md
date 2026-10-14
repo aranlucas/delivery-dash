@@ -96,3 +96,5 @@ The project uses the beta Cloudflare CLI and Vite plugin. See Cloudflare's
 The legacy Wrangler configuration and committed declarations were removed after verifying a
 successful `cf` production deployment. Project scripts, CI, and TypeScript now use
 `cloudflare.config.ts` and the ignored generated types.
+
+Unit tests run in Node through Vitest (`pnpm test`, or `pnpm test:watch` while developing), separately from the Cloudflare Vite plugin. Each test file stays isolated and its tests run sequentially so worker clock mocks cannot leak between cases.
