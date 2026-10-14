@@ -9,16 +9,16 @@
  */
 import { strict as assert } from "node:assert";
 import { z } from "zod";
-import { decodeServerMessage } from "../../src/shared/wire-schema.ts";
-import type { ServerMessage } from "../../src/shared/protocol.ts";
+import { decodeServerMessage } from "#app/shared/wire-schema.ts";
+import type { ServerMessage } from "#app/shared/protocol.ts";
 import {
   generateCity,
   generateOrders,
   type City,
   type Order,
   type Place,
-} from "../../src/shared/city.ts";
-import { CHECKPOINT_COUNT, RUSH_DURATION_MS, getCheckpoints } from "../../src/shared/game-modes.ts";
+} from "#app/shared/city.ts";
+import { CHECKPOINT_COUNT, RUSH_DURATION_MS, getCheckpoints } from "#app/shared/game-modes.ts";
 
 type WireMessage = ServerMessage;
 

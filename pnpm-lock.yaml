@@ -136,7 +136,7 @@ importers:
         version: 5.0.15(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
     devDependencies:
       '@aranlucas/oxforge':
-        specifier: ^0.2.2
+        specifier: 0.2.2
         version: 0.2.2(oxfmt@0.73.0)(oxlint-tsgolint@7.0.2004)(oxlint@1.88.0(oxlint-tsgolint@7.0.2004))
       '@aranlucas/oxlint-plugin-anti-slop':
         specifier: 0.1.0

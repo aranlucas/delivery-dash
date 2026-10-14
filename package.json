@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#app/*": "./src/*"
+  },
   "scripts": {
     "dev": "pnpm cf-typegen && portless run vite",
     "build": "pnpm typecheck && cf build",
@@ -30,7 +33,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@aranlucas/oxforge": "^0.2.2",
+    "@aranlucas/oxforge": "0.2.2",
     "@aranlucas/oxlint-plugin-anti-slop": "0.1.0",
     "@cloudflare/vite-plugin": "^2.0.0-beta.sha-c82c3efb3",
     "@types/node": "^26.6.5",
