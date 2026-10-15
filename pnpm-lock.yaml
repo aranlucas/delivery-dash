@@ -142,7 +142,7 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(oxlint@1.88.0(oxlint-tsgolint@7.0.2004))
       '@cloudflare/vite-plugin':
-        specifier: ^2.0.0-beta.sha-c82c3efb3
+        specifier: ^2.0.0-beta.sha-805ec1ff3
         version: 2.0.0-beta.sha-c82c3efb3(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5))
       '@types/node':
         specifier: ^26.6.5
