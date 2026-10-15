@@ -7,21 +7,20 @@
     "#app/*": "./src/*"
   },
   "scripts": {
-    "dev": "pnpm cf-typegen && portless run vite",
-    "build": "pnpm typecheck && cf build",
+    "dev": "portless run vite",
+    "build": "cf build && pnpm typecheck",
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && cf deploy --prebuilt --mode production",
     "deploy:dry-run": "pnpm build && cf deploy --prebuilt --mode production --dry-run",
-    "lint": "pnpm cf-typegen && oxlint . --deny-warnings --report-unused-disable-directives && pnpm check:file-names",
-    "lint:fix": "pnpm cf-typegen && oxlint . --fix --deny-warnings --report-unused-disable-directives",
+    "lint": "oxlint . --deny-warnings --report-unused-disable-directives && pnpm check:file-names",
+    "lint:fix": "oxlint . --fix --deny-warnings --report-unused-disable-directives",
     "check:file-names": "node scripts/check-file-names.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm typecheck",
+    "check": "pnpm build",
     "test": "vitest run",
-    "cf-typegen": "cf workers types",
     "prepare": "husky",
-    "typecheck": "pnpm cf-typegen && tsc -b",
+    "typecheck": "tsc -b",
     "test:watch": "vitest"
   },
   "dependencies": {

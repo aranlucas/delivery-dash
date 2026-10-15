@@ -48,11 +48,10 @@ Open <https://delivery-dash.localhost>. `pnpm dev` runs through [Portless](https
 ## Verify
 
 ```bash
+pnpm build
 pnpm test
-pnpm check
 pnpm lint
 pnpm format:check
-pnpm build
 ```
 
 Lint treats warnings as failures and checks kebab-case filenames across source, tests, assets,
@@ -61,10 +60,13 @@ and documentation. Conventional tool-discovery filenames are reserved: `.node-ve
 CI also verifies formatting with oxfmt. The linter uses React's automatic JSX runtime, matching
 the TypeScript and Vite configuration.
 
-`pnpm cf-typegen` generates Worker bindings and runtime types from `cloudflare.config.ts` into
-ignored `.cloudflare/types/index.d.ts`. Typechecking regenerates them first, so a fresh checkout
-does not need a development server or committed generated declarations. The development and
-build scripts regenerate these types first. Vite's duplicate root type generation is disabled.
+The Cloudflare Vite plugin automatically generates Worker bindings and runtime types from
+`cloudflare.config.ts` into ignored `.cloudflare/types/index.d.ts` during development and builds.
+`pnpm build` runs `cf build` before typechecking, so it also works from a fresh checkout.
+`pnpm check` is an alias for this build-and-typecheck sequence. After a build or while the
+local development server is running, use `pnpm typecheck` or `pnpm lint` directly; neither
+command regenerates types. Rebuild or restart development after changing bindings.
+CI builds once, then runs lint, tests, and typechecking in parallel against the generated types.
 
 With the local server running, exercise the real room protocol and all four modes:
 

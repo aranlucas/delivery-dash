@@ -7,8 +7,8 @@ A DoorDash-style delivery racing game: players drive delivery cars through a pro
 - Cloudflare Worker + **Durable Object** `RaceRoom` (WebSocket Hibernation API, SQLite-backed storage) — `src/worker/`
 - **React 19 + @react-three/fiber 9 + drei + zustand** client — `src/client/`
 - Shared code (protocol + city generation) — `src/shared/`
-- Build: Vite + `@cloudflare/vite-plugin` (worker and client served together in dev, same origin). `pnpm dev` runs everything. `pnpm check` typechecks, `pnpm build` builds.
-- `cloudflare.config.ts` binds `RACE_ROOM` → class `RaceRoom` and declares its SQLite storage in `worker.exports`. `cf workers types` generates `.cloudflare/types/index.d.ts` (global `Env` type available in worker code); `pnpm check` regenerates the types before typechecking.
+- Build: Vite + `@cloudflare/vite-plugin` (worker and client served together in dev, same origin). `pnpm dev` runs everything. `pnpm build` builds and then typechecks; `pnpm check` runs the same sequence.
+- `cloudflare.config.ts` binds `RACE_ROOM` → class `RaceRoom` and declares its SQLite storage in `worker.exports`. The Vite plugin automatically generates `.cloudflare/types/index.d.ts` during development and builds (global `Env` type available in worker code); builds generate types before typechecking.
 
 ## File layout to produce
 
