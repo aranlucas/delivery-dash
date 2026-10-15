@@ -29,6 +29,9 @@ jobs:
           cache: true
           require-lockfile: true
 
+      - name: Build and generate Worker types
+        run: pnpm exec cf build
+
       - parallel:
           - name: Lint
             run: pnpm lint && pnpm format:check
@@ -36,5 +39,5 @@ jobs:
           - name: Test
             run: pnpm test
 
-          - name: Build
-            run: pnpm build
+          - name: Typecheck
+            run: pnpm typecheck
