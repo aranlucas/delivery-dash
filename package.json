@@ -35,7 +35,7 @@
   "devDependencies": {
     "@aranlucas/oxforge": "0.2.2",
     "@aranlucas/oxlint-plugin-anti-slop": "0.1.0",
-    "@cloudflare/vite-plugin": "^2.0.0-beta.sha-c82c3efb3",
+    "@cloudflare/vite-plugin": "^2.0.0-beta.sha-805ec1ff3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
