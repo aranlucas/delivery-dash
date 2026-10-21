@@ -27,7 +27,7 @@ function mesh(nodes: Record<string, THREE.Object3D>, name: string) {
   const object = nodes[name];
 
   if (!(object instanceof THREE.Mesh)) {
-    throw new Error(`Missing mesh node "${name}" in Blender asset`);
+    throw new TypeError(`Missing mesh node "${name}" in Blender asset`);
   }
 
   object.updateWorldMatrix(true, false);
