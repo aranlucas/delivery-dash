@@ -2,8 +2,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname } from "node:path";
 
-// These names are discovery protocols owned by Node, pnpm, and the skills installer.
+// These entry-point names are fixed by their respective tooling.
 const reserved = new Set([
+  "AGENTS.md",
   ".node-version",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
