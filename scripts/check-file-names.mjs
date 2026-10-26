@@ -2,9 +2,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname } from "node:path";
 
-// These entry-point names are fixed by their respective tooling.
+// Preserve tooling entry points and the conventional root feature roadmap.
 const reserved = new Set([
   "AGENTS.md",
+  "ROADMAP.md",
   ".node-version",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
