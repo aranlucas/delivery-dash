@@ -57,6 +57,7 @@ pnpm format:check
 Lint treats warnings as failures and checks kebab-case filenames across source, tests, assets,
 and documentation. Conventional tool-discovery filenames are reserved: `.node-version`,
 `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `skills-lock.json`, and skill entrypoints named `SKILL.md`.
+The root `ROADMAP.md` also keeps its conventional documentation name.
 CI also verifies formatting with oxfmt. The linter uses React's automatic JSX runtime, matching
 the TypeScript and Vite configuration.
 
