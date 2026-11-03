@@ -72,8 +72,8 @@ CI builds once, then runs lint, tests, and typechecking in parallel against the 
 With the local server running, exercise the real room protocol and all four modes:
 
 ```bash
-node --experimental-strip-types test/integration/game-modes.test.ts
-TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 node --experimental-strip-types test/integration/game-modes.test.ts
+pnpm test:integration
+TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 pnpm test:integration
 ```
 
 The second command also waits for Rush Hour's actual three-minute server deadline. Set `TEST_GAME_URL` when testing a different local origin.

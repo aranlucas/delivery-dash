@@ -1,3 +1,4 @@
+import { expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname } from "node:path";
@@ -20,8 +21,7 @@ const paths = execFileSync(
   { encoding: "utf8" },
 );
 
-/** @type {Map<string, Set<string>>} */
-const directories = new Map();
+const directories = new Map<string, Set<string>>();
 
 const violations = [...new Set(paths.split("\0"))].filter((path) => {
   if (!path || !existsSync(path) || reserved.has(path)) {
@@ -49,11 +49,9 @@ const violations = [...new Set(paths.split("\0"))].filter((path) => {
   return !kebabCase.test(basename(path).replace(/^\./, ""));
 });
 
-if (violations.length) {
-  process.stderr.write(`Use kebab-case filenames:\n${violations.toSorted().join("\n")}\n`);
-  process.exitCode = 1;
-} else {
-  process.stdout.write(
-    "All project filenames use kebab-case (reserved tooling names preserved).\n",
-  );
-}
+it("keeps tracked and unignored filenames in kebab-case, including assets and docs", () => {
+  expect(
+    violations.toSorted(),
+    "Use kebab-case filenames (reserved tooling names are preserved)",
+  ).toEqual([]);
+});
