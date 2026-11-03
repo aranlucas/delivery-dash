@@ -31,7 +31,8 @@ right-drag to pan, and scroll to zoom. The camera panel includes an overhead vie
 all five landmarks; **Home** fits the island again. **Esc** or **V** returns to driving immediately.
 Your car stays in place during inspection while the room's session continues.
 
-The world includes a festival market, harbor scenery, and plaza furniture. Asset sources and rebuild instructions are in [the coastal world kit guide](assets/blender/world-kit.md).
+For planned work, see the [feature roadmap](ROADMAP.md) and [arcade art direction](design/arcade-direction.md).
+Asset sources, rebuild steps, and authoring contracts are in the [asset guide](assets/blender/readme.md).
 
 ## Run locally
 
@@ -54,25 +55,33 @@ pnpm lint
 pnpm format:check
 ```
 
-Lint treats warnings as failures and enforces kebab-case source filenames with
-Oxlint's native `unicorn/filename-case` rule.
-
-The Cloudflare Vite plugin automatically generates Worker bindings and runtime types from
-`cloudflare.config.ts` into ignored `.cloudflare/types/index.d.ts` during development and builds.
-`pnpm build` runs `cf build` before typechecking, so it also works from a fresh checkout.
-`pnpm check` is an alias for this build-and-typecheck sequence. After a build or while the
-local development server is running, use `pnpm typecheck` or `pnpm lint` directly; neither
-command regenerates types. Rebuild or restart development after changing bindings.
-CI builds once, then runs lint, tests, and typechecking in parallel against the generated types.
+`pnpm build` generates Worker types in ignored `.cloudflare/types/index.d.ts` before
+typechecking. Run it before standalone `pnpm typecheck` or `pnpm lint` on a fresh checkout,
+and regenerate types after changing bindings in [`cloudflare.config.ts`](cloudflare.config.ts).
+The development server also generates these types. Unit tests run in Node without a local server.
 
 With the local server running, exercise the real room protocol and all four modes:
 
 ```bash
-pnpm test:integration
-TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 pnpm test:integration
+TEST_GAME_URL=https://delivery-dash.localhost pnpm test:integration
+TEST_GAME_URL=https://delivery-dash.localhost TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 pnpm test:integration
 ```
 
-The second command also waits for Rush Hour's actual three-minute server deadline. Set `TEST_GAME_URL` when testing a different local origin.
+The second command also waits for Rush Hour's actual three-minute server deadline and checks
+reconnection and the next round. Without `TEST_GAME_URL`, the runner defaults to
+`http://localhost:5173`; use the origin of your local server.
+
+## Room authority
+
+The server owns room membership, mode, objective progress, and race deadlines. Movement is
+client-authoritative: server proximity checks do not validate driving physics. The client and
+server generate the same city and orders from a shared seed.
+
+Room state and phase alarms commit together before clients receive a transition. Durable Object
+alarms and WebSocket attachments let rooms recover across hibernation; an in-memory timer or
+player map alone cannot preserve that behavior. Wire types and validation live in
+[`protocol.ts`](src/shared/protocol.ts) and [`wire-schema.ts`](src/shared/wire-schema.ts);
+room behavior lives in [`room-core.ts`](src/worker/room-core.ts).
 
 ## Deploy
 
@@ -82,18 +91,8 @@ pnpm exec cf auth login
 pnpm deploy
 ```
 
-The Cloudflare Worker, Durable Object, and client configuration live in [`cloudflare.config.ts`](cloudflare.config.ts). Keep local secrets in ignored `.dev.vars` files.
+Keep local secrets in ignored `.dev.vars` files.
 
-The deployment scripts build and typecheck first, then reuse the production Build Output with
-`cf deploy --prebuilt --mode production`. The dry run validates packaging without uploading or
-requiring authentication. `RaceRoom` retains its SQLite storage through `worker.exports`, which
-replaces Wrangler's ordered Durable Object migration history.
-
-The project uses the beta Cloudflare CLI and Vite plugin. See Cloudflare's
-[Wrangler migration guide](https://developers.cloudflare.com/cf/wrangler/migrate/) and
-[build and deployment reference](https://developers.cloudflare.com/cf/projects/).
-The legacy Wrangler configuration and committed declarations were removed after verifying a
-successful `cf` production deployment. Project scripts, CI, and TypeScript now use
-`cloudflare.config.ts` and the ignored generated types.
-
-Unit tests run in Node through Vitest (`pnpm test`, or `pnpm test:watch` while developing), separately from the Cloudflare Vite plugin. Each test file stays isolated and its tests run sequentially so worker clock mocks cannot leak between cases.
+Both deployment commands build and typecheck before using the production Build Output.
+`deploy:dry-run` adds `--dry-run` to validate packaging without uploading. `RaceRoom`'s SQLite
+storage is declared in `worker.exports` in `cloudflare.config.ts`.

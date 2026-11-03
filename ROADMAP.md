@@ -1,10 +1,10 @@
 # Feature roadmap
 
-Planning baseline: `e849b0eeaceb` on `origin/main`, 2026-10-26. Proposed game work comes after Digits/MCP product priorities.
+Proposed 2026-10-26. Game work comes after Digits/MCP product priorities.
 
 ## Outcome
 
-Help a group of friends start and finish a race together with little setup friction. The [current game](readme.md) supports up to eight drivers, four modes, a lobby, rematches and a coastal city.
+Help a group of friends start and finish a race together with little setup friction.
 
 ## 1. A clear invitation-to-race journey
 
