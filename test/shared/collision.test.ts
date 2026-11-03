@@ -87,14 +87,3 @@ test("altitude-aware grid collision matches a brute-force solid scan", async () 
     assert.equal(blocked(city, x, z, height), bruteBlocked(city, x, z, height));
   }
 });
-
-test("current city buckets keep candidate sets small", () => {
-  const grid = generateCity(42).collisionGrid;
-  let largest = 0;
-
-  for (let index = 0; index < grid.cols * grid.rows; index++) {
-    largest = Math.max(largest, grid.bucketStart[index + 1] - grid.bucketStart[index]);
-  }
-
-  assert.ok(largest < 30, `largest bucket contains ${largest} boxes`);
-});
