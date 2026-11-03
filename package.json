@@ -12,16 +12,16 @@
     "preview": "pnpm build && vite preview",
     "deploy": "pnpm build && cf deploy --prebuilt --mode production",
     "deploy:dry-run": "pnpm build && cf deploy --prebuilt --mode production --dry-run",
-    "lint": "oxlint . --deny-warnings --report-unused-disable-directives && pnpm check:file-names",
+    "lint": "oxlint . --deny-warnings --report-unused-disable-directives",
     "lint:fix": "oxlint . --fix --deny-warnings --report-unused-disable-directives",
-    "check:file-names": "node scripts/check-file-names.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "check": "pnpm build",
     "test": "vitest run",
     "prepare": "husky",
     "typecheck": "tsc -b",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

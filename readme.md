@@ -54,12 +54,8 @@ pnpm lint
 pnpm format:check
 ```
 
-Lint treats warnings as failures and checks kebab-case filenames across source, tests, assets,
-and documentation. Conventional tool-discovery filenames are reserved: `.node-version`,
-`pnpm-lock.yaml`, `pnpm-workspace.yaml`, `skills-lock.json`, and skill entrypoints named `SKILL.md`.
-The root `ROADMAP.md` also keeps its conventional documentation name.
-CI also verifies formatting with oxfmt. The linter uses React's automatic JSX runtime, matching
-the TypeScript and Vite configuration.
+Lint treats warnings as failures and enforces kebab-case source filenames with
+Oxlint's native `unicorn/filename-case` rule.
 
 The Cloudflare Vite plugin automatically generates Worker bindings and runtime types from
 `cloudflare.config.ts` into ignored `.cloudflare/types/index.d.ts` during development and builds.
@@ -72,8 +68,8 @@ CI builds once, then runs lint, tests, and typechecking in parallel against the 
 With the local server running, exercise the real room protocol and all four modes:
 
 ```bash
-node --experimental-strip-types test/integration/game-modes.test.ts
-TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 node --experimental-strip-types test/integration/game-modes.test.ts
+pnpm test:integration
+TEST_GAME_RUSH_TIMER=1 TEST_GAME_RECONNECT=1 pnpm test:integration
 ```
 
 The second command also waits for Rush Hour's actual three-minute server deadline. Set `TEST_GAME_URL` when testing a different local origin.

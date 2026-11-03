@@ -1,13 +1,14 @@
 /**
  * Live mode contract test. Run the Vite worker first, then:
  *
- *   node --experimental-strip-types test/integration/game-modes.test.ts
+ *   pnpm test:integration
  *
  * TEST_GAME_URL points at the Vite origin (it defaults to http://localhost:5173).
  * TEST_GAME_RUSH_TIMER=1 additionally waits for the real 180 second rush deadline.
  * TEST_GAME_RECONNECT=1 runs the optional reconnect/next-round checks.
  */
 import { strict as assert } from "node:assert";
+import { describe, it } from "vitest";
 import { z } from "zod";
 import { decodeServerMessage } from "#app/shared/wire-schema.ts";
 import type { ServerMessage } from "#app/shared/protocol.ts";
@@ -68,8 +69,6 @@ interface MessageWaiter {
 interface MessageTag<T> {
   t: T;
 }
-
-type ModeTest = [string, () => Promise<void>];
 
 class Client {
   readonly socket: WebSocket;
@@ -585,10 +584,6 @@ async function testInvalidMode(): Promise<void> {
 }
 
 async function testReconnectAndNextRound(): Promise<void> {
-  if (process.env.TEST_GAME_RECONNECT !== "1") {
-    return;
-  }
-
   const room = roomCode("RC");
   const client = await Client.open(room);
 
@@ -616,30 +611,14 @@ async function testReconnectAndNextRound(): Promise<void> {
   }
 }
 
-async function main() {
-  const tests: ModeTest[] = [
-    ["creator mode adoption, duplicate join, rush routes", testCreatorModeAndRush],
-    ["delivery first-to-three race", testDeliveryRace],
-    ["checkpoint sequence", testCheckpointRace],
-    ["free drive", testFreeDrive],
-    ["invalid mode rejection", testInvalidMode],
-    ["reconnect and next-round reset", testReconnectAndNextRound],
-  ];
-
-  for (const [name, test] of tests) {
-    const started = Date.now();
-    // Protocol scenarios advance shared room state in order; parallel execution changes the test.
-    // oxlint-disable-next-line eslint/no-await-in-loop
-    await test();
-    process.stdout.write(`ok - ${name} (${Date.now() - started}ms)\n`);
-  }
-
-  process.stdout.write(`game modes integration passed (${origin})\n`);
-}
-
-main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+describe("live game modes", () => {
+  it("creator mode adoption, duplicate join, rush routes", testCreatorModeAndRush);
+  it("delivery first-to-three race", testDeliveryRace);
+  it("checkpoint sequence", testCheckpointRace);
+  it("free drive", testFreeDrive);
+  it("invalid mode rejection", testInvalidMode);
+  it.skipIf(process.env.TEST_GAME_RECONNECT !== "1")(
+    "reconnect and next-round reset",
+    testReconnectAndNextRound,
   );
-  process.exitCode = 1;
 });
