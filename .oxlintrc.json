@@ -53,5 +53,13 @@
   ],
   "options": {
     "typeAware": true
+  },
+  "rules": {
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "kebabCase"
+      }
+    ]
   }
 }
