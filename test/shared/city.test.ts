@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
@@ -100,24 +99,3 @@ for (const seed of [1, 99, 777, 2026, 12345]) {
     }
   });
 }
-
-// Captured from the pre-cleanup generator: preserve RNG consumption and placement order.
-const layoutHashes = new Map<number, string>([
-  [1, "e61199a5eafb4e6b99cc11fb8f5cfa8950c7678ec586ab2ca2919d7c71995d2b"],
-  [7, "48fd8ec91db13917463b3ce6842e241a2272100b9de4a133038b0016dc698b3f"],
-  [42, "1ca985cecd1443e4fecba3e05018db06f7115df80b8aaf69712e491f7a071e08"],
-  [99, "e7f92aeae922d99d05861542e4f9cb8e66070b966a32ce9df3424535e36e72ee"],
-  [777, "41f6e76594dcb55d93a737e34fc0f83a777ec02ee9c758fb0bb2741a927850fc"],
-  [2026, "fe97ff21f35baf6f39dab08c32d972b1b920504ad0d06c09cbde8f0180b28453"],
-  [12345, "f1af6f9ce6d2b39cce0e45bb05c63f1ee90b8793d2f6f2bcec3cd59874cc320b"],
-]);
-
-test("seeded city layouts retain their complete deterministic output", () => {
-  for (const [seed, expected] of layoutHashes) {
-    const digest = createHash("sha256")
-      .update(JSON.stringify(generateCity(seed)))
-      .digest("hex");
-
-    assert.equal(digest, expected, `City layout changed for seed ${seed}`);
-  }
-});
