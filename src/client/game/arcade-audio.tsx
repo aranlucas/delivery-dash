@@ -1,3 +1,4 @@
+import { BOOST_MAX_SPEED } from "../../shared/vehicle";
 import { useEffect } from "react";
 import { useGameStore } from "../store";
 import { drivingTelemetry, ownPose } from "./driving-state";
@@ -74,7 +75,7 @@ export function ArcadeAudio() {
         }
 
         const now = context.currentTime;
-        const speedRatio = Math.min(1, ownPose.speed / 52);
+        const speedRatio = Math.min(1, ownPose.speed / BOOST_MAX_SPEED);
         const currentPhase = useGameStore.getState().phase;
         const active = currentPhase === "racing" || currentPhase === "lobby";
         engine.frequency.setTargetAtTime(48 + speedRatio * 96, now, 0.045);

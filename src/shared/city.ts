@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from "./protocol.ts";
 import {
   storefrontModel,
   storefrontYaw,
@@ -255,6 +256,10 @@ export const CITY_ZONES = [
     height: 0,
   },
 ] as const;
+
+export const JUMP_GATES = ["stunt", "freight"].flatMap((id) =>
+  CITY_ZONES.flatMap((zone) => (zone.id === id ? [jumpGatePosition(zone)] : [])),
+);
 
 export type CityZone = (typeof CITY_ZONES)[number];
 
@@ -955,19 +960,11 @@ export function generateCity(seed: number): City {
 
   // Two authored cross-block launches, with long clear run-ups and landing zones.
   // They sit between traffic lanes, so drivers choose the shortcut rather than being forced onto it.
-  for (const id of ["stunt", "freight"] as const) {
-    const foundZone = CITY_ZONES.find((z) => z.id === id);
-
-    if (!foundZone) {
-      continue;
-    }
-
-    const x = foundZone.x + (id === "freight" ? 24 : 0);
-
+  for (const [x, z] of JUMP_GATES) {
     for (const direction of [-1, 1]) {
       stunts.kickers.push({
         x,
-        z: foundZone.z - direction * 18,
+        z: z - direction * 18,
         yaw: direction === 1 ? 0 : Math.PI,
         length: 14,
         width: 11,
@@ -976,7 +973,7 @@ export function generateCity(seed: number): City {
       });
       stunts.boostPads.push({
         x,
-        z: foundZone.z - direction * 35,
+        z: z - direction * 35,
         y: 0,
         yaw: direction === 1 ? 0 : Math.PI,
       });
@@ -1191,10 +1188,6 @@ export function generateCity(seed: number): City {
       }
     }
 
-    if (zone.id === "stunt" || zone.id === "freight") {
-      buildingAABBs.push(...modelColliders("jump-gate", ...jumpGatePosition(zone)));
-    }
-
     if (zone.radius) {
       buildingAABBs.push({
         minX: zone.x - zone.radius,
@@ -1214,6 +1207,10 @@ export function generateCity(seed: number): City {
     boostPads,
     [...restaurants, ...houses].map((p) => p.stop),
   );
+
+  for (const position of JUMP_GATES) {
+    buildingAABBs.push(...modelColliders("jump-gate", ...position));
+  }
 
   // SOLID_MARGIN already covers the player's own half-width, so parked boxes are stored shrunk by
   // roughly that much: inflated again at collision time they land back on the real bodywork.
@@ -1247,8 +1244,8 @@ export function generateCity(seed: number): City {
     parkedCars,
     trafficRoutes: buildTraffic(seed, structures),
     collisionGrid: buildGrid(buildingAABBs),
-    spawns: Array.from({ length: 8 }, (_, i) => ({
-      pos: [-WORLD_HALF + 40 + i * 10, -WORLD_HALF + 3 * PITCH + ROAD_WIDTH / 2],
+    spawns: Array.from({ length: MAX_PLAYERS }, (_, i) => ({
+      pos: [-WORLD_HALF + 40 + i * 10, roadCenter(SPAWN_ROAD)],
       yaw: Math.PI / 2,
     })),
   };

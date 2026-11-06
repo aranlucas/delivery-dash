@@ -11,7 +11,7 @@ export const trafficCars: TrafficCar[] = [];
 
 const SPAN = WORLD_HALF * 2;
 
-export function updateTraffic(city: City, time: number) {
+export function updateTraffic(city: Pick<City, "trafficRoutes">, time: number) {
   trafficCars.length = city.trafficRoutes.length;
 
   for (let index = 0; index < city.trafficRoutes.length; index++) {

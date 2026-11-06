@@ -1,3 +1,5 @@
+import { CAR_ORIGIN_HEIGHT } from "../../shared/vehicle";
+
 export type CarPose = {
   x: number;
   y: number;
@@ -6,7 +8,7 @@ export type CarPose = {
   speed: number;
 };
 
-export const ownPose: CarPose = { x: 0, y: 0.8, z: 0, yaw: 0, speed: 0 };
+export const ownPose: CarPose = { x: 0, y: CAR_ORIGIN_HEIGHT, z: 0, yaw: 0, speed: 0 };
 
 /** Actual camera view azimuth, published by ChaseCamera for screen-space guidance. */
 export const cameraPose = { yaw: 0 };
@@ -53,7 +55,7 @@ export type DrivingTelemetry = {
 
 // Stable and mutable by design: frame-loop consumers can read telemetry
 // without forcing React to render at the simulation frame rate.
-export const drivingTelemetry: DrivingTelemetry = {
+const initialTelemetry: DrivingTelemetry = {
   boost: 100,
   drifting: false,
   driftScore: 0,
@@ -76,3 +78,10 @@ export const drivingTelemetry: DrivingTelemetry = {
   recoverySeconds: 0,
   recoverySequence: 0,
 };
+
+export const drivingTelemetry: DrivingTelemetry = { ...initialTelemetry };
+
+export function resetTelemetry() {
+  const { rewardSequence, recoverySequence } = drivingTelemetry;
+  Object.assign(drivingTelemetry, initialTelemetry, { rewardSequence, recoverySequence });
+}

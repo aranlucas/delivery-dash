@@ -1,3 +1,4 @@
+import { CAR_ORIGIN_HEIGHT } from "../../shared/vehicle";
 import { Float, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
@@ -121,9 +122,7 @@ export function TargetPointer({ target, dropoff, checkpoint = false }: TargetPoi
       return;
     }
 
-    // ownPose.y includes the 0.8m ride height, so this hugs flat roads, ramps,
-    // and elevated decks while still following the car through a jump.
-    g.position.set(ownPose.x, ownPose.y - 0.65, ownPose.z);
+    g.position.set(ownPose.x, ownPose.y - CAR_ORIGIN_HEIGHT + 0.15, ownPose.z);
     g.rotation.y = worldBearing(ownPose.x, ownPose.z, target[0], target[1]);
 
     for (let index = 0; index < chevrons.current.length; index++) {

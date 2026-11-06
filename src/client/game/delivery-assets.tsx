@@ -1,12 +1,7 @@
 import { useGLTF } from "@react-three/drei";
 import { Suspense, useMemo } from "react";
-import { CITY_ZONES, type City } from "../../shared/city";
-import {
-  storefrontModel,
-  storefrontYaw,
-  jumpGatePosition,
-  type DeliveryModel,
-} from "../../shared/delivery-assets";
+import { JUMP_GATES, type City } from "../../shared/city";
+import { storefrontModel, storefrontYaw, type DeliveryModel } from "../../shared/delivery-assets";
 import { GltfInstances, type StaticInstance } from "./static-instances";
 
 const assetUrl = (name: DeliveryModel) => `/models/delivery/${name}.glb?v=delivery-2`;
@@ -27,13 +22,7 @@ interface ShopInstance {
   items: StaticInstance[];
 }
 
-const gates: StaticInstance[] = CITY_ZONES.filter(
-  (zone) => zone.id === "stunt" || zone.id === "freight",
-).map((zone) => {
-  const [x, z] = jumpGatePosition(zone);
-
-  return { position: [x, 0, z] };
-});
+const gates: StaticInstance[] = JUMP_GATES.map(([x, z]) => ({ position: [x, 0, z] }));
 
 const targets: StaticInstance[] = gates.flatMap((gate) =>
   [-35, 35].map((offset) => ({ position: [gate.position[0], 0, gate.position[2] + offset] })),

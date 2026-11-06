@@ -11,7 +11,6 @@ export default function GameSession() {
   const phase = useGameStore((state) => state.phase);
   const seed = useGameStore((state) => state.seed);
 
-  // Same per-seed cache idea as RaceRoom.route(): generate the city once for this session.
   const world = useMemo(
     () =>
       seed === undefined

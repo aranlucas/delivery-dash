@@ -12,6 +12,7 @@ import { CheckpointGate, TargetBeacon, TargetPointer } from "./target-beacon";
 import { ChaseCamera } from "./chase-camera";
 import { CityViewCamera } from "./city-view-camera";
 import { ownPose } from "./driving-state";
+import { updateTraffic } from "./traffic";
 import { PerfProbe } from "../ui/perf-overlay";
 
 interface GameProps {
@@ -84,6 +85,8 @@ interface SceneProps {
 }
 
 function Scene({ seed, city, orders }: SceneProps) {
+  // Traffic must advance before default-priority collision and fleet callbacks.
+  useFrame(({ clock }) => updateTraffic(city, clock.elapsedTime), -1);
   const players = useGameStore((s) => s.players);
   const selfId = useGameStore((s) => s.selfId);
   const phase = useGameStore((s) => s.phase);

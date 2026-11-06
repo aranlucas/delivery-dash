@@ -1,7 +1,8 @@
 import { useGLTF } from "@react-three/drei";
 import { useMemo } from "react";
 import * as THREE from "three";
-import { CAR_ORIGIN_HEIGHT, type CarKind } from "./car-geometry";
+import type { CarKind } from "./car-geometry";
+import { CAR_ORIGIN_HEIGHT } from "../../shared/vehicle";
 
 // Public assets keep readable filenames, so bump this when Blender output changes. This also
 // invalidates drei's in-memory GLTF cache during development instead of showing stale geometry.

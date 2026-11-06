@@ -45,3 +45,17 @@ test("client envelopes retain staged validation and position checks reject nonfi
   assert.equal(attachmentSchema.safeParse({ playerId: 1 }).success, false);
   assert.deepEqual(attachmentSchema.parse({ playerId: "player-one" }), { playerId: "player-one" });
 });
+
+test("phase decoding retains authoritative deadlines and final standings", () => {
+  const message: ServerMessage = {
+    t: "phase",
+    mode: "rush",
+    phase: "finished",
+    countdownEndsAt: 3000,
+    raceStartedAt: 3000,
+    raceEndsAt: 183000,
+    standings: [{ id: "driver", name: "Driver", deliveries: 4, checkpointIndex: 0 }],
+  };
+
+  assert.deepEqual(decodeServerMessage(JSON.stringify(message)), message);
+});

@@ -1,3 +1,4 @@
+import { BOOST_MAX_SPEED, CAR_ORIGIN_HEIGHT as RIDE_HEIGHT } from "../../shared/vehicle";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -18,6 +19,7 @@ import {
   type RushTier,
 } from "./arcade-rewards";
 import {
+  resetTelemetry,
   drivingRequests,
   drivingTelemetry,
   ownPose,
@@ -39,8 +41,6 @@ const HANDBRAKE_DECELERATION = 8;
 
 const NORMAL_MAX_SPEED = 38;
 
-const BOOST_MAX_SPEED = 52;
-
 const REVERSE_MAX_SPEED = 16;
 
 const COLLISION_BOUNCE = 0.16;
@@ -48,9 +48,6 @@ const COLLISION_BOUNCE = 0.16;
 const BOOST_DRAIN_PER_SECOND = 27;
 
 const BOOST_RECHARGE_PER_SECOND = 12;
-
-/** Distance from the wheels' contact patch to the pose origin the car model is drawn around. */
-const RIDE_HEIGHT = 0.8;
 
 const GRAVITY = 46;
 
@@ -87,28 +84,6 @@ const CONTROL_KEYS = new Set([
 
 const approachZero = (value: number, amount: number) =>
   value > 0 ? Math.max(0, value - amount) : Math.min(0, value + amount);
-
-const resetTelemetry = () => {
-  drivingTelemetry.boost = 100;
-  drivingTelemetry.drifting = false;
-  drivingTelemetry.driftScore = 0;
-  drivingTelemetry.driftCharge = 0;
-  drivingTelemetry.driftTier = 0;
-  drivingTelemetry.rushTier = 0;
-  drivingTelemetry.callout = "";
-  drivingTelemetry.calloutScore = 0;
-  drivingTelemetry.combo = 0;
-  drivingTelemetry.rewardTier = 0;
-  drivingTelemetry.impactPulse = 0;
-  drivingTelemetry.steer = 0;
-  drivingTelemetry.throttle = 0;
-  drivingTelemetry.boosting = false;
-  drivingTelemetry.airborne = false;
-  drivingTelemetry.airTime = 0;
-  drivingTelemetry.padPulse = 0;
-  drivingTelemetry.boostPadIndex = -1;
-  drivingTelemetry.recoverySeconds = 0;
-};
 
 const driftCallout = (score: number) => {
   if (score >= 600) {
@@ -164,9 +139,6 @@ function unstick(city: City, pose: HorizontalPosition, height: number, step: num
   return false;
 }
 
-/**
- * Check if the car is climbing a ramp at the given position and ground height.
- */
 function isClimbingRamp(city: City, x: number, z: number, ground: number): boolean {
   for (const ramp of city.ramps) {
     const rampGround = rampSurface(ramp, x, z);
@@ -281,7 +253,6 @@ export function useOwnCarController({
     if (!controlsEnabled) {
       pressed.clear();
 
-      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
       // oxlint-disable-next-line unicorn/no-useless-undefined
       return undefined;
     }
