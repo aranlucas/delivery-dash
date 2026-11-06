@@ -23,14 +23,19 @@ interface PhaseObservation {
   alarm: number | null;
 }
 
-function required<T>(value: T | undefined): T {
+function required<T>(value: T | null | undefined): T {
   assert.notEqual(value, undefined);
 
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     throw new Error("Expected a populated test fixture field");
   }
 
   return value;
+}
+
+interface RawReadiness {
+  t: "ready";
+  ready: unknown;
 }
 
 type Failure = "setAlarm" | "deleteAlarm" | "commit" | "put" | "deleteAll";
@@ -169,7 +174,7 @@ async function setup(t: TestContext, mode: GameMode = "rush") {
     evict,
     alarm,
     remove: (index: number) => room.webSocketClose(sockets[index]),
-    raw: (index: number, message: unknown) =>
+    raw: (index: number, message: RawReadiness) =>
       room.webSocketMessage(sockets[index], JSON.stringify(message)),
     async start() {
       await send(0, { t: "ready", ready: true });
@@ -502,7 +507,7 @@ test("failed join write retries membership before welcome", async (t) => {
   game.storage.failNext = "put";
   await assert.rejects(game.send(2, { t: "join", name: "Third" }), /injected/);
   assert.equal(game.sockets[2].attachment, null);
-  assert.deepEqual(game.sockets[2].messages, []);
+  assert.equal(game.sockets[2].messages.length, 0);
   await game.send(2, { t: "join", name: "Third" });
   const id = required(game.sockets[2].attachment).playerId;
   assert.equal(game.storage.room().players[id].name, "Third");
@@ -514,7 +519,7 @@ test("failed removal write can retry without eviction", async (t) => {
   const game = await setup(t);
   game.storage.failNext = "put";
   await assert.rejects(game.remove(0), /injected/);
-  assert.deepEqual(game.sockets[1].messages, []);
+  assert.equal(game.sockets[1].messages.length, 0);
   await game.remove(0);
   assert.equal(Object.keys(game.storage.room().players).length, 1);
   assert.equal(game.sockets[1].messages[0].t, "roster");

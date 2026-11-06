@@ -343,6 +343,7 @@ export class RaceRoomCore {
           [playerId]: { ...this.state.players[playerId], ready: ready.data.ready },
         },
       };
+
       await this.ctx.storage.put("state", next);
       this.state = next;
       this.broadcast({ t: "roster", players: this.roster() });

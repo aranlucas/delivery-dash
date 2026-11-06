@@ -1,5 +1,6 @@
 import { test } from "@e2e-dev/web";
 import { expect } from "e2e";
+import { decodeServerMessage } from "../../src/shared/wire-schema";
 
 test("create Free Drive, start, inspect the city and leave", async ({ app, screen }) => {
   await app.open("/");
@@ -23,6 +24,7 @@ test("create Free Drive, start, inspect the city and leave", async ({ app, scree
 
 test("joining an existing room adopts its mode and shows both members", async ({ app, screen }) => {
   const socket = new WebSocket(app.baseUrl.replace("http:", "ws:") + "/api/room/JOIN/ws");
+
   try {
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("Room fixture did not join")), 15_000);
@@ -30,7 +32,7 @@ test("joining an existing room adopts its mode and shows both members", async ({
         socket.send(JSON.stringify({ t: "join", name: "Host", mode: "free" })),
       );
       socket.addEventListener("message", (event) => {
-        if (JSON.parse(String(event.data)).t === "welcome") {
+        if (decodeServerMessage(String(event.data)).t === "welcome") {
           clearTimeout(timer);
           resolve();
         }
@@ -63,10 +65,11 @@ test("lost racing connection offers rejoin even in City View", async ({ app, bro
     globalThis.WebSocket = class extends NativeWebSocket {
       constructor(url: string | URL, protocols?: string | string[]) {
         super(url, protocols);
-        (globalThis as typeof globalThis & { disconnectRoom: () => void }).disconnectRoom = () =>
-          this.close();
+        globalThis.addEventListener("disconnect-room", () => this.close(), { once: true });
       }
     };
+
+    return true;
   });
   await screen.getByLabel("DRIVER NAME", { exact: true }).fill("Recovering Driver");
   await screen.getByRole("radio", /Free Drive/).check();
@@ -75,7 +78,7 @@ test("lost racing connection offers rejoin even in City View", async ({ app, bro
   await screen.getByRole("button", /CITY VIEW/).click();
   await expect(screen.getByRole("navigation", "City camera views")).toBeVisible();
   await browser.evaluate(() => {
-    (globalThis as typeof globalThis & { disconnectRoom: () => void }).disconnectRoom();
+    return globalThis.dispatchEvent(new Event("disconnect-room"));
   });
   await expect(screen.getByRole("heading", "CONNECTION LOST", { exact: true })).toBeVisible();
   await screen.getByRole("button", "REJOIN RACE", { exact: true }).click();
