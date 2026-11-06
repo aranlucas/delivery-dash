@@ -94,3 +94,10 @@ npm tarballs (`docs/*.mdx` and `skills/e2e/references/`).
   for CONNECTION LOST, so a browser startup/action failure cannot count as reproduction.
 - Workers Builds reported failure but supplied no diagnostic text or annotations through GitHub.
   It remains a merge gate to resolve; it is not covered by the authorized Vercel exception.
+
+- [Run 42300180855](https://github.com/aranlucas/delivery-dash/actions/runs/42300180855)
+  passed build, lint/format, typecheck, unit tests and all six real-worker integration tests,
+  including the actual Rush timer and reconnect coverage. Browser baseline was correctly rejected
+  as evidence: it failed at an action on the visually hidden radio, before reaching recovery.
+  Browser tests now click the visible mode label and assert the underlying radio is checked.
+  Workers Builds also passed for 43fc0a1.

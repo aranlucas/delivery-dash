@@ -5,7 +5,8 @@ import { decodeServerMessage } from "../../src/shared/wire-schema";
 test("create Free Drive, start, inspect the city and leave", async ({ app, screen }) => {
   await app.open("/");
   await screen.getByLabel("DRIVER NAME", { exact: true }).fill("CI Driver");
-  await screen.getByRole("radio", /Free Drive/).check();
+  await screen.getByText(/^Free Drive$/i).click();
+  await expect(screen.getByRole("radio", /Free Drive/)).toBeChecked();
   await screen.getByRole("button", "EXPLORE THE CITY", { exact: true }).click();
   await expect(screen.getByText("CI Driver", { exact: true })).toBeVisible();
   await screen.getByRole("button", "READY TO EXPLORE", { exact: true }).click();
@@ -44,7 +45,8 @@ test("joining an existing room adopts its mode and shows both members", async ({
     });
     await app.open("/");
     await screen.getByLabel("DRIVER NAME", { exact: true }).fill("Guest");
-    await screen.getByRole("radio", /Delivery Race/).check();
+    await screen.getByText(/^Delivery Race$/i).click();
+    await expect(screen.getByRole("radio", /Delivery Race/)).toBeChecked();
     await screen.getByLabel("Room code", { exact: true }).fill("JOIN");
     await screen.getByRole("button", "JOIN", { exact: true }).click();
     await expect(screen.getByText("Host", { exact: true })).toBeVisible();
@@ -72,7 +74,8 @@ test("lost racing connection offers rejoin even in City View", async ({ app, bro
     return true;
   });
   await screen.getByLabel("DRIVER NAME", { exact: true }).fill("Recovering Driver");
-  await screen.getByRole("radio", /Free Drive/).check();
+  await screen.getByText(/^Free Drive$/i).click();
+  await expect(screen.getByRole("radio", /Free Drive/)).toBeChecked();
   await screen.getByRole("button", "EXPLORE THE CITY", { exact: true }).click();
   await screen.getByRole("button", "READY TO EXPLORE", { exact: true }).click();
   await screen.getByRole("button", /CITY VIEW/).click();
