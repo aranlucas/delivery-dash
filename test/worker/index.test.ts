@@ -33,7 +33,7 @@ function required<T>(value: T | undefined): T {
   return value;
 }
 
-type Failure = "setAlarm" | "deleteAlarm" | "commit";
+type Failure = "setAlarm" | "deleteAlarm" | "commit" | "put" | "deleteAll";
 
 /** Transactional local storage mock; failed writes never escape the staged transaction. */
 class Storage {
@@ -52,6 +52,7 @@ class Storage {
     return Promise.resolve(structuredClone(this.data.get(key)));
   }
   put(key: "state", value: RoomState) {
+    this.fail("put");
     this.data.set(key, structuredClone(value));
 
     return Promise.resolve();
@@ -69,6 +70,7 @@ class Storage {
     return Promise.resolve();
   }
   deleteAll() {
+    this.fail("deleteAll");
     this.data.clear();
     this.alarmAt = null;
 
@@ -166,6 +168,9 @@ async function setup(t: TestContext, mode: GameMode = "rush") {
     advance,
     evict,
     alarm,
+    remove: (index: number) => room.webSocketClose(sockets[index]),
+    raw: (index: number, message: unknown) =>
+      room.webSocketMessage(sockets[index], JSON.stringify(message)),
     async start() {
       await send(0, { t: "ready", ready: true });
       await send(1, { t: "ready", ready: true });
@@ -463,4 +468,64 @@ test("replacing a ghost room commits its lobby reset with alarm cancellation", a
   assert.equal(game.storage.room().phase, "lobby");
   assert.equal(game.storage.alarmAt, null);
   assert.equal(Object.keys(game.storage.room().players).length, 1);
+});
+
+for (const ready of ["false", 1, null, {}, undefined]) {
+  test(`invalid readiness ${JSON.stringify(ready)} cannot start a race`, async (t) => {
+    const game = await setup(t);
+    await game.send(0, { t: "ready", ready: true });
+    const before = game.storage.room();
+    game.clear();
+    await game.raw(1, { t: "ready", ready });
+    assert.deepEqual(game.storage.room(), before);
+    assert.equal(game.storage.alarmAt, null);
+    assert.deepEqual(game.sockets[1].messages, [{ t: "error", message: "Invalid readiness." }]);
+    assert.deepEqual(game.sockets[0].messages, []);
+  });
+}
+
+test("failed readiness write leaves the live roster unchanged", async (t) => {
+  const game = await setup(t);
+  game.storage.failNext = "put";
+  await assert.rejects(game.send(0, { t: "ready", ready: true }), /injected/);
+  await game.send(1, { t: "ready", ready: true });
+  assert.equal(game.storage.room().phase, "lobby");
+  assert.equal(
+    game.storage.room().players[required(game.sockets[0].attachment).playerId].ready,
+    false,
+  );
+});
+
+test("failed join write retries membership before welcome", async (t) => {
+  const game = await setup(t);
+  game.sockets.push(new Socket());
+  game.storage.failNext = "put";
+  await assert.rejects(game.send(2, { t: "join", name: "Third" }), /injected/);
+  assert.equal(game.sockets[2].attachment, null);
+  assert.deepEqual(game.sockets[2].messages, []);
+  await game.send(2, { t: "join", name: "Third" });
+  const id = required(game.sockets[2].attachment).playerId;
+  assert.equal(game.storage.room().players[id].name, "Third");
+  assert.equal(Object.keys(game.storage.room().players).length, 3);
+  assert.equal(game.sockets[2].messages[0].t, "welcome");
+});
+
+test("failed removal write can retry without eviction", async (t) => {
+  const game = await setup(t);
+  game.storage.failNext = "put";
+  await assert.rejects(game.remove(0), /injected/);
+  assert.deepEqual(game.sockets[1].messages, []);
+  await game.remove(0);
+  assert.equal(Object.keys(game.storage.room().players).length, 1);
+  assert.equal(game.sockets[1].messages[0].t, "roster");
+});
+
+test("failed last-player deletion can retry without eviction", async (t) => {
+  const game = await setup(t);
+  await game.remove(0);
+  game.storage.failNext = "deleteAll";
+  await assert.rejects(game.remove(1), /injected/);
+  await game.remove(1);
+  assert.equal(game.storage.data.size, 0);
+  assert.equal(game.storage.alarmAt, null);
 });
