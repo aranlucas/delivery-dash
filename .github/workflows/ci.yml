@@ -85,6 +85,7 @@ jobs:
             echo "Disconnect regression unexpectedly passed against the baseline"
             exit 1
           fi
+          jq -e '[.run.results[].attempts[-1].error | select(.code == "ASSERTION_FAILED") | select(.message | contains("CONNECTION LOST"))] | length == 1' .e2e/report.json
           cp -R .e2e /tmp/baseline-e2e
           cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
           pnpm exec e2e run

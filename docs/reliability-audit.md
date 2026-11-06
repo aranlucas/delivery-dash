@@ -81,3 +81,16 @@ Both objections are addressed. Review also requested assertion-level evidence fo
 Vitest JSON must contain actual AssertionError failures for every regression group. CI results
 remain pending; no local tests/builds ran. Published package guides were read directly from the
 npm tarballs (`docs/*.mdx` and `skills/e2e/references/`).
+
+## CI progress
+
+- [Run 42299601953](https://github.com/aranlucas/delivery-dash/actions/runs/42299601953)
+  established AssertionError failures against the baseline for all five worker regression groups;
+  the fixed unit suite passed. Fixture lint/typecheck errors prevented browser execution.
+- [Run 42299806622](https://github.com/aranlucas/delivery-dash/actions/runs/42299806622)
+  again passed unit tests and reported the remaining fixture typing issues: a narrowed null
+  attachment and the shared decoder missing from the composite project include list. Both fixed.
+- Browser baseline proof additionally requires the recorded failure to be an ASSERTION_FAILED
+  for CONNECTION LOST, so a browser startup/action failure cannot count as reproduction.
+- Workers Builds reported failure but supplied no diagnostic text or annotations through GitHub.
+  It remains a merge gate to resolve; it is not covered by the authorized Vercel exception.
