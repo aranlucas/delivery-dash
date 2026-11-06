@@ -509,7 +509,7 @@ test("failed join write retries membership before welcome", async (t) => {
   assert.equal(game.sockets[2].attachment, null);
   assert.equal(game.sockets[2].messages.length, 0);
   await game.send(2, { t: "join", name: "Third" });
-  const id = required(game.sockets[2].attachment).playerId;
+  const id = required(game.sockets[2].deserializeAttachment()).playerId;
   assert.equal(game.storage.room().players[id].name, "Third");
   assert.equal(Object.keys(game.storage.room().players).length, 3);
   assert.equal(game.sockets[2].messages[0].t, "welcome");

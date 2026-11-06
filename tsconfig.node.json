@@ -19,6 +19,7 @@
     "vitest.config.ts",
     "vitest.integration.config.ts",
     "e2e.config.ts",
-    "test/e2e/**/*.ts"
+    "test/e2e/**/*.ts",
+    "src/shared/wire-schema.ts"
   ]
 }
