@@ -71,3 +71,13 @@ an existing room. Deterministic locators/actions/assertions need no model or cre
 proves session/navigation flow, not completion of a driven delivery or every physics interaction.
 Dependencies are installed with hooks disabled locally; browser provisioning and all execution
 occur only in CI. Independent review and CI evidence will be recorded below.
+
+## Independent review
+
+Native reviewer challenged the findings, worker changes, client lifecycle, domain and rendering
+paths, and the published e2e APIs. It confirmed the storage/readiness fixes, found the disconnected
+HUD defect above, and identified shallow checkout as an obstacle to baseline reproduction.
+Both objections are addressed. Review also requested assertion-level evidence for pre-fix failures;
+Vitest JSON must contain actual AssertionError failures for every regression group. CI results
+remain pending; no local tests/builds ran. Published package guides were read directly from the
+npm tarballs (`docs/*.mdx` and `skills/e2e/references/`).

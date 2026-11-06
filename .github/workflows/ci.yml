@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up pnpm, Node.js, and dependencies
         uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
@@ -40,10 +41,11 @@ jobs:
           git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/worker/room-core.ts > src/worker/room-core.ts
           trap 'cp /tmp/fixed-room-core.ts src/worker/room-core.ts' EXIT
           for behavior in 'invalid readiness' 'failed readiness write' 'failed join write' 'failed removal write' 'failed last-player deletion'; do
-            if pnpm exec vitest run test/worker/index.test.ts -t "$behavior"; then
+            if pnpm exec vitest run test/worker/index.test.ts -t "$behavior" --reporter=json --outputFile=/tmp/baseline.json; then
               echo "Regression unexpectedly passed against the baseline: $behavior"
               exit 1
             fi
+            jq -e '[.testResults[].assertionResults[] | select(.status == "failed") | .failureMessages[] | select(contains("AssertionError"))] | length > 0' /tmp/baseline.json
           done
 
       - parallel:
@@ -76,7 +78,17 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:5173/ > /dev/null
           pnpm test:integration
+          cp src/client/ui/overlays.tsx /tmp/fixed-overlays.tsx
+          git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/client/ui/overlays.tsx > src/client/ui/overlays.tsx
+          if pnpm exec e2e run --grep 'lost racing connection'; then
+            cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
+            echo "Disconnect regression unexpectedly passed against the baseline"
+            exit 1
+          fi
+          cp -R .e2e /tmp/baseline-e2e
+          cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
           pnpm exec e2e run
+          cp -R /tmp/baseline-e2e .e2e/baseline
 
       - name: Upload failure evidence
         if: ${{ !cancelled() }}
