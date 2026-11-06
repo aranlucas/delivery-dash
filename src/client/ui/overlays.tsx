@@ -1,3 +1,4 @@
+import { BOOST_MAX_SPEED } from "../../shared/vehicle";
 import { useEffect, useRef, useState } from "react";
 import { DELIVERIES_TO_WIN } from "../../shared/protocol";
 import {
@@ -115,7 +116,6 @@ function Minimap({ city, target, dropoff, checkpoint = false }: MinimapProps) {
     const element = canvas.current;
 
     if (!element) {
-      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
       // oxlint-disable-next-line unicorn/no-useless-undefined
       return undefined;
     }
@@ -123,7 +123,6 @@ function Minimap({ city, target, dropoff, checkpoint = false }: MinimapProps) {
     const context = element.getContext("2d");
 
     if (!context) {
-      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
       // oxlint-disable-next-line unicorn/no-useless-undefined
       return undefined;
     }
@@ -354,7 +353,6 @@ export function HUD({ city, orders = EMPTY_ORDERS }: HudProps) {
 
   useEffect(() => {
     if (phase !== "racing" || cameraMode === "city") {
-      // An inactive effect explicitly returns no cleanup, matching its active cleanup branch.
       // oxlint-disable-next-line unicorn/no-useless-undefined
       return undefined;
     }
@@ -385,7 +383,7 @@ export function HUD({ city, orders = EMPTY_ORDERS }: HudProps) {
     : 0;
 
   const speed = Math.round(ownPose.speed * 3.6);
-  const speedRatio = Math.min(100, (ownPose.speed / 52) * 100);
+  const speedRatio = Math.min(100, (ownPose.speed / BOOST_MAX_SPEED) * 100);
   const elapsed = raceStartedAt ? (now - raceStartedAt) / 1000 : 0;
   const remaining = raceEndsAt ? Math.max(0, Math.ceil((raceEndsAt - now) / 1000)) : 0;
 

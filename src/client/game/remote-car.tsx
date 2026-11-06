@@ -1,3 +1,4 @@
+import { CAR_ORIGIN_HEIGHT } from "../../shared/vehicle";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -49,7 +50,7 @@ export function RemoteCar({ id, color, name, carrying, spawn }: RemoteCarProps) 
     }
 
     if (!target) {
-      node.position.set(spawn[0], 0.8, spawn[1]);
+      node.position.set(spawn[0], CAR_ORIGIN_HEIGHT, spawn[1]);
     } else {
       node.position.lerp(targetPosition.set(target.x, target.y, target.z), Math.min(1, dt * 9));
       yaw.current +=
@@ -68,7 +69,7 @@ export function RemoteCar({ id, color, name, carrying, spawn }: RemoteCarProps) 
   });
 
   return (
-    <group ref={root} position={[spawn[0], 0.8, spawn[1]]}>
+    <group ref={root} position={[spawn[0], CAR_ORIGIN_HEIGHT, spawn[1]]}>
       <CarVisual color={color} carrying={carrying} name={name} kind={kind} lod={lod} />
     </group>
   );

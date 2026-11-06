@@ -1,3 +1,4 @@
+import { CAR_ORIGIN_HEIGHT } from "../shared/vehicle.ts";
 import {
   COUNTDOWN_MS,
   DELIVERIES_TO_WIN,
@@ -500,7 +501,7 @@ export class RaceRoomCore {
 
     // Never let a car score a ground-level target from an elevated deck or while airborne.
     const targetGround = groundHeightAt(city, target.stop[0], target.stop[1], 0);
-    const carSurface = Math.max(0, update.y - 0.8);
+    const carSurface = Math.max(0, update.y - CAR_ORIGIN_HEIGHT);
 
     if (targetGround <= 0.4 && carSurface > 0.5) {
       return;

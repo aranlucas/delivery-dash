@@ -1,3 +1,4 @@
+import type { CityZone } from "../shared/city";
 import { create } from "zustand";
 import type { Phase, PlayerPub, Standing } from "../shared/protocol";
 import { DEFAULT_MODE, type GameMode } from "../shared/game-modes";
@@ -15,15 +16,7 @@ export const remotePositions = new Map<string, RemotePosition>();
 
 type Screen = "menu" | "game";
 
-export type CityViewFocus =
-  | "overview"
-  | "overhead"
-  | "car"
-  | "festival"
-  | "harbor"
-  | "skyline"
-  | "freight"
-  | "stunt";
+export type CityViewFocus = "overview" | "overhead" | "car" | CityZone["id"];
 
 type GameState = {
   screen: Screen;

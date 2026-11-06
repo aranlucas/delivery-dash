@@ -122,7 +122,6 @@ export function queryRange(
           continue;
         }
 
-        // Check for duplicates
         let index = 0;
 
         while (index < count && out[index] !== boxIndex) {

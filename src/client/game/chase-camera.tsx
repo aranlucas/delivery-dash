@@ -1,3 +1,4 @@
+import { BOOST_MAX_SPEED } from "../../shared/vehicle";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
@@ -93,7 +94,7 @@ export function ChaseCamera({ grid, ramps }: ChaseCameraProps) {
       roll.current = 0;
     }
 
-    const speedRatio = Math.min(1, ownPose.speed / 52);
+    const speedRatio = Math.min(1, ownPose.speed / BOOST_MAX_SPEED);
     const yawLag = 1 - Math.exp(-d * (4.2 + speedRatio * 1.8));
     cameraYaw.current += shortestAngle(cameraYaw.current, ownPose.yaw) * yawLag;
 

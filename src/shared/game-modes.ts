@@ -1,8 +1,10 @@
 import type { City, Order, Place } from "./city.ts";
-import { TARGET_RADIUS } from "./protocol.ts";
+import { TARGET_RADIUS, DELIVERIES_TO_WIN } from "./protocol.ts";
 import type { PlayerPub } from "./protocol.ts";
 
-export type GameMode = "delivery" | "rush" | "checkpoint" | "free";
+import { modeSchema, type GameMode } from "./wire-schema.ts";
+
+export type { GameMode } from "./wire-schema.ts";
 
 interface GameModeInfo {
   name: string;
@@ -11,23 +13,27 @@ interface GameModeInfo {
   color: string;
 }
 
+export const RUSH_DURATION_MS = 180_000;
+
+export const CHECKPOINT_COUNT = 8;
+
 export const GAME_MODES: Record<GameMode, GameModeInfo> = {
   delivery: {
     name: "Delivery Race",
-    description: "Complete the first three deliveries to win.",
-    tagline: "FIRST TO 3",
+    description: `Complete the first ${DELIVERIES_TO_WIN} deliveries to win.`,
+    tagline: `FIRST TO ${DELIVERIES_TO_WIN}`,
     color: "#ff8a3d",
   },
   rush: {
     name: "Rush Hour",
     description: "Make the most deliveries before the clock runs out.",
-    tagline: "3 MINUTES",
+    tagline: `${RUSH_DURATION_MS / 60_000} MINUTES`,
     color: "#ff3d71",
   },
   checkpoint: {
     name: "Checkpoint Sprint",
-    description: "Reach eight city checkpoints in sequence.",
-    tagline: "8 CHECKPOINTS",
+    description: `Reach ${CHECKPOINT_COUNT} city checkpoints in sequence.`,
+    tagline: `${CHECKPOINT_COUNT} CHECKPOINTS`,
     color: "#48d7ff",
   },
   free: {
@@ -38,21 +44,12 @@ export const GAME_MODES: Record<GameMode, GameModeInfo> = {
   },
 };
 
-export const GAME_MODE_IDS = [
-  "delivery",
-  "rush",
-  "checkpoint",
-  "free",
-] as const satisfies readonly GameMode[];
+export const GAME_MODE_IDS = modeSchema.options;
 
 export const DEFAULT_MODE: GameMode = "delivery";
 
-export const RUSH_DURATION_MS = 180_000;
-
-export const CHECKPOINT_COUNT = 8;
-
 export function isGameMode(value: unknown): value is GameMode {
-  return value === "delivery" || value === "rush" || value === "checkpoint" || value === "free";
+  return modeSchema.safeParse(value).success;
 }
 
 const checkpointCache = new WeakMap<City, Place[]>();

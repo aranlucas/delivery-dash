@@ -1,7 +1,6 @@
 import { z } from "zod";
-import type { ServerMessage } from "./protocol.ts";
 
-const modeSchema = z.enum(["delivery", "rush", "checkpoint", "free"]);
+export const modeSchema = z.enum(["delivery", "rush", "checkpoint", "free"]);
 
 const phaseSchema = z.enum(["lobby", "countdown", "racing", "finished"]);
 
@@ -81,3 +80,15 @@ export const serverMessageSchema = z.discriminatedUnion("t", [
 export function decodeServerMessage(raw: string): ServerMessage {
   return serverMessageSchema.parse(JSON.parse(raw));
 }
+
+export type GameMode = z.infer<typeof modeSchema>;
+
+export type Phase = z.infer<typeof phaseSchema>;
+
+export type Leg = z.infer<typeof legSchema>;
+
+export type PlayerPub = z.infer<typeof playerSchema>;
+
+export type Standing = z.infer<typeof standingSchema>;
+
+export type ServerMessage = z.infer<typeof serverMessageSchema>;

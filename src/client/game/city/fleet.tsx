@@ -4,7 +4,7 @@ import * as THREE from "three";
 import type { City as CityData } from "../../../shared/city";
 import type { CarKind } from "../car-geometry";
 import { makeFleetGeometry, useVehicleAsset } from "../model-assets";
-import { trafficCars, updateTraffic } from "../traffic";
+import { trafficCars } from "../traffic";
 
 const matrix = new THREE.Matrix4();
 
@@ -194,14 +194,12 @@ export function FleetCars({ city }: FleetCarsProps) {
   );
 
   useLayoutEffect(() => {
-    updateTraffic(city, 0);
-
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
 
       for (let localIndex = 0; localIndex < groups[kind].length; localIndex++) {
         const slot = groups[kind][localIndex];
-        const car = slot.moving ? trafficCars[slot.index] : city.parkedCars[slot.index];
+        const car = slot.moving ? undefined : city.parkedCars[slot.index];
 
         if (car) {
           fleet.write(localIndex, car.x, car.z, car.yaw);
@@ -211,9 +209,7 @@ export function FleetCars({ city }: FleetCarsProps) {
       fleet.flush();
     }
   }, [city, fleets, groups]);
-  useFrame(({ clock }) => {
-    updateTraffic(city, clock.elapsedTime);
-
+  useFrame(() => {
     for (const kind of FLEET_KINDS) {
       const fleet = fleets[kind];
       const slots = groups[kind];

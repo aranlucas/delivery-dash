@@ -35,7 +35,6 @@ export function City({ city, seed }: CityProps) {
 
   return (
     <group>
-      {/* asphalt ground */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow position={[0, 0, 0]}>
         <planeGeometry args={[WORLD_HALF * 2, WORLD_HALF * 2]} />
         <meshStandardMaterial map={asphalt} roughness={0.96} />

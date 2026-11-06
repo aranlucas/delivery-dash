@@ -1,3 +1,5 @@
+import { CAR_ORIGIN_HEIGHT } from "../../shared/vehicle";
+
 /** Wheel layout shared by gameplay placement. Body loft lives in the Blender asset script. */
 type ProfilePoint = [number, number];
 
@@ -88,8 +90,6 @@ export const CAR_SPECS: Record<CarKind, CarSpec> = {
   hatch: HATCH_SPEC,
   sports: SPORTS_SPEC,
 };
-
-export const CAR_ORIGIN_HEIGHT = 0.8;
 
 const bump = (position: number, center: number, spread: number) =>
   Math.max(0, 1 - ((position - center) / spread) ** 2);

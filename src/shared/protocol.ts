@@ -12,67 +12,9 @@ export const COUNTDOWN_MS = 3_000;
 
 export const FINISH_LINGER_MS = 10_000;
 
-export type Phase = "lobby" | "countdown" | "racing" | "finished";
-
-export type Leg = "pickup" | "dropoff";
-
-export type PlayerPub = {
-  id: string;
-  name: string;
-  ready: boolean;
-  color: string;
-  deliveries: number;
-  orderIndex: number;
-  leg: Leg;
-  checkpointIndex: number;
-  spawnIndex: number;
-};
-
-export type Standing = Pick<PlayerPub, "id" | "name" | "deliveries" | "checkpointIndex">;
+export type { Phase, Leg, PlayerPub, Standing, ServerMessage } from "./wire-schema.ts";
 
 export type ClientMessage =
   | { t: "join"; name: string; mode?: GameMode }
   | { t: "ready"; ready: boolean }
   | { t: "pos"; x: number; y: number; z: number; yaw: number; speed: number };
-
-export type ServerMessage =
-  | {
-      t: "welcome";
-      id: string;
-      seed: number;
-      mode: GameMode;
-      phase: Phase;
-      players: PlayerPub[];
-      countdownEndsAt?: number;
-      raceStartedAt?: number;
-      raceEndsAt?: number;
-    }
-  | { t: "roster"; players: PlayerPub[] }
-  | {
-      t: "phase";
-      mode: GameMode;
-      phase: Phase;
-      countdownEndsAt?: number;
-      raceStartedAt?: number;
-      raceEndsAt?: number;
-      standings?: Standing[];
-    }
-  | {
-      t: "pos";
-      id: string;
-      x: number;
-      y: number;
-      z: number;
-      yaw: number;
-      speed: number;
-    }
-  | {
-      t: "progress";
-      id: string;
-      orderIndex: number;
-      leg: Leg;
-      deliveries: number;
-      checkpointIndex: number;
-    }
-  | { t: "win"; standings: Standing[] }
-  | { t: "error"; message: string };
