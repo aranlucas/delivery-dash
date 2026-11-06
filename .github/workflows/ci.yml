@@ -18,7 +18,7 @@ jobs:
   ci:
     if: ${{ github.event.pull_request.draft != true }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -88,8 +88,10 @@ jobs:
           jq -e '[.run.results[].attempts[-1].error | select(.code == "ASSERTION_FAILED") | select(.message | contains("CONNECTION LOST"))] | length == 1' .e2e/report.json
           cp -R .e2e /tmp/baseline-e2e
           cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
-          pnpm exec e2e run
+          fixed_result=0
+          pnpm exec e2e run || fixed_result=$?
           cp -R /tmp/baseline-e2e .e2e/baseline
+          exit "$fixed_result"
 
       - name: Upload failure evidence
         if: ${{ !cancelled() }}

@@ -101,3 +101,12 @@ npm tarballs (`docs/*.mdx` and `skills/e2e/references/`).
   as evidence: it failed at an action on the visually hidden radio, before reaching recovery.
   Browser tests now click the visible mode label and assert the underlying radio is checked.
   Workers Builds also passed for 43fc0a1.
+
+- [Run 42300995221](https://github.com/aranlucas/delivery-dash/actions/runs/42300995221)
+  reproduced the baseline reconnect defect at the intended `CONNECTION LOST` assertion;
+  the evidence guard passed. The fixed existing-room browser journey passed. Other fixed
+  journeys timed out, with recorded click steps taking 20–30 seconds and browser logs reporting
+  GPU readback stalls. Inference: software rendering plus continuous video capture consumes the
+  hosted runner budget. Keep all assertions, disable continuous video (retain trace/screenshots),
+  use a 1024×640 desktop viewport and raise action/test budgets to 60/240 seconds. Preserve
+  baseline artifacts even when the fixed run fails. These flows do not claim GPU performance coverage.
