@@ -18,12 +18,13 @@ jobs:
   ci:
     if: ${{ github.event.pull_request.draft != true }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up pnpm, Node.js, and dependencies
         uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
@@ -34,6 +35,19 @@ jobs:
       - name: Build and generate Worker types
         run: pnpm exec cf build
 
+      - name: Prove new regressions fail on the pre-fix implementation
+        run: |
+          cp src/worker/room-core.ts /tmp/fixed-room-core.ts
+          git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/worker/room-core.ts > src/worker/room-core.ts
+          trap 'cp /tmp/fixed-room-core.ts src/worker/room-core.ts' EXIT
+          for behavior in 'invalid readiness' 'failed readiness write' 'failed join write' 'failed removal write' 'failed last-player deletion'; do
+            if pnpm exec vitest run test/worker/index.test.ts -t "$behavior" --reporter=json --outputFile=/tmp/baseline.json; then
+              echo "Regression unexpectedly passed against the baseline: $behavior"
+              exit 1
+            fi
+            jq -e '[.testResults[].assertionResults[] | select(.status == "failed") | .failureMessages[] | select(contains("AssertionError"))] | length > 0' /tmp/baseline.json
+          done
+
       - parallel:
           - name: Lint
             run: pnpm lint && pnpm format:check
@@ -43,3 +57,46 @@ jobs:
 
           - name: Typecheck
             run: pnpm typecheck
+
+      - name: Install Chromium for deterministic e2e
+        run: pnpm exec e2e-web install chromium --with-deps
+
+      - name: Real-worker protocol and browser journeys
+        env:
+          TEST_GAME_URL: http://127.0.0.1:5173
+          TEST_GAME_RUSH_TIMER: "1"
+          TEST_GAME_RECONNECT: "1"
+          E2E_TELEMETRY_DISABLED: "1"
+        run: |
+          mkdir -p .e2e/logs
+          pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort > .e2e/logs/vite.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5173/ > /dev/null
+          pnpm test:integration
+          cp src/client/ui/overlays.tsx /tmp/fixed-overlays.tsx
+          git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/client/ui/overlays.tsx > src/client/ui/overlays.tsx
+          if pnpm exec e2e run --grep 'lost racing connection'; then
+            cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
+            echo "Disconnect regression unexpectedly passed against the baseline"
+            exit 1
+          fi
+          jq -e '[.run.results[].attempts[-1].error | select(.code == "ASSERTION_FAILED") | select(.message | contains("CONNECTION LOST"))] | length == 1' .e2e/report.json
+          cp -R .e2e /tmp/baseline-e2e
+          cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
+          fixed_result=0
+          pnpm exec e2e run || fixed_result=$?
+          cp -R /tmp/baseline-e2e .e2e/baseline
+          exit "$fixed_result"
+
+      - name: Upload failure evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reliability-evidence
+          path: .e2e
+          include-hidden-files: true

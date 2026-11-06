@@ -35,6 +35,8 @@ export const attachmentSchema = z.object({ playerId: z.string() });
 
 export const clientEnvelopeSchema = z.looseObject({ t: z.string() });
 
+export const readySchema = z.object({ t: z.literal("ready"), ready: z.boolean() });
+
 export const playerNameSchema = z.string();
 
 export const positionSchema = z.object({

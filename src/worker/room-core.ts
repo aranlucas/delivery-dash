@@ -33,6 +33,7 @@ import {
   clientEnvelopeSchema,
   playerNameSchema,
   positionSchema,
+  readySchema,
 } from "../shared/wire-schema.ts";
 
 type Player = Omit<PlayerPub, "id">;
@@ -160,11 +161,6 @@ export class RaceRoomCore {
     }
 
     return this.state;
-  }
-  private async save() {
-    if (this.state) {
-      await this.ctx.storage.put("state", this.state);
-    }
   }
   private alarmAt(state: RoomState): number | undefined {
     if (state.phase === "countdown") {
@@ -332,8 +328,24 @@ export class RaceRoomCore {
         return;
       }
 
-      this.state.players[playerId].ready = Boolean(parsed.ready);
-      await this.save();
+      const ready = readySchema.safeParse(parsed);
+
+      if (!ready.success) {
+        this.send(socket, { t: "error", message: "Invalid readiness." });
+
+        return;
+      }
+
+      const next = {
+        ...this.state,
+        players: {
+          ...this.state.players,
+          [playerId]: { ...this.state.players[playerId], ready: ready.data.ready },
+        },
+      };
+
+      await this.ctx.storage.put("state", next);
+      this.state = next;
       this.broadcast({ t: "roster", players: this.roster() });
       await this.maybeCountdown();
     } else if (parsed.t === "pos") {
@@ -356,6 +368,7 @@ export class RaceRoomCore {
     }
 
     if (state) {
+      state = { ...state, players: { ...state.players } };
       // Prune players whose sockets are gone (dev reload, crashed connections) so rooms don't fill with ghosts.
       const alive = new Set(this.sockets().map((s) => this.playerId(s)));
 
@@ -387,8 +400,6 @@ export class RaceRoomCore {
       phase: "lobby",
       players: {},
     };
-    this.state = state;
-
     const lateFreeJoin = state.phase === "racing" && state.mode === "free";
 
     if (state.phase !== "lobby" && !lateFreeJoin) {
@@ -427,8 +438,9 @@ export class RaceRoomCore {
       checkpointIndex: 0,
       spawnIndex,
     };
+    await this.ctx.storage.put("state", state);
+    this.state = state;
     socket.serializeAttachment({ playerId } satisfies Attachment);
-    await this.save();
     this.sendWelcome(socket, playerId);
     this.broadcast({ t: "roster", players: this.roster() }, playerId);
   }
@@ -575,9 +587,10 @@ export class RaceRoomCore {
       return;
     }
 
-    delete state.players[id];
+    const next = { ...state, players: { ...state.players } };
+    delete next.players[id];
 
-    if (!Object.keys(state.players).length) {
+    if (!Object.keys(next.players).length) {
       // With our compatibility date, deleteAll atomically clears data and the alarm.
       await this.ctx.storage.deleteAll();
       this.state = undefined;
@@ -585,7 +598,8 @@ export class RaceRoomCore {
       return;
     }
 
-    await this.save();
+    await this.ctx.storage.put("state", next);
+    this.state = next;
     this.broadcast({ t: "roster", players: this.roster() });
 
     if (state.phase === "lobby") {

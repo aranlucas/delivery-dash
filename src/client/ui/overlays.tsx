@@ -362,8 +362,12 @@ export function HUD({ city, orders = EMPTY_ORDERS }: HudProps) {
     return () => window.clearInterval(timer);
   }, [phase, cameraMode]);
 
+  if (!connected) {
+    return <Reconnect />;
+  }
+
   if (phase !== "racing" || !city || !self) {
-    return connected ? null : <Reconnect />;
+    return null;
   }
 
   if (cameraMode === "city") {
