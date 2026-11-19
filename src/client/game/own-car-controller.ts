@@ -331,7 +331,8 @@ export function useOwnCarController({
     }
   }, [phase, reset]);
   useFrame((state, dt) => {
-    const velocity = (velocityRef.current ??= new THREE.Vector2());
+    velocityRef.current ??= new THREE.Vector2();
+    const velocity = velocityRef.current;
     const forwardVector = (forwardVectorRef.current ??= new THREE.Vector2());
     const rightVector = (rightVectorRef.current ??= new THREE.Vector2());
     const d = Math.min(dt, 0.05);
