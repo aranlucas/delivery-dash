@@ -78,20 +78,21 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:5173/ > /dev/null
           pnpm test:integration
-          cp src/client/ui/overlays.tsx /tmp/fixed-overlays.tsx
-          git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/client/ui/overlays.tsx > src/client/ui/overlays.tsx
-          if pnpm exec e2e run --grep 'lost racing connection'; then
-            cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
-            echo "Disconnect regression unexpectedly passed against the baseline"
-            exit 1
-          fi
-          jq -e '[.run.results[].attempts[-1].error | select(.code == "ASSERTION_FAILED") | select(.message | contains("CONNECTION LOST"))] | length == 1' .e2e/report.json
-          cp -R .e2e /tmp/baseline-e2e
-          cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx
-          fixed_result=0
-          pnpm exec e2e run || fixed_result=$?
-          cp -R /tmp/baseline-e2e .e2e/baseline
-          exit "$fixed_result"
+          echo "Checking that the pre-fix overlay reproduces the City View disconnect regression"
+          (
+            cp src/client/ui/overlays.tsx /tmp/fixed-overlays.tsx
+            trap 'cp /tmp/fixed-overlays.tsx src/client/ui/overlays.tsx' EXIT
+            git show a4ec1786eb1cbc94ebc50944b8f033e944007bfe:src/client/ui/overlays.tsx > src/client/ui/overlays.tsx
+            baseline_result=0
+            pnpm exec e2e run --grep 'lost racing connection' --reporter markdown --output .e2e/baseline || baseline_result=$?
+            if [[ "$baseline_result" != 1 ]] || ! jq -e '[.run.results[].attempts[-1].error | select(.code == "ASSERTION_FAILED") | select(.message | contains("CONNECTION LOST"))] | length == 1' .e2e/baseline/report.json > /dev/null; then
+              echo "Expected the pre-fix overlay to fail at the CONNECTION LOST assertion (runner exit: $baseline_result)"
+              exit 1
+            fi
+          )
+          echo "Confirmed the expected CONNECTION LOST assertion failure on the pre-fix overlay"
+          echo "Running all browser tests against the current code"
+          pnpm exec e2e run
 
       - name: Upload failure evidence
         if: ${{ !cancelled() }}
