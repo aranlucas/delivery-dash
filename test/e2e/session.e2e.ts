@@ -78,7 +78,8 @@ test("lost racing connection offers rejoin even in City View", async ({ app, bro
   await expect(screen.getByRole("radio", /Free Drive/)).toBeChecked();
   await screen.getByRole("button", "EXPLORE THE CITY", { exact: true }).click();
   await screen.getByRole("button", "READY TO EXPLORE", { exact: true }).click();
-  await screen.getByRole("button", /CITY VIEW/).click();
+  await expect(screen.getByRole("button", /CITY VIEW/)).toBeVisible();
+  await browser.keyboard.press("v");
   await expect(screen.getByRole("navigation", "City camera views")).toBeVisible();
   await browser.evaluate(() => {
     return globalThis.dispatchEvent(new Event("disconnect-room"));
