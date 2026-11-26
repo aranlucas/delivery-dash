@@ -35,24 +35,24 @@
   "devDependencies": {
     "@aranlucas/oxforge": "0.3.1",
     "@aranlucas/oxlint-plugin-anti-slop": "0.1.1",
-    "@cloudflare/vite-plugin": "^2.0.0-rc.0",
-    "@e2e-dev/web": "0.16.0",
+    "@cloudflare/vite-plugin": "^2.0.0-rc.3",
+    "@e2e-dev/web": "0.16.1",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "cf": "1.0.0-rc.2",
-    "e2e": "0.23.1",
+    "cf": "1.0.0-rc.3",
+    "e2e": "0.24.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.6.1",
+    "lint-staged": "^17.6.2",
     "oxfmt": "^0.79.0",
     "oxlint": "^1.94.0",
-    "oxlint-tsgolint": "^7.0.2007",
-    "portless": "0.17.0",
+    "oxlint-tsgolint": "^7.0.2008",
+    "portless": "0.18.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}": [
